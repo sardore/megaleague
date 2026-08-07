@@ -1,0 +1,502 @@
+name: CP32 Bootstrap Install
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: cp32-bootstrap-install
+  cancel-in-progress: false
+
+env:
+  CP32_EXPECTED_SHA256: fbbdad911cb6c90a95aaedb9cf66820f41dc2a323e90088a3cb5ee4d407b22a8
+  CP32_EXPECTED_SIZE: '7372055'
+  CP32_EXPECTED_BUILD: CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST
+  CP32_PAYLOAD_SHA256: 605320d87e912f16ebf6eb672de07f0e1efd968cd84cd2edfb754b0cad9ff9ea
+  CP32_PAYLOAD_SIZE: '16338'
+  CP32_PRODUCTION_URL: https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+  CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
+
+jobs:
+  install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Prepare evidence directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/bootstrap
+          printf '%s\n' "run_id=${{ github.run_id }}" "repository=${{ github.repository }}" "sha=${{ github.sha }}" > artifacts/bootstrap/run-context.txt
+
+      - name: Verify trusted candidate upload
+        id: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          CANONICAL='validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'
+          TRANSPORT='validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html'
+          if [[ -f "$CANONICAL" ]]; then CANDIDATE="$CANONICAL";
+          elif [[ -f "$TRANSPORT" ]]; then CANDIDATE="$TRANSPORT";
+          else echo 'TRUSTED_CANDIDATE_UPLOAD_MISSING' >&2; exit 2; fi
+          export CANDIDATE
+          python3 - <<'PYVERIFY'
+          import hashlib,json,os
+          from pathlib import Path
+          p=Path(os.environ['CANDIDATE']); b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest()
+          expected=os.environ['CP32_EXPECTED_SHA256']; size=int(os.environ['CP32_EXPECTED_SIZE']); build=os.environ['CP32_EXPECTED_BUILD'].encode()
+          rec={'path':str(p),'size':len(b),'sha256':sha,'expectedSha256':expected,'expectedSize':size,'buildPresent':build in b,'ok':sha==expected and len(b)==size and build in b}
+          Path('artifacts/bootstrap/candidate-identity.json').write_text(json.dumps(rec,indent=2))
+          if not rec['ok']: raise SystemExit('CANDIDATE_IDENTITY_MISMATCH')
+          PYVERIFY
+          echo "path=$CANDIDATE" >> "$GITHUB_OUTPUT"
+
+      - name: Decode exact validation payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/cp32-validation-payload"
+          rm -rf "$STAGE"; mkdir -p "$STAGE"
+          cat > "$RUNNER_TEMP/cp32-validation-payload.b64" <<'CP32_PAYLOAD_B64'
+          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
+          CP32_PAYLOAD_B64
+          base64 -d "$RUNNER_TEMP/cp32-validation-payload.b64" > "$RUNNER_TEMP/cp32-validation-payload.tar.gz"
+          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-validation-payload.tar.gz" | awk '{print $1}')"
+          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-validation-payload.tar.gz")"
+          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n' "$CP32_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_PAYLOAD_SIZE" "$ACTUAL_SIZE" > artifacts/bootstrap/payload-identity.json
+          [[ "$ACTUAL_SHA" == "$CP32_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_PAYLOAD_SIZE" ]] || { echo 'BOOTSTRAP_PAYLOAD_IDENTITY_MISMATCH' >&2; exit 2; }
+          tar -xzf "$RUNNER_TEMP/cp32-validation-payload.tar.gz" -C "$STAGE"
+          mkdir -p "$STAGE/trusted" "$STAGE/validation/bootstrap"
+          cp "${{ steps.candidate.outputs.path }}" "$STAGE/trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html"
+          cp "${{ steps.candidate.outputs.path }}" "$STAGE/validation/bootstrap/CP32_TRUSTED_CANDIDATE.html"
+          echo "CP32_STAGE=$STAGE" >> "$GITHUB_ENV"
+
+      - name: Resolve package lock when network permits
+        id: lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$CP32_STAGE"
+          NODE_VERSION="$(node --version)"; NPM_VERSION="$(npm --version)"
+          BEFORE="$(sha256sum package-lock.json | awk '{print $1}')"
+          set +e
+          timeout 120s npm install --package-lock-only --ignore-scripts --no-audit --no-fund > "$GITHUB_WORKSPACE/artifacts/bootstrap/npm-lock.stdout.log" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/npm-lock.stderr.log"
+          RC=$?
+          set -e
+          AFTER="$(sha256sum package-lock.json | awk '{print $1}')"
+          if [[ $RC -eq 0 ]]; then STATUS='RESOLVED_ON_GITHUB_RUNNER'; else STATUS='PACKAGE_LOCK_RESOLUTION_PENDING'; fi
+          printf '{"status":"%s","exitCode":%s,"node":"%s","npm":"%s","beforeSha256":"%s","afterSha256":"%s"}\n' "$STATUS" "$RC" "$NODE_VERSION" "$NPM_VERSION" "$BEFORE" "$AFTER" > "$GITHUB_WORKSPACE/artifacts/bootstrap/package-lock-status.json"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+      - name: Static validation and forbidden-operation guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$CP32_STAGE"
+          node tools/static-validation.js > "$GITHUB_WORKSPACE/artifacts/bootstrap/static-validation.stdout.log" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/static-validation.stderr.log"
+          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }" .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > "$GITHUB_WORKSPACE/artifacts/bootstrap/yaml-parse.log"
+          python3 - <<'PYGUARD'
+          import json,re
+          from pathlib import Path
+          roots=[Path('tests'),Path('.github/workflows'),Path('tools'),Path('playwright.config.js')]
+          files=[]
+          for r in roots:
+            if r.is_file(): files.append(r)
+            elif r.exists(): files.extend(p for p in r.rglob('*') if p.is_file())
+          forbidden=['page.setContent(', 'file://', 'new WebSocket("ws://127.0.0.1', 'mock relay', 'fake relay', 'window.startBattle(', 'renderBattle(', 'document.hidden =', '.style.display =']
+          hits=[]
+          for p in files:
+            text=p.read_text(errors='ignore')
+            for token in forbidden:
+              if token in text: hits.append({'file':str(p),'token':token})
+          production='https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline'
+          relay='wss://cp32-online-relay.onrender.com/online'
+          constants=Path('tests/helpers/constants.js').read_text()
+          checks={'productionUrlExact':production in constants,'relayExact':relay in constants,'urlApi':('new URL(' in constants and 'searchParams.set' in constants),'forbiddenHits':hits}
+          Path('artifacts').mkdir(exist_ok=True)
+          Path('artifacts/bootstrap-forbidden-guard.json').write_text(json.dumps(checks,indent=2))
+          if hits or not all([checks['productionUrlExact'],checks['relayExact'],checks['urlApi']]): raise SystemExit('VALIDATION_STATIC_GUARD_FAILED')
+          PYGUARD
+          cp artifacts/results/static-validation.json "$GITHUB_WORKSPACE/artifacts/bootstrap/static-validation.json"
+          cp artifacts/bootstrap-forbidden-guard.json "$GITHUB_WORKSPACE/artifacts/bootstrap/forbidden-guard.json"
+
+      - name: Build repository-ready tree and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          READY="$GITHUB_WORKSPACE/artifacts/bootstrap/repository-ready"
+          rm -rf "$READY"; mkdir -p "$READY"
+          rsync -a --exclude artifacts/ "$CP32_STAGE/" "$READY/"
+          python3 - <<'PYMANIFEST'
+          import hashlib,json,os
+          from pathlib import Path
+          root=Path('artifacts/bootstrap/repository-ready')
+          rows=[]
+          for p in sorted(x for x in root.rglob('*') if x.is_file()):
+            b=p.read_bytes(); rows.append({'path':str(p.relative_to(root)),'size':len(b),'sha256':hashlib.sha256(b).hexdigest()})
+          manifest={'status':'CP32_EXTERNAL_PLAYER_PATH_VALIDATION_PIPELINE_READY','generatedBy':'CP32 Bootstrap Install','runId':os.environ.get('GITHUB_RUN_ID'),'trustedSha256':os.environ['CP32_EXPECTED_SHA256'],'productionUrl':os.environ['CP32_PRODUCTION_URL'],'relayEndpoint':os.environ['CP32_RELAY_ENDPOINT'],'files':rows}
+          (root/'VALIDATION_INSTALL_MANIFEST.json').write_text(json.dumps(manifest,indent=2))
+          with (root/'VALIDATION_INSTALL_SHA256SUMS.txt').open('w') as f:
+            for row in rows: f.write(f"{row['sha256']}  {row['path']}\n")
+          PYMANIFEST
+          cd "$READY/.."
+          zip -qr cp32-validation-install-ready.zip repository-ready
+          sha256sum cp32-validation-install-ready.zip > cp32-validation-install-ready.zip.sha256
+
+      - name: Attempt AUTO_INSTALL branch and PR
+        id: autoinstall
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          READY="$GITHUB_WORKSPACE/artifacts/bootstrap/repository-ready"
+          BASE="${{ github.event.repository.default_branch }}"
+          BRANCH='cp32-validation-bootstrap'
+          if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" >/dev/null 2>&1; then BRANCH="cp32-validation-bootstrap-${{ github.run_id }}"; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$BRANCH"
+          rsync -a "$READY/" "$GITHUB_WORKSPACE/"
+          git add .github/workflows tests tools trusted validation/bootstrap playwright.config.js package.json package-lock.json README_EXTERNAL_AUTOMATION.md
+          if git diff --cached --quiet; then
+            STATUS='AUTO_INSTALL_ALREADY_PRESENT'; PUSH_RC=0; PR_RC=0; PR_URL='';
+          else
+            git commit -m 'Install CP32 external validation pipeline'
+            set +e
+            git push -u origin "$BRANCH" > artifacts/bootstrap/git-push.stdout.log 2> artifacts/bootstrap/git-push.stderr.log
+            PUSH_RC=$?
+            set -e
+            PR_RC=99; PR_URL=''
+            if [[ $PUSH_RC -eq 0 ]]; then
+              set +e
+              PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Install CP32 validation automation' --body 'Installs exact-byte candidate, web E2E, Android lifecycle E2E, and production identity/player-path validation. Does not modify production game source.' 2> artifacts/bootstrap/pr-create.stderr.log)"
+              PR_RC=$?
+              set -e
+              if [[ $PR_RC -eq 0 ]]; then STATUS='AUTO_INSTALL_PR_READY'; else STATUS='AUTO_INSTALL_BRANCH_READY_PR_BLOCKED'; fi
+            else STATUS='GITHUB_REPOSITORY_WRITE_BLOCKED_ARTIFACT_READY'; fi
+          fi
+          printf '{"status":"%s","branch":"%s","base":"%s","pushExitCode":%s,"prExitCode":%s,"prUrl":"%s","fallbackArtifact":"cp32-validation-install-ready.zip"}\n' "$STATUS" "$BRANCH" "$BASE" "$PUSH_RC" "$PR_RC" "$PR_URL" > artifacts/bootstrap/auto-install-status.json
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Installation summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '## CP32 Bootstrap Install'
+            echo
+            echo "Trusted SHA: $CP32_EXPECTED_SHA256"
+            echo "Production URL: $CP32_PRODUCTION_URL"
+            echo "Relay: $CP32_RELAY_ENDPOINT"
+            [[ -f artifacts/bootstrap/auto-install-status.json ]] && cat artifacts/bootstrap/auto-install-status.json
+            echo
+            echo 'If repository writes are blocked, download the single `cp32-validation-install-ready.zip` artifact. No production game source was patched.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload bootstrap evidence / fallback installer
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-bootstrap-install-${{ github.run_id }}
+          path: artifacts/bootstrap/
+          if-no-files-found: error
+          include-hidden-files: true
+
