@@ -1,0 +1,46 @@
+name: CP32 Android Background E2E
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: macos-14
+    timeout-minutes: 180
+    env:
+      CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
+      CP32_CANDIDATE_ORIGIN: https://127.0.0.1:8443
+      CP32_ANDROID_CANDIDATE_URL: https://10.0.2.2:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      CP32_PEER_CANDIDATE_URL: https://127.0.0.1:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install chromium
+      - run: npm run validate:static
+      - name: Generate local TLS identity
+        run: openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/preflight/key.pem -out artifacts/preflight/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2'
+      - name: Start candidate HTTPS server
+        run: node tests/helpers/candidate-https-server.js > artifacts/preflight/candidate-server.stdout.log 2> artifacts/preflight/candidate-server.stderr.log & echo $! > artifacts/preflight/candidate-server.pid
+      - name: Android actual lifecycle
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: node tests/android/android-background-player-path.js
+      - if: always()
+        run: adb logcat -d > artifacts/android/logcat.txt || true
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-android-evidence-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error
+          include-hidden-files: true

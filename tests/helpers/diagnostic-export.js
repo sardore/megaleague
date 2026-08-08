@@ -1,0 +1,4 @@
+import fs from 'node:fs';import path from 'node:path';
+export async function startDiagnostic(page){await page.locator('#cp32DiagnosticFab').waitFor({state:'visible'});await page.touchscreen.tap(...Object.values(await center(page,'#cp32DiagnosticFab')));await page.locator('#cp32DiagnosticStart').click();}
+async function center(page,selector){const b=await page.locator(selector).boundingBox();if(!b)throw new Error(`NO_BOUNDING_BOX:${selector}`);return {x:b.x+b.width/2,y:b.y+b.height/2}}
+export async function exportDiagnostic(page,dir){fs.mkdirSync(dir,{recursive:true});if(await page.locator('#cp32DiagnosticPanel').isHidden())await page.locator('#cp32DiagnosticFab').click();const download=await Promise.all([page.waitForEvent('download'),page.locator('#cp32DiagnosticExport').click()]).then(x=>x[0]);const file=path.join(dir,download.suggestedFilename());await download.saveAs(file);return file;}

@@ -1,0 +1,36 @@
+name: CP32 Production Origin E2E
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      CP32_TARGET_MODE: production
+      CP32_PRODUCTION_URL: https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
+      - run: npm run validate:static
+      - name: Production and relay preflight
+        env:
+          CP32_CANDIDATE_ORIGIN: https://127.0.0.1:8443
+        run: CP32_PREFLIGHT_OUTPUT=artifacts/preflight/production-preflight.json node -e "import('./tests/helpers/relay-preflight.js').then(async m=>{const fs=await import('node:fs');try{const r=await m.runPreflight({candidate:false,production:true});fs.writeFileSync(process.env.CP32_PREFLIGHT_OUTPUT,JSON.stringify(r,null,2))}catch(e){fs.writeFileSync(process.env.CP32_PREFLIGHT_OUTPUT,JSON.stringify({ok:false,error:String(e)},null,2));process.exit(2)}})"
+      - name: Exact deployed identity and actual player path
+        run: npx playwright test tests/e2e/production-player-path.spec.js --workers=1
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-production-evidence-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error
+          include-hidden-files: true
