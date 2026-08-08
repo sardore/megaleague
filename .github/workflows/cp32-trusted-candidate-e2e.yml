@@ -1,0 +1,61 @@
+name: CP32 Trusted Candidate E2E
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      CP32_TARGET_MODE: candidate
+      CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
+      CP32_CANDIDATE_ORIGIN: https://127.0.0.1:8443
+      CP32_LOBBY_OPEN_CASES: '20'
+      CP32_ROOM_LINK_CASES: '10'
+      CP32_LOBBY_BACKGROUND_CASES: '20'
+      CP32_START_CASES: '20'
+      CP32_BATTLE_BACKGROUND_CASES: '20'
+      CP32_RESULT_CASES: '10'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Resolve test dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Record resolved lock identity
+        run: sha256sum package-lock.json | tee artifacts/preflight/resolved-package-lock.sha256
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip openssl
+      - name: Static validation
+        run: npm run validate:static
+      - name: Generate local TLS identity
+        run: openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/preflight/key.pem -out artifacts/preflight/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2'
+      - name: Start exact-byte HTTPS server
+        run: node tests/helpers/candidate-https-server.js > artifacts/preflight/candidate-server.stdout.log 2> artifacts/preflight/candidate-server.stderr.log & echo $! > artifacts/preflight/candidate-server.pid
+      - name: Preflight
+        run: node tests/helpers/relay-preflight.js
+      - name: Actual UI smoke
+        run: npx playwright test tests/e2e/trusted-candidate-player-path.spec.js --workers=1
+      - name: Gate A lobby open
+        run: npx playwright test tests/e2e/lobby-open.spec.js --workers=1
+      - name: Gate B room-link
+        run: npx playwright test tests/e2e/room-link-entry-intent.spec.js --workers=1
+      - name: Gate C lobby background
+        run: npx playwright test tests/e2e/lobby-background-sync.spec.js --workers=1
+      - name: Gate D initiative/start
+        run: npx playwright test tests/e2e/initiative-start.spec.js --workers=1
+      - name: Gate E web background
+        run: npx playwright test tests/e2e/battle-background-resume.spec.js --workers=1
+      - name: Gate F result/setup
+        run: npx playwright test tests/e2e/result-setup-stability.spec.js --workers=1
+      - name: Upload all evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-trusted-candidate-evidence-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: error
+          include-hidden-files: true

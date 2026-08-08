@@ -1,0 +1,18 @@
+{
+  "name": "cp32-trusted-baseline-external-validation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22"},
+  "scripts": {
+    "validate:static": "node tools/static-validation.js",
+    "serve:candidate": "node tests/helpers/candidate-https-server.js",
+    "test:candidate": "cross-env CP32_TARGET_MODE=candidate playwright test",
+    "test:production": "cross-env CP32_TARGET_MODE=production playwright test",
+    "test:android": "node tests/android/android-background-player-path.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.0",
+    "cross-env": "7.0.3"
+  }
+}
