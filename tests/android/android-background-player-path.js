@@ -5,6 +5,7 @@ import {ANDROID_PACKAGE,ANDROID_ACTIVITY,ADB,CASES} from './android-driver-confi
 import {launchAndroidPeer} from './android-peer-client.js';
 import {candidateUrl} from '../helpers/constants.js';
 import {createRoomHost,waitForLobby,selectFour,waitRemoteCount,touchFirstLegalAction,runtimeSummary} from '../helpers/player-path.js';
+import {requireLocalCandidateSpki} from '../helpers/local-candidate-tls.js';
 
 const out='artifacts/android';fs.mkdirSync(out,{recursive:true});
 const run=(...a)=>execFileSync(ADB,a,{encoding:'utf8'});
@@ -28,7 +29,9 @@ async function androidAction(cdp){await waitSelector(cdp,'#actionButtons button:
 async function ensureAndroidTurn(cdp,peerPage){for(let i=0;i<20;i++){const a=await androidSummary(cdp);if(a.actions>0)return a;const p=await runtimeSummary(peerPage);if(p.actions>0)await touchFirstLegalAction(peerPage);await sleep(500);}throw new Error('ANDROID_LOCAL_TURN_NOT_REACHED');}
 async function prepareChrome(url){
   try{run('shell','pm','clear',ANDROID_PACKAGE)}catch{}
-  try{run('shell','sh','-c',"echo 'chrome --ignore-certificate-errors --disable-fre --no-default-browser-check' > /data/local/tmp/chrome-command-line")}catch{}
+  const spki=requireLocalCandidateSpki();
+  const commandLine=`chrome --ignore-certificate-errors-spki-list=${spki} --disable-fre --no-default-browser-check`;
+  run('shell','sh','-c',`printf '%s\n' ${JSON.stringify(commandLine)} > /data/local/tmp/chrome-command-line`);
   run('shell','am','start','-a','android.intent.action.VIEW','-d',url,ANDROID_PACKAGE);await sleep(7000);
 }
 async function main(){

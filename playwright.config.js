@@ -11,7 +11,7 @@ export default defineConfig({
   use: {
     actionTimeout: 20_000,
     navigationTimeout: 45_000,
-    ignoreHTTPSErrors: true,
+    ignoreHTTPSErrors: false,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   }

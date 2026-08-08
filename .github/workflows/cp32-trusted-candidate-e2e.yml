@@ -49,11 +49,23 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip openssl
       - name: Static validation
         run: npm run validate:static
-      - name: Generate local TLS identity
-        run: openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/preflight/key.pem -out artifacts/preflight/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2'
+      - name: Generate scoped local TLS identity and trust contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/preflight/key.pem -out artifacts/preflight/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2'
+          SPKI="$(openssl x509 -in artifacts/preflight/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl base64 -A)"
+          [[ -n "$SPKI" ]] || { echo 'LOCAL_CANDIDATE_SPKI_DERIVATION_FAILED' >&2; exit 2; }
+          echo "CP32_LOCAL_TRUST_CERT=$GITHUB_WORKSPACE/artifacts/preflight/cert.pem" >> "$GITHUB_ENV"
+          echo "CP32_LOCAL_CERT_SPKI=$SPKI" >> "$GITHUB_ENV"
+          printf '{"policy":"LOCAL_CERT_PLUS_SPKI_ONLY","trustCert":"artifacts/preflight/cert.pem","spkiSha256Base64":"%s","globalTlsDisable":false}\n' "$SPKI" > artifacts/preflight/local-tls-contract.json
       - name: Start exact-byte HTTPS server
         run: node tests/helpers/candidate-https-server.js > artifacts/preflight/candidate-server.stdout.log 2> artifacts/preflight/candidate-server.stderr.log & echo $! > artifacts/preflight/candidate-server.pid
+      - name: Local TLS trust regression
+        run: CP32_TLS_REGRESSION_OUTPUT=artifacts/preflight/tls-trust-regression.json node tools/tls-trust-regression.js
       - name: Preflight
+        env:
+          CP32_PREFLIGHT_MODE: candidate
         run: node tests/helpers/relay-preflight.js
       - name: Actual UI smoke
         run: npx playwright test tests/e2e/trusted-candidate-player-path.spec.js --workers=1
@@ -78,6 +90,8 @@ jobs:
             artifacts/preflight/resolved-package-lock.sha256
             artifacts/preflight/key.pem
             artifacts/preflight/cert.pem
+            artifacts/preflight/local-tls-contract.json
+            artifacts/preflight/tls-trust-regression.json
             artifacts/preflight/candidate-server.stdout.log
             artifacts/preflight/candidate-server.stderr.log
             artifacts/preflight/candidate-server.pid
