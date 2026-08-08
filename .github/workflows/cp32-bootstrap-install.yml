@@ -510,7 +510,7 @@ jobs:
           zip -qr cp32-validation-install-ready.zip repository-ready
           sha256sum cp32-validation-install-ready.zip > cp32-validation-install-ready.zip.sha256
 
-      - name: Require PAT and perform authenticated remote install
+      - name: Require PAT and perform canonical credential differential and remote install
         id: autoinstall
         shell: bash
         env:
@@ -521,13 +521,20 @@ jobs:
           BASE="${{ github.event.repository.default_branch }}"
           BRANCH='cp32-validation-bootstrap'
           STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/auto-install-status.json"
-          ASKPASS="$RUNNER_TEMP/cp32-bootstrap-askpass.sh"
+          AUTH_DIFF_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/credential-differential.json"
+          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-bootstrap-gh-gitconfig"
           LOCAL_SHA=''
           REMOTE_SHA=''
           PR_URL=''
           PUSH_RC=99
           PR_RC=99
           REMOTE_BRANCH_EXISTS=false
+          API_IDENTITY_AUTH='NOT_RUN'
+          API_REPOSITORY_ACCESS='NOT_RUN'
+          GIT_HTTPS_READ_AUTH='NOT_RUN'
+          GIT_HTTPS_WRITE_AUTH='NOT_RUN'
+          API_LOGIN=''
+          BASE_REF_OBSERVED=false
 
           write_status() {
             python3 - "$STATUS_FILE" "$1" "$BRANCH" "$BASE" "$PUSH_RC" "$PR_RC" "$PR_URL" "$LOCAL_SHA" "$REMOTE_SHA" "$REMOTE_BRANCH_EXISTS" <<'PYSTATUS'
@@ -544,52 +551,150 @@ jobs:
             'remoteCommitSha':remote_sha,
             'remoteBranchExists':remote_exists.lower()=='true',
             'fallbackArtifact':'cp32-validation-install-ready.zip',
-            'authMode':'CP32_BOOTSTRAP_PAT_GIT_ASKPASS',
+            'authMode':'CP32_BOOTSTRAP_PAT_GH_CLI_GIT_CREDENTIAL_HELPER',
             'secretName':'CP32_BOOTSTRAP_PAT'
           }
           open(path,'w',encoding='utf-8').write(json.dumps(rec,indent=2)+'\\n')
           PYSTATUS
           }
 
+          write_auth_diff() {
+            python3 - "$AUTH_DIFF_FILE" "$API_IDENTITY_AUTH" "$API_REPOSITORY_ACCESS" "$GIT_HTTPS_READ_AUTH" "$GIT_HTTPS_WRITE_AUTH" "$API_LOGIN" "$BASE_REF_OBSERVED" <<'PYAUTHDIFF'
+          import json,sys
+          path,api_identity,api_repo,git_read,git_write,login,base_seen=sys.argv[1:]
+          rec={
+            'credentialOwner':'GH_CLI_GIT_CREDENTIAL_HELPER',
+            'secretName':'CP32_BOOTSTRAP_PAT',
+            'API_IDENTITY_AUTH':api_identity,
+            'API_REPOSITORY_ACCESS':api_repo,
+            'GIT_HTTPS_READ_AUTH':git_read,
+            'GIT_HTTPS_WRITE_AUTH':git_write,
+            'authenticatedLogin':login,
+            'baseRefObserved':base_seen.lower()=='true',
+            'tokenMaterialRecorded':False
+          }
+          open(path,'w',encoding='utf-8').write(json.dumps(rec,indent=2)+'\\n')
+          PYAUTHDIFF
+          }
+
           cleanup_credentials() {
-            rm -f "$ASKPASS"
-            unset CP32_BOOTSTRAP_PAT GH_TOKEN || true
+            set +e
+            unset GH_TOKEN
+            unset CP32_BOOTSTRAP_PAT
+            unset GIT_CONFIG_GLOBAL
+            rm -f "$GIT_AUTH_CONFIG"
+            set -e
           }
           trap cleanup_credentials EXIT
 
           if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then
             STATUS='CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL'
+            write_auth_diff
             write_status "$STATUS"
             echo "$STATUS" >&2
             exit 21
           fi
 
-          # Fail closed on an invalid/expired token before modifying the remote.
+          # One canonical auth owner for both gh API calls and Git HTTPS transport.
+          # checkout intentionally persists no GITHUB_TOKEN credential.
+          export GH_TOKEN="$CP32_BOOTSTRAP_PAT"
+          export GIT_CONFIG_GLOBAL="$GIT_AUTH_CONFIG"
+          : > "$GIT_AUTH_CONFIG"
+          chmod 600 "$GIT_AUTH_CONFIG"
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+
+          # A. API identity authentication.
           set +e
-          GH_TOKEN="$CP32_BOOTSTRAP_PAT" gh api user --jq '.login' > "$GITHUB_WORKSPACE/artifacts/bootstrap/pat-auth-user.txt" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pat-auth.stderr.log"
-          AUTH_RC=$?
+          API_LOGIN="$(gh api user --jq '.login' 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/api-identity-auth.stderr.log")"
+          API_ID_RC=$?
           set -e
-          if [[ $AUTH_RC -ne 0 ]]; then
-            rm -f "$GITHUB_WORKSPACE/artifacts/bootstrap/pat-auth-user.txt"
+          if [[ $API_ID_RC -ne 0 || -z "$API_LOGIN" ]]; then
+            API_IDENTITY_AUTH='FAIL'
             STATUS='CP32_BOOTSTRAP_PAT_AUTH_FAILED'
+            write_auth_diff
             write_status "$STATUS"
             echo "$STATUS" >&2
             exit 22
           fi
-          # The username is not secret; the PAT is supplied only through GIT_ASKPASS.
-          cat > "$ASKPASS" <<'ASKPASS_EOF'
-          #!/bin/sh
-          case "$1" in
-            *Username*) printf '%s\\n' 'x-access-token' ;;
-            *Password*) printf '%s\\n' "$CP32_BOOTSTRAP_PAT" ;;
-            *) printf '%s\\n' '' ;;
-          esac
-          ASKPASS_EOF
-          chmod 700 "$ASKPASS"
-          export GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0
-          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          API_IDENTITY_AUTH='PASS'
+          printf '%s\n' "$API_LOGIN" > "$GITHUB_WORKSPACE/artifacts/bootstrap/api-identity-auth-user.txt"
+          write_auth_diff
 
-          if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" >/dev/null 2>&1; then
+          # B. API repository access. This verifies the PAT can address the exact repository;
+          # Git write authority is still decided by the later Git transport operation.
+          set +e
+          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,visibility:.visibility,permissions:.permissions}' > "$GITHUB_WORKSPACE/artifacts/bootstrap/api-repository-access.json" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/api-repository-access.stderr.log"
+          API_REPO_RC=$?
+          set -e
+          if [[ $API_REPO_RC -ne 0 ]]; then
+            API_REPOSITORY_ACCESS='FAIL'
+            STATUS='CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED'
+            write_auth_diff
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 26
+          fi
+          API_REPOSITORY_ACCESS='PASS'
+          write_auth_diff
+
+          # Configure Git HTTPS through the official GitHub CLI credential helper.
+          # The token remains in GH_TOKEN for this step; it is never embedded in origin URL,
+          # command arguments, committed files, or artifacts.
+          set +e
+          gh auth setup-git --hostname github.com --force > "$GITHUB_WORKSPACE/artifacts/bootstrap/gh-auth-setup-git.stdout.log" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/gh-auth-setup-git.stderr.log"
+          SETUP_GIT_RC=$?
+          set -e
+          if [[ $SETUP_GIT_RC -ne 0 ]]; then
+            GIT_HTTPS_READ_AUTH='FAIL'
+            STATUS='CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED'
+            write_auth_diff
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 27
+          fi
+          git config --global --get-regexp '^credential\..*\.helper$' > "$GITHUB_WORKSPACE/artifacts/bootstrap/git-credential-helper-config.txt"
+
+          # C. Git HTTPS read authentication. No --exit-code: transport/auth failure and
+          # a successfully authenticated but missing ref must remain distinguishable.
+          set +e
+          BASE_REMOTE_LINE="$(git ls-remote origin "refs/heads/$BASE" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/git-https-read.stderr.log")"
+          GIT_READ_RC=$?
+          set -e
+          printf '%s\n' "$BASE_REMOTE_LINE" > "$GITHUB_WORKSPACE/artifacts/bootstrap/git-https-read.stdout.log"
+          if [[ $GIT_READ_RC -ne 0 ]]; then
+            GIT_HTTPS_READ_AUTH='FAIL'
+            STATUS='CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'
+            write_auth_diff
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 28
+          fi
+          GIT_HTTPS_READ_AUTH='PASS'
+          if [[ -z "$BASE_REMOTE_LINE" ]]; then
+            BASE_REF_OBSERVED=false
+            STATUS='CP32_BOOTSTRAP_BASE_REF_NOT_OBSERVED'
+            write_auth_diff
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 29
+          fi
+          BASE_REF_OBSERVED=true
+          write_auth_diff
+
+          # Branch collision observation uses the already-proven canonical Git credential path.
+          set +e
+          EXISTING_BRANCH_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/branch-collision-check.stderr.log")"
+          BRANCH_CHECK_RC=$?
+          set -e
+          if [[ $BRANCH_CHECK_RC -ne 0 ]]; then
+            GIT_HTTPS_READ_AUTH='FAIL'
+            STATUS='CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'
+            write_auth_diff
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 28
+          fi
+          if [[ -n "$EXISTING_BRANCH_LINE" ]]; then
             BRANCH="cp32-validation-bootstrap-${{ github.run_id }}"
           fi
 
@@ -604,6 +709,8 @@ jobs:
             STATUS='AUTO_INSTALL_ALREADY_PRESENT'
             PUSH_RC=0
             PR_RC=0
+            GIT_HTTPS_WRITE_AUTH='NOT_REQUIRED'
+            write_auth_diff
             write_status "$STATUS"
             echo "status=$STATUS" >> "$GITHUB_OUTPUT"
             echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
@@ -614,24 +721,45 @@ jobs:
           git commit -m 'Install CP32 external validation pipeline'
           LOCAL_SHA="$(git rev-parse HEAD)"
 
+          # D. Git HTTPS write authentication is the actual branch push. This is attempted
+          # only after API identity, repository access, and Git HTTPS read auth have passed.
           set +e
           git push -u origin "$BRANCH" > "$GITHUB_WORKSPACE/artifacts/bootstrap/git-push.stdout.log" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/git-push.stderr.log"
           PUSH_RC=$?
           set -e
           if [[ $PUSH_RC -ne 0 ]]; then
-            STATUS='CP32_BOOTSTRAP_REMOTE_PUSH_FAILED'
+            GIT_HTTPS_WRITE_AUTH='FAIL'
+            PUSH_ERR="$(cat "$GITHUB_WORKSPACE/artifacts/bootstrap/git-push.stderr.log")"
+            if printf '%s' "$PUSH_ERR" | grep -Eqi 'Invalid username or token|Authentication failed|could not read Username'; then
+              STATUS='CP32_BOOTSTRAP_GIT_HTTPS_WRITE_AUTH_FAILED'
+            elif printf '%s' "$PUSH_ERR" | grep -Eqi 'refusing to allow .* to create or update workflow|workflow.*permission|Write access to repository not granted|Permission to .* denied|HTTP 403|returned error: 403'; then
+              STATUS='CP32_BOOTSTRAP_GIT_HTTPS_WRITE_PERMISSION_FAILED'
+            else
+              STATUS='CP32_BOOTSTRAP_REMOTE_PUSH_FAILED'
+            fi
+            write_auth_diff
             write_status "$STATUS"
             echo "$STATUS" >&2
             exit 23
           fi
+          GIT_HTTPS_WRITE_AUTH='PASS'
+          write_auth_diff
 
-          # Independent remote observation: the branch must exist remotely and point at the local install commit.
+          # Independent remote observation: push exit 0 is not enough.
           set +e
-          REMOTE_LINE="$(git ls-remote --heads origin "refs/heads/$BRANCH" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-check.stderr.log")"
+          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-check.stderr.log")"
           REMOTE_CHECK_RC=$?
           set -e
-          REMOTE_SHA="$(printf '%s\\n' "$REMOTE_LINE" | awk 'NF>=2 {print $1; exit}')"
-          if [[ $REMOTE_CHECK_RC -ne 0 || -z "$REMOTE_SHA" || "$REMOTE_SHA" != "$LOCAL_SHA" ]]; then
+          printf '%s\n' "$REMOTE_LINE" > "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-check.stdout.log"
+          if [[ $REMOTE_CHECK_RC -ne 0 ]]; then
+            STATUS='CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED'
+            write_auth_diff
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 30
+          fi
+          REMOTE_SHA="$(printf '%s\n' "$REMOTE_LINE" | awk 'NF>=2 {print $1; exit}')"
+          if [[ -z "$REMOTE_SHA" || "$REMOTE_SHA" != "$LOCAL_SHA" ]]; then
             STATUS='CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED'
             REMOTE_BRANCH_EXISTS=false
             write_status "$STATUS"
@@ -639,10 +767,11 @@ jobs:
             exit 24
           fi
           REMOTE_BRANCH_EXISTS=true
-          printf '%s\\n' "REMOTE_BRANCH_EXISTS=true" "LOCAL_SHA=$LOCAL_SHA" "REMOTE_SHA=$REMOTE_SHA" > "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-proof.txt"
+          printf '%s\n' "REMOTE_BRANCH_EXISTS=true" "LOCAL_SHA=$LOCAL_SHA" "REMOTE_SHA=$REMOTE_SHA" > "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-proof.txt"
 
+          # PR creation uses the same GH_TOKEN/PAT owner as API and Git credential helper.
           set +e
-          PR_URL="$(GH_TOKEN="$CP32_BOOTSTRAP_PAT" gh pr create --repo "$GITHUB_REPOSITORY" --base "$BASE" --head "$BRANCH" --title 'Install CP32 validation automation' --body 'Installs exact-byte candidate, web E2E, Android lifecycle E2E, and production identity/player-path validation. Does not modify production game source.' 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-create.stderr.log")"
+          PR_URL="$(gh pr create --repo "$GITHUB_REPOSITORY" --base "$BASE" --head "$BRANCH" --title 'Install CP32 validation automation' --body 'Installs exact-byte candidate, web E2E, Android lifecycle E2E, and production identity/player-path validation. Does not modify production game source.' 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-create.stderr.log")"
           PR_RC=$?
           set -e
           if [[ $PR_RC -ne 0 || -z "$PR_URL" ]]; then
@@ -652,9 +781,8 @@ jobs:
             exit 25
           fi
 
-          # Verify the PR is observable with the requested head/base after creation.
           set +e
-          GH_TOKEN="$CP32_BOOTSTRAP_PAT" gh pr view "$PR_URL" --repo "$GITHUB_REPOSITORY" --json url,headRefName,baseRefName,state > "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.json" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.stderr.log"
+          gh pr view "$PR_URL" --repo "$GITHUB_REPOSITORY" --json url,headRefName,baseRefName,state > "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.json" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.stderr.log"
           PR_VERIFY_RC=$?
           set -e
           if [[ $PR_VERIFY_RC -ne 0 ]]; then
@@ -663,12 +791,45 @@ jobs:
             echo "$STATUS" >&2
             exit 25
           fi
+          python3 - "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.json" "$BRANCH" "$BASE" <<'PYPRVERIFY'
+          import json,sys
+          path,head,base=sys.argv[1:]
+          obj=json.load(open(path,encoding='utf-8'))
+          ok=(obj.get('headRefName')==head and obj.get('baseRefName')==base and obj.get('state')=='OPEN' and bool(obj.get('url')))
+          if not ok:
+              raise SystemExit('CP32_BOOTSTRAP_PR_CREATE_FAILED')
+          PYPRVERIFY
 
           STATUS='AUTO_INSTALL_PR_READY'
           write_status "$STATUS"
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify PAT was not written to bootstrap evidence
+        if: always()
+        shell: bash
+        env:
+          CP32_BOOTSTRAP_PAT: ${{ secrets.CP32_BOOTSTRAP_PAT }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYLEAK'
+          import json,os
+          from pathlib import Path
+          token=os.environ.get('CP32_BOOTSTRAP_PAT','')
+          root=Path('artifacts/bootstrap')
+          hits=[]
+          if token:
+              needle=token.encode()
+              for p in root.rglob('*') if root.exists() else []:
+                  if p.is_file():
+                      try: data=p.read_bytes()
+                      except OSError: continue
+                      if needle in data: hits.append(str(p))
+          report={'secretName':'CP32_BOOTSTRAP_PAT','tokenPresentInEvidence':bool(hits),'hitCount':len(hits),'paths':hits}
+          (root/'pat-leakage-guard.json').write_text(json.dumps(report,indent=2)+'\\n',encoding='utf-8')
+          if hits: raise SystemExit('CP32_BOOTSTRAP_PAT_EVIDENCE_LEAK_DETECTED')
+          PYLEAK
 
       - name: Installation summary
         if: always()
@@ -693,3 +854,4 @@ jobs:
           path: artifacts/bootstrap/
           if-no-files-found: error
           include-hidden-files: true
+
