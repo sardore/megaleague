@@ -9,23 +9,30 @@ permissions:
   actions: read
 
 concurrency:
-  group: cp32-validation-artifact-lifecycle-r6
+  group: cp32-validation-local-tls-r7
   cancel-in-progress: false
 
 env:
   CP32_EXPECTED_SHA256: fbbdad911cb6c90a95aaedb9cf66820f41dc2a323e90088a3cb5ee4d407b22a8
   CP32_EXPECTED_SIZE: '7372055'
   CP32_EXPECTED_BUILD: CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST
-  CP32_CORRECTION_PAYLOAD_SHA256: 1c93a4c8eb75b48767de5bc86b32f935e37aec4684daa7ac9b81f8ce52408ebc
-  CP32_CORRECTION_PAYLOAD_SIZE: '2892'
-  CP32_PARENT_CANDIDATE_WORKFLOW_SHA256: cec693da8417342bbd9badbb294e0c22256565f2da1845e0a1bd863e64e278af
-  CP32_PARENT_ANDROID_WORKFLOW_SHA256: 26a12a7fc75b5127ecf2015b820f58d4a607c780a51d278b1f74393fa77802e9
-  CP32_PARENT_PRODUCTION_WORKFLOW_SHA256: a7545e3f33081235799c626fb2267083eee1cac3f98989452437ab9488815e86
+  CP32_CORRECTION_PAYLOAD_SHA256: 42e33259f6537c93f9262e6a2296fcdc82d484b881b61be63556a9d64509b374
+  CP32_CORRECTION_PAYLOAD_SIZE: '12258'
+  CP32_PARENT_CANDIDATE_WORKFLOW_SHA256: 970ea9c5cdca5136422e4aedf068fdc48e1410fdca7adea72b3100caeb31620f
+  CP32_PARENT_ANDROID_WORKFLOW_SHA256_A: 26a12a7fc75b5127ecf2015b820f58d4a607c780a51d278b1f74393fa77802e9
+  CP32_PARENT_ANDROID_WORKFLOW_SHA256_B: bd864f6fde19aab40118137e31e7cffc0ff336abfe8c327ceb6b4ed8909eeeed
+  CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_A: a7545e3f33081235799c626fb2267083eee1cac3f98989452437ab9488815e86
+  CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_B: f88680d8545270fc3091f7b03f0bd5d029a9f343d216b89b194d0bdf97065121
+  CP32_PARENT_RELAY_PREFLIGHT_SHA256: a51e53140fc2d16ce7ba61760dd6bca987c2e32911997d28015fcd0fd43e7717
+  CP32_PARENT_TWO_CLIENTS_SHA256: 6dac45675b3febd7df38142564e69ecdf6db9c8c596160e39594e962cf5a3d59
+  CP32_PARENT_ANDROID_DRIVER_SHA256: e7b4c3c0ce2d6c630cb1e3c2e02db2937e6cf2492e3d4d7ae3853b1434d35cfe
+  CP32_PARENT_PLAYWRIGHT_SHA256: 7bfc4c1d2b5283c7773f1d929dfd18c4371a7ddc90330ec882992931904cb85f
+  CP32_PARENT_STATIC_VALIDATION_SHA256: 0739ea4b343dfd42d9a6963c20cd133fd7fb5e9ed71e29663ca530c028a7f6cc
 
 jobs:
   install:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout current default branch
         uses: actions/checkout@v6
@@ -39,310 +46,252 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/bootstrap
-          printf '%s\n'             "run_id=$GITHUB_RUN_ID"             "repository=$GITHUB_REPOSITORY"             "source_sha=$GITHUB_SHA"             "default_branch=${{ github.event.repository.default_branch }}"             > artifacts/bootstrap/run-context.txt
+          printf '%s\n' "run_id=$GITHUB_RUN_ID" "repository=$GITHUB_REPOSITORY" "source_sha=$GITHUB_SHA" > artifacts/bootstrap/run-context.txt
 
-      - name: Verify trusted source and current validation parents
+      - name: Verify trusted source and R7 parent infrastructure
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PYPARENT'
-          import hashlib, json, os
+          import hashlib,json,os
           from pathlib import Path
-
-          expected_html=os.environ['CP32_EXPECTED_SHA256']
-          expected_size=int(os.environ['CP32_EXPECTED_SIZE'])
-          expected_build=os.environ['CP32_EXPECTED_BUILD'].encode()
-          html_candidates=[
-            Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),
-            Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),
-            Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html'),
-          ]
-          html_rows=[]
-          trusted_ok=False
+          expected_sha=os.environ['CP32_EXPECTED_SHA256']; expected_size=int(os.environ['CP32_EXPECTED_SIZE']); expected_build=os.environ['CP32_EXPECTED_BUILD'].encode()
+          html_candidates=[Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]
+          html=[]; trusted_ok=False
           for p in html_candidates:
-            if not p.is_file():
-              html_rows.append({'path':str(p),'exists':False}); continue
-            b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest()
-            row={'path':str(p),'exists':True,'size':len(b),'sha256':sha,'buildPresent':expected_build in b,'exact':sha==expected_html and len(b)==expected_size and expected_build in b}
-            html_rows.append(row); trusted_ok = trusted_ok or row['exact']
-
-          workflows={
-            '.github/workflows/cp32-trusted-candidate-e2e.yml':os.environ['CP32_PARENT_CANDIDATE_WORKFLOW_SHA256'],
-            '.github/workflows/cp32-android-background-e2e.yml':os.environ['CP32_PARENT_ANDROID_WORKFLOW_SHA256'],
-            '.github/workflows/cp32-production-e2e.yml':os.environ['CP32_PARENT_PRODUCTION_WORKFLOW_SHA256'],
+            if not p.is_file(): html.append({'path':str(p),'exists':False}); continue
+            b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==expected_sha and len(b)==expected_size and expected_build in b
+            html.append({'path':str(p),'exists':True,'size':len(b),'sha256':sha,'buildPresent':expected_build in b,'exact':exact}); trusted_ok=trusted_ok or exact
+          expected={
+            '.github/workflows/cp32-trusted-candidate-e2e.yml':{os.environ['CP32_PARENT_CANDIDATE_WORKFLOW_SHA256']},
+            '.github/workflows/cp32-android-background-e2e.yml':{os.environ['CP32_PARENT_ANDROID_WORKFLOW_SHA256_A'],os.environ['CP32_PARENT_ANDROID_WORKFLOW_SHA256_B']},
+            '.github/workflows/cp32-production-e2e.yml':{os.environ['CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_A'],os.environ['CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_B']},
+            'tests/helpers/relay-preflight.js':{os.environ['CP32_PARENT_RELAY_PREFLIGHT_SHA256']},
+            'tests/helpers/two-independent-clients.js':{os.environ['CP32_PARENT_TWO_CLIENTS_SHA256']},
+            'tests/android/android-background-player-path.js':{os.environ['CP32_PARENT_ANDROID_DRIVER_SHA256']},
+            'playwright.config.js':{os.environ['CP32_PARENT_PLAYWRIGHT_SHA256']},
+            'tools/static-validation.js':{os.environ['CP32_PARENT_STATIC_VALIDATION_SHA256']},
           }
-          wf_rows=[]; wf_ok=True
-          for name,expected in workflows.items():
+          rows=[]; parent_ok=True
+          for name,allowed in expected.items():
             p=Path(name)
-            if not p.is_file():
-              wf_rows.append({'path':name,'exists':False,'expectedSha256':expected}); wf_ok=False; continue
-            sha=hashlib.sha256(p.read_bytes()).hexdigest()
-            wf_rows.append({'path':name,'exists':True,'sha256':sha,'expectedSha256':expected,'exact':sha==expected})
-            wf_ok = wf_ok and sha==expected
-          out={'trustedHtml':html_rows,'trustedHtmlExactObserved':trusted_ok,'parentWorkflows':wf_rows,'parentWorkflowIdentityPass':wf_ok}
-          Path('artifacts/bootstrap/parent-authority-verification.json').write_text(json.dumps(out,indent=2)+'\n')
+            if not p.is_file(): rows.append({'path':name,'exists':False,'allowedSha256':sorted(allowed)}); parent_ok=False; continue
+            sha=hashlib.sha256(p.read_bytes()).hexdigest(); ok=sha in allowed
+            rows.append({'path':name,'exists':True,'sha256':sha,'allowedSha256':sorted(allowed),'exactKnownParent':ok}); parent_ok=parent_ok and ok
+          out={'trustedHtml':html,'trustedHtmlExactObserved':trusted_ok,'parentInfrastructure':rows,'parentInfrastructurePass':parent_ok,'productionSourceMutationCount':0}
+          Path('artifacts/bootstrap/r7-parent-authority.json').write_text(json.dumps(out,indent=2)+'\n')
           if not trusted_ok: raise SystemExit('TRUSTED_HTML_IDENTITY_MISMATCH')
-          if not wf_ok: raise SystemExit('VALIDATION_PARENT_WORKFLOW_IDENTITY_MISMATCH')
+          if not parent_ok: raise SystemExit('R7_PARENT_INFRASTRUCTURE_IDENTITY_MISMATCH')
           PYPARENT
 
-      - name: Decode bounded R6 correction payload
+      - name: Stage R7 payload part 1
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/cp32-r6-correction"
-          cat > "$RUNNER_TEMP/cp32-r6-correction.b64" <<'CP32_R6_PAYLOAD'
-          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
-          CP32_R6_PAYLOAD
-          base64 -d "$RUNNER_TEMP/cp32-r6-correction.b64" > "$RUNNER_TEMP/cp32-r6-correction.tar.gz"
-          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-r6-correction.tar.gz" | awk '{print $1}')"
-          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-r6-correction.tar.gz")"
-          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n'             "$CP32_CORRECTION_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_CORRECTION_PAYLOAD_SIZE" "$ACTUAL_SIZE"             > artifacts/bootstrap/correction-payload-identity.json
-          [[ "$ACTUAL_SHA" == "$CP32_CORRECTION_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_CORRECTION_PAYLOAD_SIZE" ]] || { echo 'R6_CORRECTION_PAYLOAD_IDENTITY_MISMATCH' >&2; exit 2; }
-          tar -xzf "$RUNNER_TEMP/cp32-r6-correction.tar.gz" -C "$RUNNER_TEMP/cp32-r6-correction"
-          echo "CP32_R6_STAGE=$RUNNER_TEMP/cp32-r6-correction" >> "$GITHUB_ENV"
+          cat > "$RUNNER_TEMP/cp32-r7-correction.b64" <<'CP32_R7_PAYLOAD_1'
+          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
+          CP32_R7_PAYLOAD_1
 
-      - name: Create bounded correction branch and apply only validation workflows
+      - name: Stage R7 payload part 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> "$RUNNER_TEMP/cp32-r7-correction.b64" <<'CP32_R7_PAYLOAD_2'
+          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
+          CP32_R7_PAYLOAD_2
+
+      - name: Stage R7 payload part 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> "$RUNNER_TEMP/cp32-r7-correction.b64" <<'CP32_R7_PAYLOAD_3'
+          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
+          CP32_R7_PAYLOAD_3
+
+      - name: Decode exact R7 correction payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/cp32-r7-correction"
+          rm -rf "$STAGE"; mkdir -p "$STAGE"
+          base64 -d "$RUNNER_TEMP/cp32-r7-correction.b64" > "$RUNNER_TEMP/cp32-r7-correction.tar.gz"
+          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-r7-correction.tar.gz" | awk '{print $1}')"
+          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-r7-correction.tar.gz")"
+          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n' "$CP32_CORRECTION_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_CORRECTION_PAYLOAD_SIZE" "$ACTUAL_SIZE" > artifacts/bootstrap/r7-payload-identity.json
+          [[ "$ACTUAL_SHA" == "$CP32_CORRECTION_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_CORRECTION_PAYLOAD_SIZE" ]] || { echo 'R7_CORRECTION_PAYLOAD_IDENTITY_MISMATCH' >&2; exit 2; }
+          tar -xzf "$RUNNER_TEMP/cp32-r7-correction.tar.gz" -C "$STAGE"
+          echo "CP32_R7_STAGE=$STAGE" >> "$GITHUB_ENV"
+
+      - name: Create bounded R7 branch and apply validation infrastructure only
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'cp32-validation-installer'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch -c cp32-validation-artifact-lifecycle-r1-local
-          cp "$CP32_R6_STAGE/.github/workflows/cp32-trusted-candidate-e2e.yml" .github/workflows/cp32-trusted-candidate-e2e.yml
-          cp "$CP32_R6_STAGE/.github/workflows/cp32-android-background-e2e.yml" .github/workflows/cp32-android-background-e2e.yml
-          cp "$CP32_R6_STAGE/.github/workflows/cp32-production-e2e.yml" .github/workflows/cp32-production-e2e.yml
-          git diff -- .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > artifacts/bootstrap/r6-workflow-correction.diff
-          python3 - <<'PYDIFF'
-          import json, subprocess
+          git switch -c "cp32-validation-local-tls-r1-local-$GITHUB_RUN_ID"
+          allowed=(
+            .github/workflows/cp32-trusted-candidate-e2e.yml
+            .github/workflows/cp32-android-background-e2e.yml
+            .github/workflows/cp32-production-e2e.yml
+            tests/helpers/relay-preflight.js
+            tests/helpers/local-candidate-tls.js
+            tests/helpers/two-independent-clients.js
+            tests/android/android-background-player-path.js
+            tools/static-validation.js
+            tools/tls-trust-regression.js
+            playwright.config.js
+          )
+          for f in "${allowed[@]}"; do mkdir -p "$(dirname "$f")"; cp "$CP32_R7_STAGE/$f" "$f"; done
+          { git diff --name-only; git ls-files --others --exclude-standard | sed '/^artifacts\//d'; } | sort -u > artifacts/bootstrap/r7-changed-files.txt
+          python3 - <<'PYBOUND'
           from pathlib import Path
-          expected={
-            '.github/workflows/cp32-trusted-candidate-e2e.yml',
-            '.github/workflows/cp32-android-background-e2e.yml',
-            '.github/workflows/cp32-production-e2e.yml',
-          }
-          changed=set(filter(None,subprocess.check_output(['git','diff','--name-only'],text=True).splitlines()))
-          rec={'expectedChanged':sorted(expected),'actualChanged':sorted(changed),'onlyBoundedValidationFiles':changed==expected}
-          Path('artifacts/bootstrap/source-mutation-boundary.json').write_text(json.dumps(rec,indent=2)+'\n')
-          if changed != expected: raise SystemExit('R6_SOURCE_MUTATION_BOUNDARY_VIOLATION')
-          PYDIFF
+          allowed={'.github/workflows/cp32-trusted-candidate-e2e.yml','.github/workflows/cp32-android-background-e2e.yml','.github/workflows/cp32-production-e2e.yml','tests/helpers/relay-preflight.js','tests/helpers/local-candidate-tls.js','tests/helpers/two-independent-clients.js','tests/android/android-background-player-path.js','tools/static-validation.js','tools/tls-trust-regression.js','playwright.config.js'}
+          changed={x.strip() for x in Path('artifacts/bootstrap/r7-changed-files.txt').read_text().splitlines() if x.strip()}
+          extra=sorted(changed-allowed)
+          if extra: raise SystemExit('R7_UNBOUNDED_FILE_MUTATION:'+','.join(extra))
+          if 'index.html' in changed or any(x.endswith('.html') for x in changed): raise SystemExit('PRODUCTION_HTML_MUTATION_FORBIDDEN')
+          PYBOUND
 
-      - name: Static artifact lifecycle audit
+      - name: R7 static, lifecycle, and TLS policy validation
         shell: bash
         run: |
           set -euo pipefail
-          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }"             .github/workflows/cp32-trusted-candidate-e2e.yml             .github/workflows/cp32-android-background-e2e.yml             .github/workflows/cp32-production-e2e.yml             > artifacts/bootstrap/r6-workflow-yaml-parse.log
-          python3 - <<'PYLIFECYCLE'
-          import json, re
+          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }" .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > artifacts/bootstrap/r7-workflow-yaml-parse.log
+          for f in tests/helpers/relay-preflight.js tests/helpers/local-candidate-tls.js tests/helpers/two-independent-clients.js tests/android/android-background-player-path.js tools/static-validation.js tools/tls-trust-regression.js playwright.config.js; do node --check "$f"; done > artifacts/bootstrap/r7-node-parse.log 2>&1
+          node tools/static-validation.js > artifacts/bootstrap/r7-static-validation.stdout.log 2> artifacts/bootstrap/r7-static-validation.stderr.log
+          cp artifacts/results/static-validation.json artifacts/bootstrap/r7-static-validation.json
+          python3 - <<'PYR7AUDIT'
+          import json,re
           from pathlib import Path
-
-          wf_paths=[
-            Path('.github/workflows/cp32-trusted-candidate-e2e.yml'),
-            Path('.github/workflows/cp32-android-background-e2e.yml'),
-            Path('.github/workflows/cp32-production-e2e.yml'),
-          ]
-          direct_targets={
-            'cp32-trusted-candidate-e2e.yml':[
-              'artifacts/preflight/resolved-package-lock.sha256','artifacts/preflight/key.pem','artifacts/preflight/cert.pem',
-              'artifacts/preflight/candidate-server.stdout.log','artifacts/preflight/candidate-server.stderr.log','artifacts/preflight/candidate-server.pid'],
-            'cp32-android-background-e2e.yml':[
-              'artifacts/preflight/key.pem','artifacts/preflight/cert.pem','artifacts/preflight/candidate-server.stdout.log',
-              'artifacts/preflight/candidate-server.stderr.log','artifacts/preflight/candidate-server.pid','artifacts/android/logcat.txt'],
+          workflows=[Path('.github/workflows/cp32-trusted-candidate-e2e.yml'),Path('.github/workflows/cp32-android-background-e2e.yml'),Path('.github/workflows/cp32-production-e2e.yml')]
+          lifecycle=[]; violations=[]
+          targets={
+            'cp32-trusted-candidate-e2e.yml':['artifacts/preflight/resolved-package-lock.sha256','artifacts/preflight/key.pem','artifacts/preflight/cert.pem','artifacts/preflight/candidate-server.stdout.log','artifacts/preflight/preflight.json'],
+            'cp32-android-background-e2e.yml':['artifacts/preflight/key.pem','artifacts/preflight/cert.pem','artifacts/preflight/candidate-server.stdout.log','artifacts/preflight/android-preflight.json','artifacts/android/logcat.txt'],
             'cp32-production-e2e.yml':['artifacts/preflight/production-preflight.json'],
           }
-          rows=[]; write_before_init=[]
-          for p in wf_paths:
-            lines=p.read_text().splitlines()
-            init_line=next((i+1 for i,l in enumerate(lines) if 'name: Initialize validation evidence filesystem' in l),None)
-            final_line=next((i+1 for i,l in enumerate(lines) if 'name: Finalize evidence lifecycle' in l),None)
-            upload_line=next((i+1 for i,l in enumerate(lines) if 'uses: actions/upload-artifact@' in l),None)
-            for target in direct_targets[p.name]:
-              hit=next((i+1 for i,l in enumerate(lines) if target in l),None)
-              row={'workflow':str(p),'writerTarget':target,'writerLine':hit,'initLine':init_line,'initBeforeWrite':bool(init_line and hit and init_line<hit),'uploadLine':upload_line,'finalizerBeforeUpload':bool(final_line and upload_line and final_line<upload_line)}
-              rows.append(row)
-              if not row['initBeforeWrite']: write_before_init.append(row)
-            if not final_line or not upload_line or final_line>=upload_line:
-              write_before_init.append({'workflow':str(p),'error':'FINALIZER_NOT_BEFORE_UPLOAD'})
+          for p in workflows:
+            lines=p.read_text().splitlines(); init=next((i+1 for i,l in enumerate(lines) if 'Initialize validation evidence filesystem' in l),None)
+            for t in targets[p.name]:
+              hit=next((i+1 for i,l in enumerate(lines) if t in l),None); ok=bool(init and hit and init<hit); row={'workflow':str(p),'target':t,'initLine':init,'firstReferenceLine':hit,'initBeforeReference':ok}; lifecycle.append(row)
+              if not ok: violations.append(row)
+          files=[p for root in [Path('tests'),Path('tools')] for p in root.rglob('*.js')]+[Path('playwright.config.js')]
+          text='\n'.join(p.read_text(errors='ignore') for p in files)
+          security={
+            'NODE_TLS_REJECT_UNAUTHORIZED_ZERO': bool(re.search(r'(?:process\.)?env\.NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',text)),
+            'GENERIC_REJECT_UNAUTHORIZED_FALSE': bool(re.search(r'rejectUnauthorized\s*:\s*false',text)),
+            'BARE_IGNORE_CERTIFICATE_ERRORS': bool(re.search(r'(?:^|[\s"\'])--ignore-certificate-errors(?:[\s"\']|$)',text,re.M)),
+            'PLAYWRIGHT_IGNORE_HTTPS_TRUE': bool(re.search(r'ignoreHTTPSErrors\s*:\s*true',Path('playwright.config.js').read_text())),
+            'SCOPED_SPKI_PRESENT': '--ignore-certificate-errors-spki-list=' in text,
+            'LOCAL_TLS_OWNER_PRESENT': Path('tests/helpers/local-candidate-tls.js').is_file(),
+          }
+          out={'ARTIFACT_WRITE_BEFORE_INIT':len(violations),'lifecycle':lifecycle,'LOCAL_CANDIDATE_TLS_POLICY_DIVERGENCE':0 if security['SCOPED_SPKI_PRESENT'] and security['LOCAL_TLS_OWNER_PRESENT'] and not any(security[k] for k in ['NODE_TLS_REJECT_UNAUTHORIZED_ZERO','GENERIC_REJECT_UNAUTHORIZED_FALSE','BARE_IGNORE_CERTIFICATE_ERRORS','PLAYWRIGHT_IGNORE_HTTPS_TRUE']) else 1,'security':security}
+          Path('artifacts/bootstrap/r7-infrastructure-audit.json').write_text(json.dumps(out,indent=2)+'\n')
+          if violations or out['LOCAL_CANDIDATE_TLS_POLICY_DIVERGENCE']!=0: raise SystemExit('R7_INFRASTRUCTURE_INVARIANT_FAILED')
+          PYR7AUDIT
 
-          roots=[Path('.github/workflows'),Path('tests'),Path('tools'),Path('playwright.config.js'),Path('package.json')]
-          inventory=[]
-          for root in roots:
-            files=[root] if root.is_file() else [x for x in root.rglob('*') if x.is_file()]
-            for f in files:
-              try: text=f.read_text(errors='ignore')
-              except Exception: continue
-              for i,line in enumerate(text.splitlines(),1):
-                if 'artifacts/' in line:
-                  inventory.append({'file':str(f),'line':i,'text':line.strip()[:300]})
-          out={'classification':'VALIDATION_ARTIFACT_TREE_INITIALIZATION_MISSING_CORRECTED','directWriterLedger':rows,'artifactReferenceInventory':inventory,'artifactReferenceCount':len(inventory),'ARTIFACT_WRITE_BEFORE_INIT':len(write_before_init),'violations':write_before_init}
-          Path('artifacts/bootstrap/artifact-writer-inventory.json').write_text(json.dumps(out,indent=2)+'\n')
-          if write_before_init: raise SystemExit('ARTIFACT_WRITE_BEFORE_INIT_NONZERO')
-          PYLIFECYCLE
+      - name: R7 local scoped TLS regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/bootstrap/r7-local-tls artifacts/preflight
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/preflight/key.pem -out artifacts/preflight/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2' > artifacts/bootstrap/r7-local-tls/openssl.stdout.log 2> artifacts/bootstrap/r7-local-tls/openssl.stderr.log
+          SPKI="$(openssl x509 -in artifacts/preflight/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl base64 -A)"
+          export CP32_LOCAL_TRUST_CERT="$GITHUB_WORKSPACE/artifacts/preflight/cert.pem"
+          export CP32_LOCAL_CERT_SPKI="$SPKI"
+          export CP32_CANDIDATE_PORT=9443
+          export CP32_CANDIDATE_ORIGIN=https://127.0.0.1:9443
+          node tests/helpers/candidate-https-server.js > artifacts/bootstrap/r7-local-tls/server.stdout.log 2> artifacts/bootstrap/r7-local-tls/server.stderr.log &
+          SERVER_PID=$!
+          cleanup_server(){ set +e; kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; set -e; }
+          trap cleanup_server EXIT
+          for _ in $(seq 1 50); do [[ -f artifacts/preflight/candidate-server-ready.json ]] && break; sleep .1; done
+          CP32_TLS_REGRESSION_OUTPUT=artifacts/bootstrap/r7-local-tls/TLS_TRUST_REGRESSION.json node tools/tls-trust-regression.js
+          cleanup_server
+          trap - EXIT
 
-      - name: Verify trusted HTML remains byte-identical and package fallback
+      - name: Verify trusted HTML unchanged and package fallback
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PYSOURCE'
-          import hashlib, json, os
+          import hashlib,json,os
           from pathlib import Path
-          candidates=[
-            Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),
-            Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),
-            Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html'),
-          ]
+          candidates=[Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]
           rows=[]; ok=False
           for p in candidates:
             if p.is_file():
-              b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==os.environ['CP32_EXPECTED_SHA256'] and len(b)==int(os.environ['CP32_EXPECTED_SIZE'])
+              b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==os.environ['CP32_EXPECTED_SHA256'] and len(b)==int(os.environ['CP32_EXPECTED_SIZE']) and os.environ['CP32_EXPECTED_BUILD'].encode() in b
               rows.append({'path':str(p),'sha256':sha,'size':len(b),'exact':exact}); ok=ok or exact
-          Path('artifacts/bootstrap/trusted-source-preservation.json').write_text(json.dumps({'productionSourceMutationCount':0,'trustedCandidates':rows,'trustedShaUnchanged':ok},indent=2)+'\n')
+          Path('artifacts/bootstrap/r7-trusted-source-preservation.json').write_text(json.dumps({'productionSourceMutationCount':0,'indexHtmlMutationCount':0,'relaySourceMutationCount':0,'trustedCandidates':rows,'trustedShaUnchanged':ok},indent=2)+'\n')
           if not ok: raise SystemExit('TRUSTED_HTML_MUTATION_DETECTED')
           PYSOURCE
-          FALLBACK="$GITHUB_WORKSPACE/artifacts/bootstrap/cp32-validation-artifact-lifecycle-r6-ready.zip"
-          (cd "$CP32_R6_STAGE" && zip -qr "$FALLBACK" .github/workflows)
+          FALLBACK="$GITHUB_WORKSPACE/artifacts/bootstrap/cp32-validation-local-tls-r7-ready.zip"
+          (cd "$CP32_R7_STAGE" && zip -qr "$FALLBACK" .github tests tools playwright.config.js R7_CORRECTION_MANIFEST.json)
           sha256sum "$FALLBACK" > "$FALLBACK.sha256"
 
-      - name: Commit bounded correction locally
+      - name: Commit bounded R7 correction locally
         id: localcommit
         shell: bash
         run: |
           set -euo pipefail
-          git add             .github/workflows/cp32-trusted-candidate-e2e.yml             .github/workflows/cp32-android-background-e2e.yml             .github/workflows/cp32-production-e2e.yml
+          git add .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml tests/helpers/relay-preflight.js tests/helpers/local-candidate-tls.js tests/helpers/two-independent-clients.js tests/android/android-background-player-path.js tools/static-validation.js tools/tls-trust-regression.js playwright.config.js
           git diff --cached --check
-          git commit -m 'Correct CP32 validation artifact lifecycle'
+          git commit -m 'Correct CP32 local candidate TLS trust policy'
           LOCAL_SHA="$(git rev-parse HEAD)"
           echo "local_sha=$LOCAL_SHA" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$LOCAL_SHA" > artifacts/bootstrap/local-commit-sha.txt
+          printf '%s\n' "$LOCAL_SHA" > artifacts/bootstrap/r7-local-commit-sha.txt
 
-      - name: Authenticate, push correction branch, verify remote, and create PR
+      - name: Authenticate, push R7 correction branch, verify remote, and create PR
         id: remote
         shell: bash
         env:
           CP32_BOOTSTRAP_PAT: ${{ secrets.CP32_BOOTSTRAP_PAT }}
         run: |
           set -euo pipefail
-          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/remote-install-status.json"
+          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/r7-remote-install-status.json"
           BASE="${{ github.event.repository.default_branch }}"
-          BRANCH='cp32-validation-artifact-lifecycle-r1'
+          BRANCH='cp32-validation-local-tls-r1'
           LOCAL_SHA='${{ steps.localcommit.outputs.local_sha }}'
-          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-r6-gitconfig"
-          API_IDENTITY_AUTH='NOT_RUN'; API_REPOSITORY_ACCESS='NOT_RUN'; GIT_HTTPS_READ_AUTH='NOT_RUN'; GIT_HTTPS_WRITE_AUTH='NOT_RUN'
-          REMOTE_SHA=''; PR_URL=''; PR_STATE=''; PUSH_RC=99; PR_RC=99
-
-          write_status() {
-            python3 - "$STATUS_FILE" "$1" "$BRANCH" "$BASE" "$LOCAL_SHA" "$REMOTE_SHA" "$PR_URL" "$PR_STATE" "$PUSH_RC" "$PR_RC" "$API_IDENTITY_AUTH" "$API_REPOSITORY_ACCESS" "$GIT_HTTPS_READ_AUTH" "$GIT_HTTPS_WRITE_AUTH" <<'PYSTATUS'
+          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-r7-gitconfig"
+          API_IDENTITY_AUTH='NOT_RUN'; API_REPOSITORY_ACCESS='NOT_RUN'; GIT_HTTPS_READ_AUTH='NOT_RUN'; GIT_HTTPS_WRITE_AUTH='NOT_RUN'; REMOTE_SHA=''; PR_URL=''; PR_STATE=''; PUSH_RC=99; PR_RC=99
+          write_status(){ python3 - "$STATUS_FILE" "$1" "$BRANCH" "$BASE" "$LOCAL_SHA" "$REMOTE_SHA" "$PR_URL" "$PR_STATE" "$PUSH_RC" "$PR_RC" "$API_IDENTITY_AUTH" "$API_REPOSITORY_ACCESS" "$GIT_HTTPS_READ_AUTH" "$GIT_HTTPS_WRITE_AUTH" <<'PYSTATUS'
           import json,sys
           path,status,branch,base,local_sha,remote_sha,pr_url,pr_state,push_rc,pr_rc,api_id,api_repo,git_read,git_write=sys.argv[1:]
           open(path,'w').write(json.dumps({'status':status,'branch':branch,'base':base,'localCommitSha':local_sha,'remoteCommitSha':remote_sha,'remoteBranchExists':bool(remote_sha),'prUrl':pr_url,'prState':pr_state,'pushExitCode':int(push_rc),'prExitCode':int(pr_rc),'authOwner':'GH_CLI_GIT_CREDENTIAL_HELPER','secretName':'CP32_BOOTSTRAP_PAT','API_IDENTITY_AUTH':api_id,'API_REPOSITORY_ACCESS':api_repo,'GIT_HTTPS_READ_AUTH':git_read,'GIT_HTTPS_WRITE_AUTH':git_write,'tokenMaterialRecorded':False},indent=2)+'\n')
           PYSTATUS
           }
-          cleanup() { set +e; unset GH_TOKEN CP32_BOOTSTRAP_PAT GIT_CONFIG_GLOBAL; rm -f "$GIT_AUTH_CONFIG"; set -e; }
+          cleanup(){ set +e; unset GH_TOKEN CP32_BOOTSTRAP_PAT GIT_CONFIG_GLOBAL; rm -f "$GIT_AUTH_CONFIG"; set -e; }
           trap cleanup EXIT
-
-          if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then
-            write_status 'CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL'; exit 21
-          fi
-          export GH_TOKEN="$CP32_BOOTSTRAP_PAT"
-          export GIT_CONFIG_GLOBAL="$GIT_AUTH_CONFIG"
-          : > "$GIT_AUTH_CONFIG"; chmod 600 "$GIT_AUTH_CONFIG"
+          if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then write_status 'CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL'; exit 21; fi
+          export GH_TOKEN="$CP32_BOOTSTRAP_PAT"; export GIT_CONFIG_GLOBAL="$GIT_AUTH_CONFIG"; : > "$GIT_AUTH_CONFIG"; chmod 600 "$GIT_AUTH_CONFIG"
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
-
-          LOGIN="$(gh api user --jq '.login' 2> artifacts/bootstrap/api-identity.stderr.log)" || { API_IDENTITY_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_AUTH_FAILED'; exit 22; }
-          [[ -n "$LOGIN" ]] || { API_IDENTITY_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_AUTH_FAILED'; exit 22; }
-          API_IDENTITY_AUTH='PASS'
-          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,visibility:.visibility,permissions:.permissions}' > artifacts/bootstrap/api-repository-access.json 2> artifacts/bootstrap/api-repository-access.stderr.log || { API_REPOSITORY_ACCESS='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED'; exit 26; }
-          API_REPOSITORY_ACCESS='PASS'
-          gh auth setup-git --hostname github.com --force > artifacts/bootstrap/gh-auth-setup-git.stdout.log 2> artifacts/bootstrap/gh-auth-setup-git.stderr.log || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED'; exit 27; }
-
-          BASE_LINE="$(git ls-remote origin "refs/heads/$BASE" 2> artifacts/bootstrap/git-read.stderr.log)" || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'; exit 28; }
-          [[ -n "$BASE_LINE" ]] || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_BASE_REF_NOT_OBSERVED'; exit 29; }
-          GIT_HTTPS_READ_AUTH='PASS'
-
-          EXISTING="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/branch-check.stderr.log)" || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'; exit 28; }
-          if [[ -n "$EXISTING" ]]; then BRANCH="cp32-validation-artifact-lifecycle-r1-$GITHUB_RUN_ID"; fi
+          LOGIN="$(gh api user --jq '.login' 2> artifacts/bootstrap/r7-api-identity.stderr.log)" || { API_IDENTITY_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_AUTH_FAILED'; exit 22; }
+          [[ -n "$LOGIN" ]] || { API_IDENTITY_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_AUTH_FAILED'; exit 22; }; API_IDENTITY_AUTH='PASS'
+          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,visibility:.visibility,permissions:.permissions}' > artifacts/bootstrap/r7-api-repository-access.json 2> artifacts/bootstrap/r7-api-repository-access.stderr.log || { API_REPOSITORY_ACCESS='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED'; exit 26; }; API_REPOSITORY_ACCESS='PASS'
+          gh auth setup-git --hostname github.com --force > artifacts/bootstrap/r7-gh-auth-setup-git.stdout.log 2> artifacts/bootstrap/r7-gh-auth-setup-git.stderr.log || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED'; exit 27; }
+          BASE_LINE="$(git ls-remote origin "refs/heads/$BASE" 2> artifacts/bootstrap/r7-git-read.stderr.log)" || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'; exit 28; }
+          [[ -n "$BASE_LINE" ]] || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_BASE_REF_NOT_OBSERVED'; exit 29; }; GIT_HTTPS_READ_AUTH='PASS'
+          EXISTING="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r7-branch-check.stderr.log)" || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'; exit 28; }
+          if [[ -n "$EXISTING" ]]; then BRANCH="cp32-validation-local-tls-r1-$GITHUB_RUN_ID"; fi
           git branch -m "$BRANCH"
-
-          set +e
-          git push -u origin "$BRANCH" > artifacts/bootstrap/git-push.stdout.log 2> artifacts/bootstrap/git-push.stderr.log
-          PUSH_RC=$?
-          set -e
-          if [[ $PUSH_RC -ne 0 ]]; then GIT_HTTPS_WRITE_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_REMOTE_PUSH_FAILED'; exit 23; fi
-          GIT_HTTPS_WRITE_AUTH='PASS'
-
-          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/remote-branch-check.stderr.log)" || { write_status 'CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED'; exit 30; }
-          REMOTE_SHA="${REMOTE_LINE%%[[:space:]]*}"
-          [[ -n "$REMOTE_SHA" ]] || { write_status 'CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED'; exit 31; }
-          [[ "$REMOTE_SHA" == "$LOCAL_SHA" ]] || { write_status 'CP32_BOOTSTRAP_REMOTE_SHA_MISMATCH'; exit 32; }
-
-          set +e
-          PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Correct CP32 validation artifact lifecycle' --body 'Bounded infrastructure correction: initializes validation evidence trees before writes, validates required evidence on successful runs, and preserves upload evidence on early failures. Trusted game HTML and production source are unchanged.' 2> artifacts/bootstrap/pr-create.stderr.log)"
-          PR_RC=$?
-          set -e
+          set +e; git push -u origin "$BRANCH" > artifacts/bootstrap/r7-git-push.stdout.log 2> artifacts/bootstrap/r7-git-push.stderr.log; PUSH_RC=$?; set -e
+          if [[ $PUSH_RC -ne 0 ]]; then GIT_HTTPS_WRITE_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_REMOTE_PUSH_FAILED'; exit 23; fi; GIT_HTTPS_WRITE_AUTH='PASS'
+          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r7-remote-branch-check.stderr.log)" || { write_status 'CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED'; exit 30; }
+          REMOTE_SHA="${REMOTE_LINE%%[[:space:]]*}"; [[ -n "$REMOTE_SHA" ]] || { write_status 'CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED'; exit 31; }; [[ "$REMOTE_SHA" == "$LOCAL_SHA" ]] || { write_status 'CP32_BOOTSTRAP_REMOTE_SHA_MISMATCH'; exit 32; }
+          set +e; PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Correct CP32 validation local TLS trust policy' --body 'Bounded validation-infrastructure correction. Local candidate HTTPS trusts only the runtime test certificate/SPKI; production and public relay TLS remain strict. R6 artifact lifecycle is preserved. Trusted game HTML, index.html, and relay source are unchanged.' 2> artifacts/bootstrap/r7-pr-create.stderr.log)"; PR_RC=$?; set -e
           if [[ $PR_RC -ne 0 || -z "$PR_URL" ]]; then write_status 'CP32_BOOTSTRAP_PR_CREATE_FAILED'; exit 24; fi
-          PR_JSON="$(gh pr view "$PR_URL" --json headRefName,baseRefName,state,url 2> artifacts/bootstrap/pr-view.stderr.log)" || { write_status 'CP32_BOOTSTRAP_PR_VERIFICATION_FAILED'; exit 25; }
-          printf '%s\n' "$PR_JSON" > artifacts/bootstrap/pr-verification.json
-          export PR_JSON BRANCH BASE
+          PR_JSON="$(gh pr view "$PR_URL" --json headRefName,baseRefName,state,url 2> artifacts/bootstrap/r7-pr-view.stderr.log)" || { write_status 'CP32_BOOTSTRAP_PR_VERIFICATION_FAILED'; exit 25; }
+          printf '%s\n' "$PR_JSON" > artifacts/bootstrap/r7-pr-verification.json; export PR_JSON BRANCH BASE
           PR_STATE="$(python3 - <<'PYPR'
           import json,os
-          r=json.loads(os.environ['PR_JSON'])
-          ok=r.get('headRefName')==os.environ['BRANCH'] and r.get('baseRefName')==os.environ['BASE'] and r.get('state')=='OPEN' and bool(r.get('url'))
+          r=json.loads(os.environ['PR_JSON']); ok=r.get('headRefName')==os.environ['BRANCH'] and r.get('baseRefName')==os.environ['BASE'] and r.get('state')=='OPEN' and bool(r.get('url'))
           if not ok: raise SystemExit('PR_VERIFICATION_MISMATCH')
-          print(r.get('state',''))
+          print(r['state'])
           PYPR
           )"
-          write_status 'CP32_VALIDATION_ARTIFACT_LIFECYCLE_R6_PR_READY'
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          write_status 'CP32_VALIDATION_LOCAL_TLS_TRUST_R7_PR_READY'
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"; echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
 
       - name: Installation summary
         if: always()
@@ -351,11 +300,12 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/bootstrap
           {
-            echo '## CP32 Validation Artifact Lifecycle R6'
+            echo '## CP32 Validation Local TLS Trust R7'
             echo
             echo "Trusted SHA: $CP32_EXPECTED_SHA256"
             echo 'Production source mutation count: 0'
-            [[ -f artifacts/bootstrap/remote-install-status.json ]] && cat artifacts/bootstrap/remote-install-status.json
+            echo 'Target branch: cp32-validation-local-tls-r1'
+            [[ -f artifacts/bootstrap/r7-remote-install-status.json ]] && cat artifacts/bootstrap/r7-remote-install-status.json
             echo
             echo 'After merging the generated PR, run CP32 Trusted Candidate E2E on branch main.'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -366,16 +316,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/bootstrap
-          if [[ ! -f artifacts/bootstrap/run-context.txt ]]; then
-            printf '%s\n' 'bootstrap_evidence_root_recovered=true' "run_id=$GITHUB_RUN_ID" > artifacts/bootstrap/run-context-recovered.txt
-          fi
+          [[ -f artifacts/bootstrap/run-context.txt ]] || printf '%s\n' 'bootstrap_evidence_root_recovered=true' "run_id=$GITHUB_RUN_ID" > artifacts/bootstrap/run-context-recovered.txt
 
-      - name: Upload R6 correction evidence and fallback
+      - name: Upload R7 correction evidence and fallback
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cp32-validation-artifact-lifecycle-r6-${{ github.run_id }}
+          name: cp32-validation-local-tls-r7-${{ github.run_id }}
           path: artifacts/bootstrap/
           if-no-files-found: error
           include-hidden-files: true
-
