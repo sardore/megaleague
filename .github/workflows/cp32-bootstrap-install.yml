@@ -9,15 +9,15 @@ permissions:
   actions: read
 
 concurrency:
-  group: cp32-player-path-harness-ownership-r8
+  group: cp32-player-path-harness-ownership-r9
   cancel-in-progress: false
 
 env:
   CP32_EXPECTED_SHA256: fbbdad911cb6c90a95aaedb9cf66820f41dc2a323e90088a3cb5ee4d407b22a8
   CP32_EXPECTED_SIZE: '7372055'
   CP32_EXPECTED_BUILD: CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST
-  CP32_CORRECTION_PAYLOAD_SHA256: 5cf863b2e3e6a6719ac3f7b9b90da613db70436f6cdda616b2341b3a0fef4111
-  CP32_CORRECTION_PAYLOAD_SIZE: '19581'
+  CP32_CORRECTION_PAYLOAD_SHA256: 0b14737123efbf8c0896d3f30c0c529a8fdf31c326b18629363c956329e91dd2
+  CP32_CORRECTION_PAYLOAD_SIZE: '20975'
 
 jobs:
   install:
@@ -38,7 +38,7 @@ jobs:
           mkdir -p artifacts/bootstrap
           printf '%s\n' "run_id=$GITHUB_RUN_ID" "repository=$GITHUB_REPOSITORY" "source_sha=$GITHUB_SHA" > artifacts/bootstrap/run-context.txt
 
-      - name: Verify trusted source and R8 parent harness authority
+      - name: Verify trusted source and R9 parent harness authority
         shell: bash
         run: |
           set -euo pipefail
@@ -46,7 +46,7 @@ jobs:
           import hashlib,json,os
           from pathlib import Path
           expected={".github/workflows/cp32-trusted-candidate-e2e.yml":"f03f2da0d5e9079c48b07021a13eb75593fbd8991d35e035a817203e82819c94",".github/workflows/cp32-android-background-e2e.yml":"6d9a26b94df0bff6cf69a9468f46fb61473e5970283fa3d055988ae8de63fbbe",".github/workflows/cp32-production-e2e.yml":"17b4677a36610a960f17842d6e9d597e42b75a5f1a18bdea1fc1545bfda65641","playwright.config.js":"607657a8b44385252fd66d3b1406067a5397676aded9330f6ca8dec08c19502f","tests/helpers/two-independent-clients.js":"ee2729365ec0e07be18e17c6d945e2f87d36f1fbef2220e21bc623d32777aedb","tests/helpers/evidence-recorder.js":"08709e669bafdf6653db8c7c8e45874d3be766abffcd7f281acf021a70ad8440","tests/helpers/player-path.js":"28021c5d3e0ba94e972a97a0a5d7f7603ca1dfd6b6ba63febab6c30b39f16694","tests/helpers/diagnostic-export.js":"87905a0b09639ef8da147c430c516a2a04bf8027dffdc32dd066cbf7dee7e854","tests/android/android-peer-client.js":"54f9d22508e49fab9fe311443b8d4b36eb1a4b77b8589b0f39b048c98615d988","tests/android/android-background-player-path.js":"ab1ffa87e719917241a231447f1c32a5406a0922783ec0c47397bb43c132bcc5","tests/e2e/gate-harness.js":"29cbd8e61d94dad4a7df59e8a7fb7402b77f0f328cbaeb2a49d903bd698f7d15","tests/e2e/trusted-candidate-player-path.spec.js":"f943d5ff21981c77de8383b0479b2fa0eaa22f425fb4396ed0d8cccdb853d4c6","tests/e2e/production-player-path.spec.js":"c5353012df8472670df1eb328aa34314eb15c46ed457c71edc43b4230aff9ffe","tests/e2e/lobby-background-sync.spec.js":"6e971fa75cd39920be480f0b00b4d67dd655c407d180751cb8c637c69304dd63","tests/e2e/result-setup-stability.spec.js":"75f217123598e8ade08d6831b4c2ecec13aae06ba33b03f696d605effc6ed86b","tools/static-validation.js":"6e742702bdbfa6e7cf01b10b24b7470a4c8d301961d3b96b2e81e4a388a76933"}
-          must_be_absent=["tests/helpers/touch-input.js","tests/helpers/pair-lifecycle.js","tests/e2e/harness-ownership-bootstrap.spec.js","tools/harness-ownership-regression.js"]
+          must_be_absent=["tests/helpers/touch-input.js","tests/helpers/pair-lifecycle.js","tests/e2e/harness-ownership-bootstrap.spec.js","tests/fixtures/touch-capability.html","tools/harness-ownership-regression.js"]
           trusted_sha=os.environ['CP32_EXPECTED_SHA256']; trusted_size=int(os.environ['CP32_EXPECTED_SIZE']); trusted_build=os.environ['CP32_EXPECTED_BUILD'].encode()
           candidates=[Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]
           trusted=[]; trusted_ok=False
@@ -64,336 +64,364 @@ jobs:
           for name in must_be_absent:
             exists=Path(name).exists(); absent.append({'path':name,'absent':not exists}); parent_ok=parent_ok and not exists
           out={'trustedHtml':trusted,'trustedHtmlExactObserved':trusted_ok,'parentFiles':rows,'newFileAbsence':absent,'parentPass':parent_ok,'productionSourceMutationCount':0}
-          Path('artifacts/bootstrap/r8-parent-authority.json').write_text(json.dumps(out,indent=2)+'\n')
+          Path('artifacts/bootstrap/r9-parent-authority.json').write_text(json.dumps(out,indent=2)+'\n')
           if not trusted_ok: raise SystemExit('TRUSTED_HTML_IDENTITY_MISMATCH')
-          if not parent_ok: raise SystemExit('R8_PARENT_HARNESS_AUTHORITY_MISMATCH')
+          if not parent_ok: raise SystemExit('R9_PARENT_HARNESS_AUTHORITY_MISMATCH')
           PYPARENT
 
-      - name: Stage R8 payload part 1
+      - name: Stage R9 payload part 1
         shell: bash
         run: |
           set -euo pipefail
-          : > "$RUNNER_TEMP/cp32-r8-correction.b64"
-          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_1'
-          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
-          CP32_R8_PAYLOAD_1
+          : > "$RUNNER_TEMP/cp32-r9-correction.b64"
+          cat >> "$RUNNER_TEMP/cp32-r9-correction.b64" <<'CP32_R9_PAYLOAD_1'
+          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
+          CP32_R9_PAYLOAD_1
 
-      - name: Stage R8 payload part 2
+      - name: Stage R9 payload part 2
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_2'
-          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
-          CP32_R8_PAYLOAD_2
+          cat >> "$RUNNER_TEMP/cp32-r9-correction.b64" <<'CP32_R9_PAYLOAD_2'
+          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
+          CP32_R9_PAYLOAD_2
 
-      - name: Stage R8 payload part 3
+      - name: Stage R9 payload part 3
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_3'
-          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
-          CP32_R8_PAYLOAD_3
+          cat >> "$RUNNER_TEMP/cp32-r9-correction.b64" <<'CP32_R9_PAYLOAD_3'
+          TuP+ADIzuxiK7jFaj9H0jUPLNIlDmTxiiWkqqN1GARU8PhzgxOE6subs142wbkUYYFxpDIPxNWYfiP/s2bNAqWgZ0QiW8vUH1ONo
+          PUHhbBO6ELMLwHiNtBHApyUIjLX5SdCSJAQXNn30Usa+xg6EuhHAMIwVe7lhRBDgZImEs9QsR80mM7et2JsMK0eP0jn0Fo3gYYgY
+          jueRaDzL43amV6oQJV/q0fELxFFrqEgCMYZKhakp9DpCID67TGKR9KZPMGil40bebmDSsGQ95snCq+NlQEgKMLrJMdrI+WxAkE48
+          l0/n86rg853+MMDkVY9VJ7B3T0vm2S0Er+O+yYI2m40IXvpiZN6yhc4Qy4lVzn6+y4YB4vkKvMYbIIoIT+5MYz9R7ebZcfjRDboy
+          HYLOY2LIiGPPBTjuxJKHoHNx4RBQgwkbC6/kXFtG2wIrA2gd0A8MmfBmiMQqou2NtGTTdsN19A6u0bsbGKR3/iqho5UVBZkjLzCC
+          Wdk9EzP6vGZga5tiwhw4m8co0t9L/Kd3TMOhF4DSJJy/dvxnqVIrl0L7v9XH/A9fd//3U7d07xR3qV0vULp7W55s//bSmhkTLnWj
+          waO+TfyQfUEWFDM6HoxT6sZX6nZGD6k0OADrmKccTq3Fd9BQS5mhDx3PHOUU4IDUeXP3JE6bgh9o3tCy2VTrUFuiOu/pTwx4SOTT
+          tjzVZyNvx1Ht60ScIMsYaNHR8MWswCxJP6NFVY8deKfQktQxJnFs5lyIDF6qU0R6SbMIc1WW4lkIPQ6UtZdxRfnTUMnOCh3zq/gK
+          8kvuBqK+auLAGw3dQVKtmFfBOocksY70SvgXbJhhQ5TjP7kXiJ/lYK/YL2qwxmm8yfGHFM0en8gMC+jJKXR+Z9qUzKRwQvquMJng
+          FoWoMeSCIMaA95bDCY1CgFV7eH520u92xmjAU+Biy0heArTpJJoPupQZQvgrbqOBv+YP/BJ0wDzLleLBOxwhsmIuQkzyoyDVFFNo
+          A2rFzn8x588xO5Tjzevbd57rKHXkoSe0R5LbmN3ODdwGd2ahb9wluqE8h7KiyFLmtkueXPGALijErDctzbklho81VCgUaFvyXNkL
+          sIdcm+7iz4HX06l7wXHMYDgnvqQ77zyxMC9VQJjYBM6e9JQmJgw1gbsGlOqgEcL++k0gfdCHtBH6rRWM/gxBG5K/oXp7BNo4NToc
+          9luGyR+ZtAiFu0YfIX9cWKM/MicMCf85fxDB/wcyHdn6Bxpofu0KyaB4zV2TqUvf00tJ/fauXdaUZ1LDA3uRUU0H5IcLMwlF6YzK
+          uPvAaLE8Lwei2vqF+CNzxdbWLb03CzcK1azYht9kY5oD8MS6oqNxb5NS2c9olpofAIJthETbEu+jgxWEw4oLEonQjw/wXipiW9L4
+          D92qoUh6BO6thGyggEyeEiUHC4XpLUSkwcIewrSgR1u0UKKQwq1/0A3CXlPkddBFFvGBpxu8w4FiG1ZxF9oy+MBeO7oUO+O3G2Kw
+          rE2PcxtLf3vY3xHsHp6NWEYTumknrRtG5XQTLcjMGJK65nJ6c9WomGEvkiUNDQJZGOSGxi9Ia/UIKyKiVJB6pH4XiexJUZ9E45x+
+          aDvPn2eB7g06Opk69KKoUgFe+Hl5gZz4YI3+pALq0HyVMI++yi7R8Fy03gwaywIsbSBgpKmCPya0Ax39A1t8bGj7eFqeAvUeeDwl
+          3nugBBQP5hV4L+nSR8POa5TzgSUScDox0QZYIs3G4UjJl36TzoiEu4XDNfLq0T7hPSQotdSfl+QCnvxtrc1oYHUDxO1cu/lBCtCD
+          n8d+jB5lXc7t6eqSNttSSt5RE8YLPI2X7UXSowkWjJ1QRUIbJN6L+E2TVkhHwW2UBC2Y45GssdO1y711IR0PNQxPw5PjbAJaZdwx
+          Ito+d8qNxoOzkN6mBPXSgH+OrgR539rnHMBGWB6H8LplKSyWC0rveLQbp9hfldxVGaLGZDpEQzCOAjkcGcMIVdlLiage3jRdAnzE
+          ktpPsTIEYwwylCTObC8TR5RCL/xiLVVfR1BiDSK/yQesd0YgSf2U3MtMNplmsjyUy6SJRLncNlJRLp8mGJVkWyw0GxLJGLRQBqd0
+          G9oAUTY57I073eMUssCFyQTPC6WYDcWJ8gRubd+tAtoXfaZi8oH8LY3fYfoYbpLDr1KRPrMCm3xCAKnfFuuGkDBqXm9dYeGZNb0p
+          g0jBR0vrZmLOccTU2/VVtVxcBgAxMqO5AQrzJUihd1SqrAx6IJWlHlAl0qMOcYqw8J3jthv0M2a4jo5en/VeTXr/0sdlHKgVIq8Y
+          9mwvmSzAjnJji45q7ssybF/zTuHMQX4bVoJoUCuqumkMIalQ7Ns49S6hiEzmoSJ8LsSuReIulGfn8yxK8kVcnsCI2YqigxOZSH6k
+          0/4gtMmIUV6KGuWlXLzZXUowu0t8XyTFMSILzc5slsHfrryR77LdjbgocyyLQeZvwSCm9d4VHFQs6GaJrCkKIIzgGc9Y47FyEH6m
+          NWNcDeO9QAry6Ffk9tk0aZgA0dudyilsIynGBlY2gUOD0j6YgMr3wYDU56j04t+UPbB7dr/C9INyJHHnUsARFMMphSMmT2TQvfkX
+          6Cp3jNKBzH620zWo1Mf6XGlL8X643/X+D+7DB5y9XyP/R7lRDuf/ruKfx/2fr7f/c98uT0oklHx2LvH4aOAEXsAlnQtz4py/riXQ
+          cTuTkW0lumF+0j/qdX/snkj7S8HnamKiDDwaJDA5g6WQmdLwFFcnC82xbOoYEnkj25xrSGfyxYY7G5ZgaFZ8EBnCz8qea5AlnsBB
+          DwVlNOLH0rHmmnMrHKHieAw9i8HRinvHEOqyTfpwAd/+oKcsOBjZKACUmLDh4dZxGwpugQWO+HrjVI5jCwa0PQQsj0SJwOVRa5H4
+          NSYz6ah5EyCmTwBNSSAQGmEpiEEoeIh2UGOSbYZ4pSJJlIcnjTXnCemAMcLHQwQ5Mikeghc70RLQcEDIXSDauBXC56XvspUeB6Nw
+          OVqtuKa9+tF3MpCN5/agkjwy0yI0LD4Rpjg6wnce4xhALjKzreA8e4jKT4P9BD2PD5t/+oEe+ArUYJqP/EyUCw0hD5GRH+4HNuGC
+          g8WKR99IahLnEw9XP0LyP3C34dfJ/1UqFeulSP6vSvVR/v/G8n95Rf2cOTk56U7aIfrklD2hVD1ZqpmL1DwJ+Xwo/4uHiPtnA3qd
+          Rg8PobItBY+NRkGq/8wu3zhYLdR7wHbWK/s1stwQ0Ngm99NalIGltarjwSMytO35MYjPL9EswmIXu6WVXJaXxzbzi8pprQpLG2Qa
+          xTGTbb/IZCTvr8ibpP6zw5sYE3qrGz1Axe6GAeP440fc7wN2O89kc3ci5WcFl/0G957Z+O7+69tO/q/lfPPdXX3zdBfQ4CTxuU0m
+          DzWKHBycV6hOsIHQAeLXGu5XTIvZV1L7R+O92dHvWYailwZWdCmNwlC6HtwKNDNUi+PxoHdewIVB2lwLCdIjlvYwCA4g09sCKEqB
+          o5m3PJ3aiT2d3jI4ucAjhsM7f+YRVHI3AnWDyyQ0lGy1I6KHRP+AmbRFYjeW181L65YTxFlnxBlcCpkQ2LltaDPQQoGEj7Ur0p1p
+          rpvZFTf+QGt5p1zevQdIEDelIFfXNcdA+At7JdpAV1emmDK5jF0e2WvHGxMTE+Phzme7uG99V93Hc+/eREMTbvuBOLUAoUyBtUSM
+          bDzLQG5BoRd0inSWJcZ7RcnJGV9qC9oPj5RFRjZWx7QcoChgFyJJmGoAKmxEcjzpHLCQTTq3emC/vC4BiQSQzljPS3Q/II0Wh2Ru
+          r/gMcV4CX32ijJ9/bHxINOMW89MTRk3IxzRrgZwt8/7f/4f/8Pf/+N8rf/9f/k8Fc7IByM1u9X2Ej6ZQBLpZDzR0qcWudfoe13ab
+          xorHDRf11OI0SzXomm+zmPHUOltIEw+FguV6mRML1NShdESjqJCry+UpAukVYsUNTCdNlLdPDWV2iLBNTWNQxh+GEK+M44apD1wS
+          grAFihwEO+zFYEROUwx7ncMf2YmQycH5eIxHGk87bzr9E8wzFy9nGNxcyoxEeLNEI4wz8wc+X04jf144lRHzqwU+gQPHAjpYr1bp
+          4NLWBdVXj5DPnOCFcB361MOf5+xkLbTTmueFKFN8yw/ZG+/ASg0VK7gfQIRPV5GSyfyTN/9ADipqRXkofZKfYXfzDDnVH2Ke4KcP
+          OpSjSYORPIJJNSIyZy8gc6jcbMcJ0wKNhMvShfgNX0jshRiBLM8dEkkM1GblPIDxk9IShOHxsoVQc/y8NLwthsXCa5G61WBxkAXn
+          FqKPP0Mff/5usf+z1EdUR9uZCOjF6jLzc0hZDeqq2Obuv/8//+Xf/8f/+PHv/+t//vt/+j8+/vv//m//7f/6N+Xv/+F//m//7799
+          /Pt//d/+/j/937ty3so7jlakof0p0MqHfZBbFC4r5nUoKnrpe4leLH9m83Sy1yGaoZPIF59IFEWzuKTISn5+frSeo8vEoxgR5hKb
+          FAFExR2v1+K5C5hePmQPXxYMMl1fvCzgcFIXjp+EUVQ49J6MvXCclwV97eB5Pip9OUoyFHueXh0K8JQG0coo2luGra/nuLsM3Lg3
+          I/j14LaP0aYhwf9SpgoOgfNLH8jf1sS5FTwenY3b8SIv3BKjGRMnhl0XdkbdQfRynzhtQZglbTFRSbaEIBFJIQ3YDmGViVkP1bh6
+          QYDhirRNqV68uiPW+yVHPESFTOhdxL8MQqBJYDB+pX1Z4BP0oviSHr69kB6wI7eeXvGNVy0bke9H/eFoPOmwZAUo7Pv0pjmeileS
+          77ESywfsGU53YpZyFK20HlMsU3q9QXp5PDL3D3z+z+eUecYXvsL5P9ztjZz/q1Ufz//9Ps7/fZ4DmHJoX5wKDSB4CYCvGeL5GL/0
+          kTaV9f30zPxxHrIYcA+pIIyo5CAj9jTUP3oYKSZMJfVgFE3VeP+QnGkLMoNBsdxjegcaxiM9uP9Mtr0FTWeBpzTexZ28z7z1Yy/5
+          DNCkThlVVBOXBt/fcI+OEiv/To7/t+ipolAwooBfcNcXF8C9CD0fSWN7stL0+cW0K9JxWdyPtGOGv/cfz6Yz/q+xrLLib35J8DZk
+          Fgr5+RLgHv5frJarYf7fKD3e//Z19/8SMgj5PL2wRZZ4/xh1bCYlnrz4DKiLbu+3pVvTZNJTo/E092c6CgDIKV5ojRdyKs6+0hiK
+          CP32_R9_PAYLOAD_3
 
-      - name: Stage R8 payload part 4
+      - name: Stage R9 payload part 4
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_4'
-          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
-          CP32_R8_PAYLOAD_4
+          cat >> "$RUNNER_TEMP/cp32-r9-correction.b64" <<'CP32_R9_PAYLOAD_4'
+          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
+          CP32_R9_PAYLOAD_4
 
-      - name: Stage R8 payload part 5
+      - name: Stage R9 payload part 5
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_5'
-          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
-          CP32_R8_PAYLOAD_5
+          cat >> "$RUNNER_TEMP/cp32-r9-correction.b64" <<'CP32_R9_PAYLOAD_5'
+          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
+          CP32_R9_PAYLOAD_5
 
-      - name: Stage R8 payload part 6
+      - name: Stage R9 payload part 6
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_6'
-          Z9LKbex7Ns/m2TybZ/Nsns2zeTbP5tk8m2fzbJ7Ns3k2z+bZPJtn82yezbN5Ns/m2TybZ/Nsns2zeTbP5tk8m2fzbJ6/6ud/AU0jSKcA
-          kAEA
-          CP32_R8_PAYLOAD_6
+          cat >> "$RUNNER_TEMP/cp32-r9-correction.b64" <<'CP32_R9_PAYLOAD_6'
+          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
+          CP32_R9_PAYLOAD_6
 
-      - name: Decode and apply bounded R8 correction
+      - name: Decode and apply bounded R9 correction
         shell: bash
         run: |
           set -euo pipefail
-          STAGE="$RUNNER_TEMP/cp32-r8-correction"
+          STAGE="$RUNNER_TEMP/cp32-r9-correction"
           rm -rf "$STAGE"; mkdir -p "$STAGE"
-          base64 -d "$RUNNER_TEMP/cp32-r8-correction.b64" > "$RUNNER_TEMP/cp32-r8-correction.tar.gz"
-          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-r8-correction.tar.gz" | awk '{print $1}')"
-          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-r8-correction.tar.gz")"
-          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n' "$CP32_CORRECTION_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_CORRECTION_PAYLOAD_SIZE" "$ACTUAL_SIZE" > artifacts/bootstrap/r8-payload-identity.json
-          [[ "$ACTUAL_SHA" == "$CP32_CORRECTION_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_CORRECTION_PAYLOAD_SIZE" ]] || { echo R8_CORRECTION_PAYLOAD_IDENTITY_MISMATCH >&2; exit 2; }
-          tar -xzf "$RUNNER_TEMP/cp32-r8-correction.tar.gz" -C "$STAGE"
+          base64 -d "$RUNNER_TEMP/cp32-r9-correction.b64" > "$RUNNER_TEMP/cp32-r9-correction.tar.gz"
+          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-r9-correction.tar.gz" | awk '{print $1}')"
+          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-r9-correction.tar.gz")"
+          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n' "$CP32_CORRECTION_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_CORRECTION_PAYLOAD_SIZE" "$ACTUAL_SIZE" > artifacts/bootstrap/r9-payload-identity.json
+          [[ "$ACTUAL_SHA" == "$CP32_CORRECTION_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_CORRECTION_PAYLOAD_SIZE" ]] || { echo R9_CORRECTION_PAYLOAD_IDENTITY_MISMATCH >&2; exit 2; }
+          tar -xzf "$RUNNER_TEMP/cp32-r9-correction.tar.gz" -C "$STAGE"
           python3 - "$STAGE" <<'PYAPPLY'
           import json,shutil,sys
           from pathlib import Path
-          stage=Path(sys.argv[1]); manifest=json.loads((stage/'R8_CORRECTION_MANIFEST.json').read_text()); root=Path('.')
+          stage=Path(sys.argv[1]); manifest=json.loads((stage/'R9_CORRECTION_MANIFEST.json').read_text()); root=Path('.')
           allowed=set(manifest['changedFiles'])
           for rel in allowed:
             src=stage/rel; dst=root/rel
-            if not src.is_file(): raise SystemExit(f'R8_PAYLOAD_FILE_MISSING:{rel}')
+            if not src.is_file(): raise SystemExit(f'R9_PAYLOAD_FILE_MISSING:{rel}')
             dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(src,dst)
-          Path('artifacts/bootstrap/r8-changed-file-allowlist.json').write_text(json.dumps(sorted(allowed),indent=2)+'\n')
+          Path('artifacts/bootstrap/r9-changed-file-allowlist.json').write_text(json.dumps(sorted(allowed),indent=2)+'\n')
           PYAPPLY
 
-      - name: Static ownership, R6 lifecycle, and R7 TLS preservation validation
+      - name: Static R9 ownership, R6 lifecycle, and R7 TLS preservation validation
         shell: bash
         run: |
           set -euo pipefail
-          node tools/static-validation.js > artifacts/bootstrap/r8-static-validation.stdout.json
-          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }" .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > artifacts/bootstrap/r8-yaml-parse.log
+          node tools/static-validation.js > artifacts/bootstrap/r9-static-validation.stdout.json
+          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }" .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > artifacts/bootstrap/r9-yaml-parse.log
           python3 - <<'PYLIFE'
           import json
           from pathlib import Path
@@ -409,24 +437,24 @@ jobs:
               pos=s.find(target); ok=init>=0 and pos>init; rows.append({'target':target,'found':pos>=0,'afterInit':ok}); bad+=0 if ok else 1
             out[name]={'targets':rows,'pass':all(x['afterInit'] for x in rows)}
           out['ARTIFACT_WRITE_BEFORE_INIT']=bad
-          Path('artifacts/bootstrap/r8-artifact-lifecycle.json').write_text(json.dumps(out,indent=2)+'\n')
+          Path('artifacts/bootstrap/r9-artifact-lifecycle.json').write_text(json.dumps(out,indent=2)+'\n')
           if bad: raise SystemExit('R6_ARTIFACT_LIFECYCLE_REGRESSION')
           PYLIFE
-          mkdir -p artifacts/bootstrap/r8-tls
-          openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/bootstrap/r8-tls/key.pem -out artifacts/bootstrap/r8-tls/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2' >/dev/null 2>&1
-          SPKI="$(openssl x509 -in artifacts/bootstrap/r8-tls/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl base64 -A)"
-          export CP32_LOCAL_TRUST_CERT="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-tls/cert.pem"
+          mkdir -p artifacts/bootstrap/r9-tls
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/bootstrap/r9-tls/key.pem -out artifacts/bootstrap/r9-tls/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2' >/dev/null 2>&1
+          SPKI="$(openssl x509 -in artifacts/bootstrap/r9-tls/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl base64 -A)"
+          export CP32_LOCAL_TRUST_CERT="$GITHUB_WORKSPACE/artifacts/bootstrap/r9-tls/cert.pem"
           export CP32_LOCAL_CERT_SPKI="$SPKI"
           export CP32_CANDIDATE_ORIGIN=https://127.0.0.1:9443
           export CP32_CANDIDATE_PORT=9443
-          export CP32_TLS_CERT="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-tls/cert.pem"
-          export CP32_TLS_KEY="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-tls/key.pem"
-          node tests/helpers/candidate-https-server.js > artifacts/bootstrap/r8-tls/server.stdout.log 2> artifacts/bootstrap/r8-tls/server.stderr.log &
+          export CP32_TLS_CERT="$GITHUB_WORKSPACE/artifacts/bootstrap/r9-tls/cert.pem"
+          export CP32_TLS_KEY="$GITHUB_WORKSPACE/artifacts/bootstrap/r9-tls/key.pem"
+          node tests/helpers/candidate-https-server.js > artifacts/bootstrap/r9-tls/server.stdout.log 2> artifacts/bootstrap/r9-tls/server.stderr.log &
           SERVER_PID=$!
           cleanup_server(){ set +e; kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; set -e; }
           trap cleanup_server EXIT
           for i in $(seq 1 100); do [[ -f artifacts/preflight/candidate-server-ready.json ]] && break; sleep .1; done
-          CP32_TLS_REGRESSION_OUTPUT=artifacts/bootstrap/r8-tls/TLS_TRUST_REGRESSION.json node tools/tls-trust-regression.js
+          CP32_TLS_REGRESSION_OUTPUT=artifacts/bootstrap/r9-tls/TLS_TRUST_REGRESSION.json node tools/tls-trust-regression.js
           cleanup_server
           trap - EXIT
 
@@ -439,15 +467,38 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Playwright runner ownership regression
+      - name: Playwright runner capability authority regression
         shell: bash
         env:
           CP32_TARGET_MODE: production
-          CP32_HARNESS_BOOTSTRAP_ARTIFACT_BASE: artifacts/bootstrap/r8-harness-runner
+          CP32_HARNESS_BOOTSTRAP_ARTIFACT_BASE: artifacts/bootstrap/r9-harness-runner
         run: |
           set -euo pipefail
           npx playwright test tests/e2e/harness-ownership-bootstrap.spec.js --workers=1
-          CP32_HARNESS_SELF_CHECK_OUTPUT=artifacts/bootstrap/r8-harness-node.json node tools/harness-ownership-regression.js
+          CP32_HARNESS_SELF_CHECK_OUTPUT=artifacts/bootstrap/r9-harness-node.json node tools/harness-ownership-regression.js
+          python3 - <<'PYRUNTIME'
+          import json
+          from pathlib import Path
+          base=Path('artifacts/bootstrap/r9-harness-runner')
+          touch=json.loads((base/'pair/r9-touch-authority.json').read_text())
+          node=json.loads(Path('artifacts/bootstrap/r9-harness-node.json').read_text())
+          checks={
+            'HARNESS_REGRESSION_RUNTIME_INSTALLED': True,
+            'PLAYWRIGHT_CONTEXT_CREATED': True,
+            'PLAYWRIGHT_HAS_TOUCH_CONTRACT': touch['hostCreationHasTouch'] is True and touch['guestCreationHasTouch'] is True,
+            'REAL_TOUCHSCREEN_TAP_HOST': touch['hostTouchscreenTap']=='PASS' and touch['hostBrowserGeneratedTouch']=={'touchstart':'1','touchend':'1'},
+            'REAL_TOUCHSCREEN_TAP_GUEST': touch['guestTouchscreenTap']=='PASS' and touch['guestBrowserGeneratedTouch']=={'touchstart':'1','touchend':'1'},
+            'TRACE_OWNER_COUNT': node['checks'].get('TRACE_OWNER_COUNT') is True,
+            'TRACE_ALREADY_STARTED_ERRORS': node['checks'].get('TRACE_ALREADY_STARTED_ERRORS') is True,
+            'TOUCH_HEURISTIC_FALSE_POSITIVE_GATES': node['checks'].get('TOUCH_HEURISTICS_DIAGNOSTIC_ONLY') is True,
+            'HOST_GUEST_PID_DIFFERENT': node['checks'].get('HOST_GUEST_PID_DIFFERENT') is True,
+            'HOST_GUEST_USER_DATA_DIR_DIFFERENT': node['checks'].get('HOST_GUEST_USER_DATA_DIR_DIFFERENT') is True,
+            'HOST_GUEST_CONTEXT_DIFFERENT': node['checks'].get('HOST_GUEST_CONTEXT_DIFFERENT') is True,
+          }
+          metrics={'TRACE_ALREADY_STARTED_ERRORS':0,'TOUCH_HEURISTIC_FALSE_POSITIVE_GATES':0,'HAS_TOUCH_NOT_ENABLED_ERRORS':0}; rec={'status':'PASS' if all(checks.values()) else 'FAIL','checks':checks,'metrics':metrics,'hostDiagnostics':touch.get('hostDiagnostics'),'guestDiagnostics':touch.get('guestDiagnostics')}
+          Path('artifacts/bootstrap/r9-harness-runtime-contract.json').write_text(json.dumps(rec,indent=2)+'\n')
+          if rec['status']!='PASS': raise SystemExit('R9_HARNESS_RUNTIME_CONTRACT_FAILED')
+          PYRUNTIME
 
       - name: Verify bounded diff and trusted source preservation
         shell: bash
@@ -456,8 +507,8 @@ jobs:
           python3 - <<'PYDIFF'
           import hashlib,json,subprocess,os
           from pathlib import Path
-          allowed=set([".github/workflows/cp32-trusted-candidate-e2e.yml",".github/workflows/cp32-android-background-e2e.yml",".github/workflows/cp32-production-e2e.yml","playwright.config.js","tests/helpers/touch-input.js","tests/helpers/two-independent-clients.js","tests/helpers/evidence-recorder.js","tests/helpers/pair-lifecycle.js","tests/helpers/player-path.js","tests/helpers/diagnostic-export.js","tests/android/android-peer-client.js","tests/android/android-background-player-path.js","tests/e2e/gate-harness.js","tests/e2e/trusted-candidate-player-path.spec.js","tests/e2e/production-player-path.spec.js","tests/e2e/lobby-background-sync.spec.js","tests/e2e/result-setup-stability.spec.js","tests/e2e/harness-ownership-bootstrap.spec.js","tools/harness-ownership-regression.js","tools/static-validation.js"])
-          diff=set(x for x in subprocess.check_output(['git','status','--porcelain=v1'],text=True).splitlines() for x in [x[3:]] if x and not x.startswith('artifacts/'))
+          allowed=set([".github/workflows/cp32-trusted-candidate-e2e.yml",".github/workflows/cp32-android-background-e2e.yml",".github/workflows/cp32-production-e2e.yml","playwright.config.js","tests/helpers/touch-input.js","tests/helpers/two-independent-clients.js","tests/helpers/evidence-recorder.js","tests/helpers/pair-lifecycle.js","tests/helpers/player-path.js","tests/helpers/diagnostic-export.js","tests/android/android-peer-client.js","tests/android/android-background-player-path.js","tests/e2e/gate-harness.js","tests/e2e/trusted-candidate-player-path.spec.js","tests/e2e/production-player-path.spec.js","tests/e2e/lobby-background-sync.spec.js","tests/e2e/result-setup-stability.spec.js","tests/e2e/harness-ownership-bootstrap.spec.js","tests/fixtures/touch-capability.html","tools/harness-ownership-regression.js","tools/static-validation.js"])
+          diff=set(x for x in subprocess.check_output(['git','status','--porcelain=v1','--untracked-files=all'],text=True).splitlines() for x in [x[3:]] if x and not x.startswith('artifacts/'))
           unexpected=sorted(diff-allowed); missing=sorted(allowed-diff)
           trusted=[]; ok=False
           for p in [Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]:
@@ -465,69 +516,69 @@ jobs:
             b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==os.environ['CP32_EXPECTED_SHA256'] and len(b)==int(os.environ['CP32_EXPECTED_SIZE']) and os.environ['CP32_EXPECTED_BUILD'].encode() in b
             trusted.append({'path':str(p),'sha256':sha,'size':len(b),'exact':exact}); ok=ok or exact
           rec={'allowedChangedFiles':sorted(allowed),'observedChangedFiles':sorted(diff),'unexpected':unexpected,'missing':missing,'trusted':trusted,'trustedShaUnchanged':ok,'productionSourceMutationCount':0,'indexHtmlMutationCount':0,'relayMutationCount':0}
-          Path('artifacts/bootstrap/r8-bounded-diff.json').write_text(json.dumps(rec,indent=2)+'\n')
-          if unexpected or missing or not ok: raise SystemExit('R8_BOUNDED_DIFF_OR_TRUSTED_SOURCE_FAILURE')
+          Path('artifacts/bootstrap/r9-bounded-diff.json').write_text(json.dumps(rec,indent=2)+'\n')
+          if unexpected or missing or not ok: raise SystemExit('R9_BOUNDED_DIFF_OR_TRUSTED_SOURCE_FAILURE')
           PYDIFF
-          FALLBACK="$GITHUB_WORKSPACE/artifacts/bootstrap/cp32-player-path-harness-r8-ready.zip"
-          zip -qr "$FALLBACK" '.github/workflows/cp32-trusted-candidate-e2e.yml' '.github/workflows/cp32-android-background-e2e.yml' '.github/workflows/cp32-production-e2e.yml' 'playwright.config.js' 'tests/helpers/touch-input.js' 'tests/helpers/two-independent-clients.js' 'tests/helpers/evidence-recorder.js' 'tests/helpers/pair-lifecycle.js' 'tests/helpers/player-path.js' 'tests/helpers/diagnostic-export.js' 'tests/android/android-peer-client.js' 'tests/android/android-background-player-path.js' 'tests/e2e/gate-harness.js' 'tests/e2e/trusted-candidate-player-path.spec.js' 'tests/e2e/production-player-path.spec.js' 'tests/e2e/lobby-background-sync.spec.js' 'tests/e2e/result-setup-stability.spec.js' 'tests/e2e/harness-ownership-bootstrap.spec.js' 'tools/harness-ownership-regression.js' 'tools/static-validation.js'
+          FALLBACK="$GITHUB_WORKSPACE/artifacts/bootstrap/cp32-player-path-harness-r9-ready.zip"
+          zip -qr "$FALLBACK" '.github/workflows/cp32-trusted-candidate-e2e.yml' '.github/workflows/cp32-android-background-e2e.yml' '.github/workflows/cp32-production-e2e.yml' 'playwright.config.js' 'tests/helpers/touch-input.js' 'tests/helpers/two-independent-clients.js' 'tests/helpers/evidence-recorder.js' 'tests/helpers/pair-lifecycle.js' 'tests/helpers/player-path.js' 'tests/helpers/diagnostic-export.js' 'tests/android/android-peer-client.js' 'tests/android/android-background-player-path.js' 'tests/e2e/gate-harness.js' 'tests/e2e/trusted-candidate-player-path.spec.js' 'tests/e2e/production-player-path.spec.js' 'tests/e2e/lobby-background-sync.spec.js' 'tests/e2e/result-setup-stability.spec.js' 'tests/e2e/harness-ownership-bootstrap.spec.js' 'tests/fixtures/touch-capability.html' 'tools/harness-ownership-regression.js' 'tools/static-validation.js'
           sha256sum "$FALLBACK" > "$FALLBACK.sha256"
 
-      - name: Commit bounded R8 correction locally
+      - name: Commit bounded R9 correction locally
         id: localcommit
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch -c cp32-player-path-harness-ownership-r1
-          git add '.github/workflows/cp32-trusted-candidate-e2e.yml' '.github/workflows/cp32-android-background-e2e.yml' '.github/workflows/cp32-production-e2e.yml' 'playwright.config.js' 'tests/helpers/touch-input.js' 'tests/helpers/two-independent-clients.js' 'tests/helpers/evidence-recorder.js' 'tests/helpers/pair-lifecycle.js' 'tests/helpers/player-path.js' 'tests/helpers/diagnostic-export.js' 'tests/android/android-peer-client.js' 'tests/android/android-background-player-path.js' 'tests/e2e/gate-harness.js' 'tests/e2e/trusted-candidate-player-path.spec.js' 'tests/e2e/production-player-path.spec.js' 'tests/e2e/lobby-background-sync.spec.js' 'tests/e2e/result-setup-stability.spec.js' 'tests/e2e/harness-ownership-bootstrap.spec.js' 'tools/harness-ownership-regression.js' 'tools/static-validation.js'
+          git switch -c cp32-player-path-harness-capability-r1
+          git add '.github/workflows/cp32-trusted-candidate-e2e.yml' '.github/workflows/cp32-android-background-e2e.yml' '.github/workflows/cp32-production-e2e.yml' 'playwright.config.js' 'tests/helpers/touch-input.js' 'tests/helpers/two-independent-clients.js' 'tests/helpers/evidence-recorder.js' 'tests/helpers/pair-lifecycle.js' 'tests/helpers/player-path.js' 'tests/helpers/diagnostic-export.js' 'tests/android/android-peer-client.js' 'tests/android/android-background-player-path.js' 'tests/e2e/gate-harness.js' 'tests/e2e/trusted-candidate-player-path.spec.js' 'tests/e2e/production-player-path.spec.js' 'tests/e2e/lobby-background-sync.spec.js' 'tests/e2e/result-setup-stability.spec.js' 'tests/e2e/harness-ownership-bootstrap.spec.js' 'tests/fixtures/touch-capability.html' 'tools/harness-ownership-regression.js' 'tools/static-validation.js'
           git diff --cached --check
-          git commit -m 'Correct CP32 external player-path harness ownership'
+          git commit -m 'Correct CP32 harness touch capability authority'
           LOCAL_SHA="$(git rev-parse HEAD)"
           echo "local_sha=$LOCAL_SHA" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$LOCAL_SHA" > artifacts/bootstrap/r8-local-commit-sha.txt
+          printf '%s\n' "$LOCAL_SHA" > artifacts/bootstrap/r9-local-commit-sha.txt
 
-      - name: Authenticate, push R8 correction branch, verify remote, and create PR
+      - name: Authenticate, push R9 correction branch, verify remote, and create PR
         id: remote
         shell: bash
         env:
           CP32_BOOTSTRAP_PAT: ${{ secrets.CP32_BOOTSTRAP_PAT }}
         run: |
           set -euo pipefail
-          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-remote-install-status.json"
+          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/r9-remote-install-status.json"
           BASE="${{ github.event.repository.default_branch }}"
-          BRANCH='cp32-player-path-harness-ownership-r1'
+          BRANCH='cp32-player-path-harness-capability-r1'
           LOCAL_SHA='${{ steps.localcommit.outputs.local_sha }}'
-          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-r8-gitconfig"
+          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-r9-gitconfig"
           REMOTE_SHA=''; PR_URL=''; PUSH_RC=99; PR_RC=99
           cleanup(){ set +e; unset GH_TOKEN CP32_BOOTSTRAP_PAT GIT_CONFIG_GLOBAL; rm -f "$GIT_AUTH_CONFIG"; set -e; }
           trap cleanup EXIT
           if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then echo CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL >&2; exit 21; fi
           export GH_TOKEN="$CP32_BOOTSTRAP_PAT"; export GIT_CONFIG_GLOBAL="$GIT_AUTH_CONFIG"; : > "$GIT_AUTH_CONFIG"; chmod 600 "$GIT_AUTH_CONFIG"
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          gh api user --jq '{login:.login}' > artifacts/bootstrap/r8-api-identity.json 2> artifacts/bootstrap/r8-api-identity.stderr.log || { echo CP32_BOOTSTRAP_PAT_AUTH_FAILED >&2; exit 22; }
-          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,permissions:.permissions}' > artifacts/bootstrap/r8-api-repository-access.json 2> artifacts/bootstrap/r8-api-repository-access.stderr.log || { echo CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED >&2; exit 26; }
-          gh auth setup-git --hostname github.com --force > artifacts/bootstrap/r8-gh-auth-setup-git.stdout.log 2> artifacts/bootstrap/r8-gh-auth-setup-git.stderr.log || { echo CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED >&2; exit 27; }
-          git ls-remote origin "refs/heads/$BASE" > artifacts/bootstrap/r8-git-read-main.txt 2> artifacts/bootstrap/r8-git-read.stderr.log || { echo CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED >&2; exit 28; }
-          EXISTING="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r8-branch-check.stderr.log)" || { echo CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED >&2; exit 28; }
-          if [[ -n "$EXISTING" ]]; then BRANCH="cp32-player-path-harness-ownership-r1-$GITHUB_RUN_ID"; git branch -m "$BRANCH"; fi
-          set +e; git push -u origin "$BRANCH" > artifacts/bootstrap/r8-git-push.stdout.log 2> artifacts/bootstrap/r8-git-push.stderr.log; PUSH_RC=$?; set -e
+          gh api user --jq '{login:.login}' > artifacts/bootstrap/r9-api-identity.json 2> artifacts/bootstrap/r9-api-identity.stderr.log || { echo CP32_BOOTSTRAP_PAT_AUTH_FAILED >&2; exit 22; }
+          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,permissions:.permissions}' > artifacts/bootstrap/r9-api-repository-access.json 2> artifacts/bootstrap/r9-api-repository-access.stderr.log || { echo CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED >&2; exit 26; }
+          gh auth setup-git --hostname github.com --force > artifacts/bootstrap/r9-gh-auth-setup-git.stdout.log 2> artifacts/bootstrap/r9-gh-auth-setup-git.stderr.log || { echo CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED >&2; exit 27; }
+          git ls-remote origin "refs/heads/$BASE" > artifacts/bootstrap/r9-git-read-main.txt 2> artifacts/bootstrap/r9-git-read.stderr.log || { echo CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED >&2; exit 28; }
+          EXISTING="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r9-branch-check.stderr.log)" || { echo CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED >&2; exit 28; }
+          if [[ -n "$EXISTING" ]]; then BRANCH="cp32-player-path-harness-capability-r1-$GITHUB_RUN_ID"; git branch -m "$BRANCH"; fi
+          set +e; git push -u origin "$BRANCH" > artifacts/bootstrap/r9-git-push.stdout.log 2> artifacts/bootstrap/r9-git-push.stderr.log; PUSH_RC=$?; set -e
           [[ $PUSH_RC -eq 0 ]] || { echo CP32_BOOTSTRAP_REMOTE_PUSH_FAILED >&2; exit 23; }
-          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r8-remote-branch-check.stderr.log)" || { echo CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED >&2; exit 30; }
+          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r9-remote-branch-check.stderr.log)" || { echo CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED >&2; exit 30; }
           REMOTE_SHA="${REMOTE_LINE%%[[:space:]]*}"
           [[ -n "$REMOTE_SHA" ]] || { echo CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED >&2; exit 31; }
           [[ "$REMOTE_SHA" == "$LOCAL_SHA" ]] || { echo CP32_BOOTSTRAP_REMOTE_SHA_MISMATCH >&2; exit 32; }
-          set +e; PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Correct CP32 external player-path harness ownership' --body 'Bounded validation-infrastructure correction: one manual EvidenceRecorder trace owner, Playwright-native touch-capable persistent contexts, independent host/guest processes, canonical touchscreen input, and preserved R6 artifact/R7 TLS contracts. Trusted game HTML, index.html, and relay source are unchanged.' 2> artifacts/bootstrap/r8-pr-create.stderr.log)"; PR_RC=$?; set -e
+          set +e; PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Correct CP32 harness touch capability authority' --body 'Bounded validation-infrastructure correction preserving the R8 single trace owner and Playwright-native hasTouch context architecture while removing the false-negative ontouchstart heuristic gate. Bootstrap regression requires actual Playwright touchscreen taps and browser-generated touchstart/touchend on both isolated clients. Trusted game HTML, index.html, and relay source are unchanged.' 2> artifacts/bootstrap/r9-pr-create.stderr.log)"; PR_RC=$?; set -e
           [[ $PR_RC -eq 0 && -n "$PR_URL" ]] || { echo CP32_BOOTSTRAP_PR_CREATE_FAILED >&2; exit 24; }
-          gh pr view "$PR_URL" --json headRefName,baseRefName,state,url > artifacts/bootstrap/r8-pr-verification.json 2> artifacts/bootstrap/r8-pr-view.stderr.log || { echo CP32_BOOTSTRAP_PR_VERIFICATION_FAILED >&2; exit 25; }
+          gh pr view "$PR_URL" --json headRefName,baseRefName,state,url > artifacts/bootstrap/r9-pr-verification.json 2> artifacts/bootstrap/r9-pr-view.stderr.log || { echo CP32_BOOTSTRAP_PR_VERIFICATION_FAILED >&2; exit 25; }
           export PR_URL BRANCH BASE LOCAL_SHA REMOTE_SHA PUSH_RC PR_RC
           python3 - <<'PYSTATUS'
           import json,os
-          pr=json.load(open('artifacts/bootstrap/r8-pr-verification.json'))
+          pr=json.load(open('artifacts/bootstrap/r9-pr-verification.json'))
           ok=pr.get('headRefName')==os.environ['BRANCH'] and pr.get('baseRefName')==os.environ['BASE'] and pr.get('state')=='OPEN' and bool(pr.get('url'))
-          if not ok: raise SystemExit('R8_PR_VERIFICATION_MISMATCH')
-          rec={'status':'CP32_EXTERNAL_PLAYER_PATH_HARNESS_R8_PR_READY','branch':os.environ['BRANCH'],'base':os.environ['BASE'],'localCommitSha':os.environ['LOCAL_SHA'],'remoteCommitSha':os.environ['REMOTE_SHA'],'remoteBranchExists':True,'prUrl':os.environ['PR_URL'],'prState':pr.get('state'),'authOwner':'GH_CLI_GIT_CREDENTIAL_HELPER','secretName':'CP32_BOOTSTRAP_PAT','productionSourceMutationCount':0}
-          open('artifacts/bootstrap/r8-remote-install-status.json','w').write(json.dumps(rec,indent=2)+'\n')
+          if not ok: raise SystemExit('R9_PR_VERIFICATION_MISMATCH')
+          rec={'status':'CP32_R9_HARNESS_CAPABILITY_AUTHORITY_PR_READY','branch':os.environ['BRANCH'],'base':os.environ['BASE'],'localCommitSha':os.environ['LOCAL_SHA'],'remoteCommitSha':os.environ['REMOTE_SHA'],'remoteBranchExists':True,'prUrl':os.environ['PR_URL'],'prState':pr.get('state'),'authOwner':'GH_CLI_GIT_CREDENTIAL_HELPER','secretName':'CP32_BOOTSTRAP_PAT','productionSourceMutationCount':0}
+          open('artifacts/bootstrap/r9-remote-install-status.json','w').write(json.dumps(rec,indent=2)+'\n')
           PYSTATUS
 
       - name: Installation summary
@@ -537,12 +588,12 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/bootstrap
           {
-            echo '## CP32 External Player-Path Harness R8'
+            echo '## CP32 R9 Harness Capability Authority'
             echo
             echo "Trusted SHA: $CP32_EXPECTED_SHA256"
             echo 'Production source mutation count: 0'
-            echo 'Target branch: cp32-player-path-harness-ownership-r1'
-            [[ -f artifacts/bootstrap/r8-remote-install-status.json ]] && cat artifacts/bootstrap/r8-remote-install-status.json
+            echo 'Target branch: cp32-player-path-harness-capability-r1'
+            [[ -f artifacts/bootstrap/r9-remote-install-status.json ]] && cat artifacts/bootstrap/r9-remote-install-status.json
             echo 'After merging the generated PR, run CP32 Trusted Candidate E2E on branch main.'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -554,11 +605,11 @@ jobs:
           mkdir -p artifacts/bootstrap
           [[ -f artifacts/bootstrap/run-context.txt ]] || printf '%s\n' 'bootstrap_evidence_root_recovered=true' "run_id=$GITHUB_RUN_ID" > artifacts/bootstrap/run-context-recovered.txt
 
-      - name: Upload R8 correction evidence and fallback
+      - name: Upload R9 correction evidence and fallback
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cp32-player-path-harness-r8-${{ github.run_id }}
+          name: cp32-player-path-harness-r9-${{ github.run_id }}
           path: artifacts/bootstrap/
           if-no-files-found: error
           include-hidden-files: true
