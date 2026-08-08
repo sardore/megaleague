@@ -9,30 +9,20 @@ permissions:
   actions: read
 
 concurrency:
-  group: cp32-validation-local-tls-r7
+  group: cp32-player-path-harness-ownership-r8
   cancel-in-progress: false
 
 env:
   CP32_EXPECTED_SHA256: fbbdad911cb6c90a95aaedb9cf66820f41dc2a323e90088a3cb5ee4d407b22a8
   CP32_EXPECTED_SIZE: '7372055'
   CP32_EXPECTED_BUILD: CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST
-  CP32_CORRECTION_PAYLOAD_SHA256: 42e33259f6537c93f9262e6a2296fcdc82d484b881b61be63556a9d64509b374
-  CP32_CORRECTION_PAYLOAD_SIZE: '12258'
-  CP32_PARENT_CANDIDATE_WORKFLOW_SHA256: 970ea9c5cdca5136422e4aedf068fdc48e1410fdca7adea72b3100caeb31620f
-  CP32_PARENT_ANDROID_WORKFLOW_SHA256_A: 26a12a7fc75b5127ecf2015b820f58d4a607c780a51d278b1f74393fa77802e9
-  CP32_PARENT_ANDROID_WORKFLOW_SHA256_B: bd864f6fde19aab40118137e31e7cffc0ff336abfe8c327ceb6b4ed8909eeeed
-  CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_A: a7545e3f33081235799c626fb2267083eee1cac3f98989452437ab9488815e86
-  CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_B: f88680d8545270fc3091f7b03f0bd5d029a9f343d216b89b194d0bdf97065121
-  CP32_PARENT_RELAY_PREFLIGHT_SHA256: a51e53140fc2d16ce7ba61760dd6bca987c2e32911997d28015fcd0fd43e7717
-  CP32_PARENT_TWO_CLIENTS_SHA256: 6dac45675b3febd7df38142564e69ecdf6db9c8c596160e39594e962cf5a3d59
-  CP32_PARENT_ANDROID_DRIVER_SHA256: e7b4c3c0ce2d6c630cb1e3c2e02db2937e6cf2492e3d4d7ae3853b1434d35cfe
-  CP32_PARENT_PLAYWRIGHT_SHA256: 7bfc4c1d2b5283c7773f1d929dfd18c4371a7ddc90330ec882992931904cb85f
-  CP32_PARENT_STATIC_VALIDATION_SHA256: 0739ea4b343dfd42d9a6963c20cd133fd7fb5e9ed71e29663ca530c028a7f6cc
+  CP32_CORRECTION_PAYLOAD_SHA256: 5cf863b2e3e6a6719ac3f7b9b90da613db70436f6cdda616b2341b3a0fef4111
+  CP32_CORRECTION_PAYLOAD_SIZE: '19581'
 
 jobs:
   install:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - name: Checkout current default branch
         uses: actions/checkout@v6
@@ -48,250 +38,497 @@ jobs:
           mkdir -p artifacts/bootstrap
           printf '%s\n' "run_id=$GITHUB_RUN_ID" "repository=$GITHUB_REPOSITORY" "source_sha=$GITHUB_SHA" > artifacts/bootstrap/run-context.txt
 
-      - name: Verify trusted source and R7 parent infrastructure
+      - name: Verify trusted source and R8 parent harness authority
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PYPARENT'
           import hashlib,json,os
           from pathlib import Path
-          expected_sha=os.environ['CP32_EXPECTED_SHA256']; expected_size=int(os.environ['CP32_EXPECTED_SIZE']); expected_build=os.environ['CP32_EXPECTED_BUILD'].encode()
-          html_candidates=[Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]
-          html=[]; trusted_ok=False
-          for p in html_candidates:
-            if not p.is_file(): html.append({'path':str(p),'exists':False}); continue
-            b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==expected_sha and len(b)==expected_size and expected_build in b
-            html.append({'path':str(p),'exists':True,'size':len(b),'sha256':sha,'buildPresent':expected_build in b,'exact':exact}); trusted_ok=trusted_ok or exact
-          expected={
-            '.github/workflows/cp32-trusted-candidate-e2e.yml':{os.environ['CP32_PARENT_CANDIDATE_WORKFLOW_SHA256']},
-            '.github/workflows/cp32-android-background-e2e.yml':{os.environ['CP32_PARENT_ANDROID_WORKFLOW_SHA256_A'],os.environ['CP32_PARENT_ANDROID_WORKFLOW_SHA256_B']},
-            '.github/workflows/cp32-production-e2e.yml':{os.environ['CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_A'],os.environ['CP32_PARENT_PRODUCTION_WORKFLOW_SHA256_B']},
-            'tests/helpers/relay-preflight.js':{os.environ['CP32_PARENT_RELAY_PREFLIGHT_SHA256']},
-            'tests/helpers/two-independent-clients.js':{os.environ['CP32_PARENT_TWO_CLIENTS_SHA256']},
-            'tests/android/android-background-player-path.js':{os.environ['CP32_PARENT_ANDROID_DRIVER_SHA256']},
-            'playwright.config.js':{os.environ['CP32_PARENT_PLAYWRIGHT_SHA256']},
-            'tools/static-validation.js':{os.environ['CP32_PARENT_STATIC_VALIDATION_SHA256']},
-          }
+          expected={".github/workflows/cp32-trusted-candidate-e2e.yml":"f03f2da0d5e9079c48b07021a13eb75593fbd8991d35e035a817203e82819c94",".github/workflows/cp32-android-background-e2e.yml":"6d9a26b94df0bff6cf69a9468f46fb61473e5970283fa3d055988ae8de63fbbe",".github/workflows/cp32-production-e2e.yml":"17b4677a36610a960f17842d6e9d597e42b75a5f1a18bdea1fc1545bfda65641","playwright.config.js":"607657a8b44385252fd66d3b1406067a5397676aded9330f6ca8dec08c19502f","tests/helpers/two-independent-clients.js":"ee2729365ec0e07be18e17c6d945e2f87d36f1fbef2220e21bc623d32777aedb","tests/helpers/evidence-recorder.js":"08709e669bafdf6653db8c7c8e45874d3be766abffcd7f281acf021a70ad8440","tests/helpers/player-path.js":"28021c5d3e0ba94e972a97a0a5d7f7603ca1dfd6b6ba63febab6c30b39f16694","tests/helpers/diagnostic-export.js":"87905a0b09639ef8da147c430c516a2a04bf8027dffdc32dd066cbf7dee7e854","tests/android/android-peer-client.js":"54f9d22508e49fab9fe311443b8d4b36eb1a4b77b8589b0f39b048c98615d988","tests/android/android-background-player-path.js":"ab1ffa87e719917241a231447f1c32a5406a0922783ec0c47397bb43c132bcc5","tests/e2e/gate-harness.js":"29cbd8e61d94dad4a7df59e8a7fb7402b77f0f328cbaeb2a49d903bd698f7d15","tests/e2e/trusted-candidate-player-path.spec.js":"f943d5ff21981c77de8383b0479b2fa0eaa22f425fb4396ed0d8cccdb853d4c6","tests/e2e/production-player-path.spec.js":"c5353012df8472670df1eb328aa34314eb15c46ed457c71edc43b4230aff9ffe","tests/e2e/lobby-background-sync.spec.js":"6e971fa75cd39920be480f0b00b4d67dd655c407d180751cb8c637c69304dd63","tests/e2e/result-setup-stability.spec.js":"75f217123598e8ade08d6831b4c2ecec13aae06ba33b03f696d605effc6ed86b","tools/static-validation.js":"6e742702bdbfa6e7cf01b10b24b7470a4c8d301961d3b96b2e81e4a388a76933"}
+          must_be_absent=["tests/helpers/touch-input.js","tests/helpers/pair-lifecycle.js","tests/e2e/harness-ownership-bootstrap.spec.js","tools/harness-ownership-regression.js"]
+          trusted_sha=os.environ['CP32_EXPECTED_SHA256']; trusted_size=int(os.environ['CP32_EXPECTED_SIZE']); trusted_build=os.environ['CP32_EXPECTED_BUILD'].encode()
+          candidates=[Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]
+          trusted=[]; trusted_ok=False
+          for p in candidates:
+            if not p.is_file(): trusted.append({'path':str(p),'exists':False}); continue
+            b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==trusted_sha and len(b)==trusted_size and trusted_build in b
+            trusted.append({'path':str(p),'exists':True,'sha256':sha,'size':len(b),'exact':exact}); trusted_ok=trusted_ok or exact
           rows=[]; parent_ok=True
-          for name,allowed in expected.items():
+          for name,sha0 in expected.items():
             p=Path(name)
-            if not p.is_file(): rows.append({'path':name,'exists':False,'allowedSha256':sorted(allowed)}); parent_ok=False; continue
-            sha=hashlib.sha256(p.read_bytes()).hexdigest(); ok=sha in allowed
-            rows.append({'path':name,'exists':True,'sha256':sha,'allowedSha256':sorted(allowed),'exactKnownParent':ok}); parent_ok=parent_ok and ok
-          out={'trustedHtml':html,'trustedHtmlExactObserved':trusted_ok,'parentInfrastructure':rows,'parentInfrastructurePass':parent_ok,'productionSourceMutationCount':0}
-          Path('artifacts/bootstrap/r7-parent-authority.json').write_text(json.dumps(out,indent=2)+'\n')
+            if not p.is_file(): rows.append({'path':name,'exists':False,'expectedSha256':sha0}); parent_ok=False; continue
+            sha=hashlib.sha256(p.read_bytes()).hexdigest(); ok=sha==sha0
+            rows.append({'path':name,'exists':True,'sha256':sha,'expectedSha256':sha0,'ok':ok}); parent_ok=parent_ok and ok
+          absent=[]
+          for name in must_be_absent:
+            exists=Path(name).exists(); absent.append({'path':name,'absent':not exists}); parent_ok=parent_ok and not exists
+          out={'trustedHtml':trusted,'trustedHtmlExactObserved':trusted_ok,'parentFiles':rows,'newFileAbsence':absent,'parentPass':parent_ok,'productionSourceMutationCount':0}
+          Path('artifacts/bootstrap/r8-parent-authority.json').write_text(json.dumps(out,indent=2)+'\n')
           if not trusted_ok: raise SystemExit('TRUSTED_HTML_IDENTITY_MISMATCH')
-          if not parent_ok: raise SystemExit('R7_PARENT_INFRASTRUCTURE_IDENTITY_MISMATCH')
+          if not parent_ok: raise SystemExit('R8_PARENT_HARNESS_AUTHORITY_MISMATCH')
           PYPARENT
 
-      - name: Stage R7 payload part 1
+      - name: Stage R8 payload part 1
         shell: bash
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/cp32-r7-correction.b64" <<'CP32_R7_PAYLOAD_1'
-          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
-          CP32_R7_PAYLOAD_1
+          : > "$RUNNER_TEMP/cp32-r8-correction.b64"
+          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_1'
+          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
+          CP32_R8_PAYLOAD_1
 
-      - name: Stage R7 payload part 2
+      - name: Stage R8 payload part 2
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r7-correction.b64" <<'CP32_R7_PAYLOAD_2'
-          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
-          CP32_R7_PAYLOAD_2
+          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_2'
+          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
+          CP32_R8_PAYLOAD_2
 
-      - name: Stage R7 payload part 3
+      - name: Stage R8 payload part 3
         shell: bash
         run: |
           set -euo pipefail
-          cat >> "$RUNNER_TEMP/cp32-r7-correction.b64" <<'CP32_R7_PAYLOAD_3'
-          95ZtHvUgsMTL78NDAdf+jj371nblKTN15zDDxKa/lXu5iyOEHhQxm1LS/E3+2p3Tw0DclD0miRo0f6M5HpFk6YTLHls2f3tNwkFx3/twgiEOlAmZgTB+Hay73Ee/+bb4tnj2y1v//Nt8kfnm56NWIdGG0Nx0DXJafr3mZKDph0XyV7Vh3KQkZ85u8o+dExI/h+tIa6GGtTQA3GlEIOLFsh0y3H8XhOi9/eOcGKbARwBdvm6XNs+t89+wrM6Mc+EUBOvCt/kbQr/5QUgG/GXTI0j/6ROvnCeF1qADUMRvJvRJCBMBYX3mHp+TwX2hS32bbhlCZK2PcRs+jIfeoQdS1NDHdi3GLjrZE/K4iQuIoY6bsI40lxL3gXt4Lx2EGDctvWpVtOvZAEVspmkS0u1NkJ39fh0Usr6HoBMEQgdP2oSUdNHrn31jlVw7t5TuGHvfb95b6CmMRusdyDVSC2/Es6Z6OPttPJk4xYpuKLmD8fTm9nlwV5FZfq4c401NSi2vtOagjL3xBt+Pl8VKqaaXqgpzGCmaVlU5pG5Q+s7IWYz5e65HR1QBec9J0QA2ABAjOVWxP7DwHnFxmFnV5mO3SUsHvmgSv9XE3GXcLtwtNODXx3RFXTNrC3mhxlACdGud2lSPD1onL7u9w4v99svW6QFi33udPdB37zdTrsOQK6Fad08T8KHG15rGV4BG/hBsz+emazKqc+cCsTBj9nXUgamKK5gHoCYH33Nqv/PqpN07VDEKCGgG6WZmJlScfJx1QkmaeYX6wZjh7XyShIGH6xHHJRRJVIaESQ44ZtbY27zgFu/QqpIsgh5nl8Fe54Xqj0Vix8II0xv8/ukTPZVlIPFWepb0eNg76LRhM4FRPYjc3BhGkaBrLamk2BAlXBn6Hnpbu7kzIoUnY1nFr3M+JP9oefrP9mF3CP6xdfyu+I/GI/7za3zY+KcFWn64Ojbr/6ZpWJXY+FeNkvWo/3+NT6ZKv1Gj5y+Hi7v5chbR2ulJkGDr8ICBHQAEix+CWXgC0mKo1Y9miwELeTub4+3RGHEX00/prlg1CEEngpqf7WRcbkO37XmuZCDgd9zsaEpWnuSFOBsSp4TRlDKF4eKThKREjY9m2RxhPpqWwppgZ003vZeIxF04PemY7hfBi1MLzMEyNRWLiiKXiAbjay89NTMmF9g9DlAqCwiVkRYdaEGfuyqAGLW4K3D/+ETarQOZZmeJhonMThcPRhmmvN+amkzr4Z0EBXLILgT+2WkJkxCtZJp0+1dKpSJeNbOW0zpKpnKDmDEFJvCmpkLv5gJz1XSxY95hwSIlbTKb129aunc3zsKNXosZJsu4NxMThJZLPTI8/L4P0pGk3wXor6vgYa/d2j9sX7R/BEn/CBSb1ulJ95BEWP3a3Tl/LsXKXPmzmwXowO+dJiksAbpCQx73kgJzw4+gQaAsTymliCFIGewchzyASo3B5NCYkoWK4El4VLfZVV4+syC3fQvE4NBvc4R+m4Ij5tkJ5OXLDoUlG60vtShSfYRh3XliNQjN+X55PbFVzquKLEAEBSi44AEKLniAAoZeb+9f7Lb67YPOUfsiHq5Ax7JU3ng8svftONgXUzBsSdC5NttVdBaL4LUD/aGyK+fVvM4uRclRYXndHb9D1Lj63rvFMFvsxFWQhTfZaNGSQZUdDQau4zZMczioDhuG06g4jucOGsNRtVq3jFHZdIeWU7JKXsMw6nWnNBxUPK/slo3awLKceqzIZK2dn9uqRvRxzzuotVaqWUalEnkc5GSRGw5au+0DkTHAC3GoL+6Juc8PFgHj610PPJiL0vj+SjDlcM7gPQwwa85UWuAYUgHXm3qej00rPnLCkAF/k/aLPExTrtWP8jrwQf/NGC9RwA07n/+Vz+5QPcVCgvSgl4oUatqSxibEaPrVZxp+xAEzXCPeEC3sGtqwqa9VbXTOJluwYPl6o2PikYBMrLl1IOcxwFJ26rSzTW4w/fSJXMxTVuz6SWAyZEjHxKpQo8w2AonUhFU5MGNzCcFW/+CLz8RKZgWon3HXmfo8CR467R0A122hiShsXzDxw2bhJMbdMlzgUbzEhkKInmR+rLl13Lk47ePdGSn5VOFToea/+Sbtve/hBe/HFFIVbYx4qQakL8K/vvQKZyzOn8iOYCeFXlggIXV7raPuUQdtbC+7vd3O/n776KILS52ZVfrwmrGgSKE67BXJh+/HSz9Y96G2d4J26SgTEKsplig63ykKZ3yqjsR8DIM7B/u9M2FVxUsN0SS3+B1RO2q2ZqpKaBMkIc9xI+yMn/faEcIm0QWl1/5re49Ccp6evO728H6Ui5/bve5Fa7ffPoJ58rSYe9Hkq/Ktnn/hTT+81Tdlf+v/xYZ/Z+rOuYH/cVeleCthCuAlLs5EgXIUfiamBAMi0fqqfdTudfZSSX3ZOui3JVqTTilAShP+EefZQApicMfDe2nZbfXaF51XR134Qzbddq/X7fWjvfXLp7O3/g5sCRscoyAZS/TpWb54nUkX8IM7xR/CG1chJ7MgtK5CN0wul3yv4vwCVvqbHiFwXh10d2FRMAQfp3i/08egq7CKn+aKjDR6T0ZJn/cUcnTeUQk+m7rPiBmN+2fIh4rzm8GE9+jCQ894X0GLO3EWPvNJEj+Z3MvQM06sA9Yums9dF2Fedt/AnAFWd3zQ2euExnVRocSbstyYkJelJN/O1w0ZHGVWSDBUxr6C6Ys0hGw4w14gthsgle7ri6SGk+yHGDy6D70AjY/WE7ZpJwXKugOtz0qvZqIUsdnBKEnKOOKy5tBWHtVY8efwB+l9koX7EncibnPmk8yWcTWaGj/3oaD34ixlA7Arku7RiP7/57NRl36gOu7Dfxnx+5/NaqXy6P/1VT5f7P+fDep66JtjMpmydNPJVrtqWGTCKy3ulBbBjmfWE/NQCy1E85tlCnCLpMpXvXa/jwI8AxJnxiDIWJqEKo6gbVef6f7DtUWQ5+MGKHaNBSs23Qql63pgiHryhNxxnzw43F8A5qBDbAmFbycx/998E8H82zHMPxbGrAiJoAHtg5eQ5NURpOz2Lo57nR/w8V7rorW31z4+QUGSCNA48H8doOTp8RZxCRI+BSpzsOEAvev5dpBC5sFzM0WRBY8McFqoMrDwyruzw6yQj+KcUfSKvEayWfx1EN2COS7JFhNyBfT9iaqdoSyEWLrbitGgUGTeRygXvi18p2kZ5To9hHWLUloBXpEPNPyFX/QVq8FgTc4dpiBcnn8z+BX+FveO7KBFIH2RMEORcEEnuaVIWZAQZNfWZHkEM8/uHDdDfN+5QOUJUJ4M2QqKtZlzPzMd9vGCy0VuBdQl1FZ4lidaE2/wYX6t5S6gJzT09qewV1xGew0pc5ZhaCt1yGJ8F/DiHLWpOnOQAYckm7E7d8hBDfmAm1NXO7OrHSbvqQJsthW8L+wvDn9jPpXCQzx8zfB2OUOTI6zw8qLwNoJVhhk5khJ4B77AZIhtZBVAfzIDF/9NRiaVuykoK+XeRR9EEA7uJHq2wmrkpc/CQUR8C8LqscueS7VH/AdY1mQ/8mbb34WtZLAR0R8ClrW4phHH5RETy9GIH/E0ZQzl9AhtT8RoJFbCVFKmzSMLEdRjoZzwkJGIlym8JL100soD/iRzE1yGr8jksM/jn0Z2n002DdSODDVsGFeuMfUP7V7n5U+yap2sR1uRg2dz2+pevOAum6wTkgWm9MYGkjhOjDas2RWbJE9SHFTCJDSNeaBB5goSm0pJMy2WyMPjyYVt65QVUQSJFcMP3FBzTFDIp/v/pDm8QOpt/V02OvPIWR44rsTj58/xSbN3PXQd9+h/plGuxfS/cs0sP+p/X+MT+P8wl/k9mgObfIAE6JXfqBDJl6N7IiDd/njRRMhOAOBQNXzDw0UrZt24gIHXSOyco893GOGqqZTopbLG1yNgTnd4djKZeJOmwoQPeI6AG9C8oCiNIYTxbsSmYrBfSKAHFJydqXTYdK4pZyqzj0FFjIEiP20qKZa1sMk8mCnHVCtrKoZOsKViZhMXq0opCFMWGDGQASVqSDZFn1ss6xxJvfGBBu5ST2LBiegEK+ghvGz8w/idE3ldroSvE2ZuqZ9QMHOG2NAF6mvTwmxaQF/bmwUbEkVhkHz//QxKJWO8nIR5QD5aBP95P73axV6312uzI9jD1lHnZbt/QjP+weq4L/5nqSrzfwv4f8UsGY/8/2t8kPnssIgWO01lhwxUFGqGnS6H500sMiVMF8RH/bSDzGMHj2ox2xlxEhH1YQeFWyzsd6AjRRFoxoEiqlXTDJ8R5AcLrroNx6oOGmV3ZAxGo+pwVG04jXK1PipXR4MqiA8lr9KoGVa9NHJKrlGpNOp1x6u7XrU0Ggy8HRagQfssstMQoDFyS5VSOYVcszYoV2s1pwTNMZxG1RiZtXrZcqtewwUyvbI1qFWcysh0zPrA9RxzNDQr5cpg5DrVSrVs/i5yN4Bc451csqopVI+M0shyHcOteA2j1hiW6wMDuhSILHlAb6UBXenWGw3TLVU8o1Rx6mbNMkpe3aqbjWGjvJnqdIhejLJKJXX0jVq1UnPqg3K5VK9YFWvkVqtuaWCWjapRrTmVUqNWrVUd13MbpZIB08OBkR8a9aHZqBjWaDNhn40jjdFcRz+3JNHOwByNnHrNq5nQZTWrbDpWySyXayNzWLKcCtDuGA3LqtVLQOoQZnCjNhiUS0OzZA2Gw8o2RN8H/4xRajZqabN14JUqtUHVscx63ahapuW55v+2a++4EcQgGICvhIEB+zApzMP3P0LYIs1mNpu0EV+x0nT/YoNGIx6V5BU8TOoWneUKZHUGy87Gc3LmgQhw9Pnmtr5fZn3uKRK6SQmb6UyBJYiUe2NFOdchIKZUgEnEilstVMbirLpOxLVYxU0A/pLypz3ep7SoMm/SZqLiIrnqbBPUcswc6jXH+Eo8U4PkjGN5Hqt6icNckIJQa2xk2Ju0LzdlvuVjwXXXUqmM1dwWdaD14AeGDTBkU9aqtc8gGEuq2W2JYc6RvKmmqko12W/yvdzXfS7hdX8tbfqKrM6GqJledRa5HjO9pgHvrDcKD8jlzsMxk+rUTcPrbyhFjq+I9fvRHzpaa6211lprrbXWWmuttdZaa//RJ5hJmfMA8AAA
-          CP32_R7_PAYLOAD_3
+          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_3'
+          HwdTUPqHMOfGieWTlfoeLICyTq90y7dC6DjQV3nTGne7OJv8PCqgZHgB+DWSUAfjUS8bKL5RYa4XUkCtJDReIBsgf6nCLEYwmS/U5IhA
+          rZYjQxt3GUaEFr/q9KZUQBacxCYXFZQ1nBPQdob+NO7QGoLyUfyyYLVt3tEnxU0Y7enTsINOCZbn9MW8bePAFvTNX9jDycapVCWzWfp7
+          79I7gx7C169r31YPdmsnrw5e19jKb0v0xXt9Bhqefg56JPzjbECPa1Gyn78pkj61IjBvxGEtUfOA5E+/SG6sLp5Gj8TeKgrmBBuUFtOd
+          F6QQ9ueOXH9IEuX2R16GYuWfpiYXV/8pSLdzha4mM0TYClRhxff80tCJdCLawRau2TdMw5iMeqemldrifKfjIzxnUK6ANjpw9bWJfmyq
+          po/GD/wT3C/jMleF/4FmPME9qE5lWkZ9DgWrYdrT8V7jgK8lkyaJhHqZVjD3DwG3wx2U8xCQD9KFqaILOsRhcMkXOZ8b9noBBgKzCLhD
+          FrfVru0mC1Qku6vMewTKjpvf3QWfWw5YuUDUovlmD5hpo8yWNALwCtGS+RDaKD558T/xYIm7tXFN/Hdho7SRvP+vsPkQ/3MvHxn/zczb
+          vShnlDkhtaxAkNzkUjC/eXh4wleQNp7xfNSMsBFuQWuRW4FB1xxNNcNT/TRi6q9u0fmrzD/Ctx85IEsjjlXWDFNznvOHgotpi+2Pm17x
+          s/8oMfqfLAb4FvG/z0qlh/jP+/io859Iy/xobVzD/4ubm1vJ/J+tja0H/n8fn9WiPOkQrBrP0j90/SBLLKSy42MAUE/+PR7fm1EzK/9f
+          rXzmBX73cod52sVmbiYgdgozOiHXpE8yDkv19GaBSER75sgzxAcTPKGBavNex9K6I1VsofwBoRVZBMr5cpYuriKwWGVVUCVRTZLS4h3g
+          ohYllwzok/mKGU4e/kbLRqEhJDces878eHFHuHLhwnIAPfSlLoUg3D8CPxTiJKV6dyRAyWKSYhSrilChq1aEGVk7BHEh63N0slAqZjpp
+          ZA5oBguCk3i7SUtZBgtBixpm/nN6ui1NtoX589QsVP6/Qurwrdq4hv+XttaT/H/r2UP8//18JF9EMrB4Ouay/M+VBEZ+OsHtRclnFJeg
+          K4YH28tmN09dkGNJG7ojPJGckh6V49YlHeuCkTLtP86u01uF4tC7nYODZqNZrxyeVOrNvZeVavNkp9Ko4UGtWYmf+etI2Z8kxsS3HFbl
+          +fzOH97Pvc6u3+16GHZTFqUwGKtbpXN406UYL54BA991p+6uHyytn1WOQeB73lWG+KVAcooyOCh2mjiHVXeCbs4sAMkyrCbJm+uqpgpZ
+          xIiJUTNCN2gSMjCFXqcdz0C5ki6ehZilFXKQsLROctxLC6dGmiwd+eoxmQHd9e90uoLF0qmufswTBFghufTUgPhuaOPVbhnOTqJWyqfQ
+          pSqnrl6Snix3Q2we8O5HpWjJ0qYWOSP5AIrXFB9Pbla6Mp16w8lqTWAECF7WA3VcQOxNqmB894pVWMwJlqp9D6zLeHfMo+Xvx0epyv+l
+          p7LcoY3r5H+xmDz/YXOj8GD/3ctHZn4BFVwv9eeK3RMl2CX8BkpxlOM7lyIaY1la3O0T4G6WsyYiwqA5581s2PICIyX1s29gvLoqYRhU
+          FMtX3Pa/cggSxfORenKavLFDIxH+xdzH/TgqvDi1MDpVtSBP+crrrWHBU4vkvjGny6+IPWOCEPJnvu8Sw6oRGW+RFaaEMLV6jv/r0gss
+          VaYCVpc9oR9lfK4UHrij9yIOomdz1coeeecYHch2gfhbLGn3xtMxWLYt3OenJ3qqSAuNpOb4ZQCwGAAMU/r1uuM4IiZRaSn0pgdsUzQS
+          XqnAkm4vGuSKwMhuU/vGQGT0LjvghZfHOJcoApHHvTsCWFacxorh/DbFMUj8qEP2OjYRDhjTWipWRBRR4kDg71Tl4tievoj5wqO32buu
+          fECmBdTuLSsoZgL95ubDptov76PK/+VnyN2+jWvk//qzUkr+b62XHuT/fXxU+W8x5fSuxv88ac3e0Fcs3XE39xSjfXIoqVh4KW/lKD6s
+          H+wesTsRjur7Vu2vDmvVZm0X76EtbW5FvykodvVTA1y6Mu2QlhdeO2JhuGplNh2/Rtdk7BSBVZQg7hSJVi67iDB+lyhrU2OVafJ0rmLE
+          1IqUE0L1WMdcEayWEIPv+lbv2Ml3PmdPSobvOY5y6Tm+pr7ies4EIBzPkZdXcdlIZ/WJwJjCBUWcCoxvETff+pioO4HRe42+a+m7tcP9
+          g29ruRHSOjcCE0QUh9lTYa5Soc+irZNFqQ/xAGzyS4m48QQBZu0BpDC7DIXy3LRIetBtgKmoYyrHEEnecDOLfF1YCkO6ZneIC2Lovseb
+          kQhggmgVv93y3iiAWM/07XyaJ1fGL5/Ys+j04xJhBgpirCw9ZNPKLqCQ2XE+8Fh8fAbszPcZoNk09sXZFylI8pgAg1lpK2RHxiD3kpCj
+          PtwetJid8IVN1LwnVn1feaIurJXlv6r/LT/o9vY6xnX6X3E9ef7X5tbWg/53L59b6X83dQOllJ6PfQjSx/cB1WuNo/2m8PwUV/D8sNWj
+          0erR5Oq51vXDF91Kjp+U7M51/Yi+srwIp7DNvny1WRBf5ZFA0dbAhPYFsmCK3QHFNzFRvB2Ts0mdhvHaG82sz898zCm5xB+6KX0XLAsn
+          FgMQ5mSwyq10zLVZNYNVPQhiLvQ1Fi0tOx1x+Zt1/uqK1Vd4+W1HHyWwsplHv5pzt969kBXLUQcjN9UQCjtRY6sCVxxSPEOACSEEx6TP
+          W5bpY8xFps86y/SJqiiOKqymOKk42eNT7ptine2CluYFlCsbOu+O43tXw5AotGBhCoWF2QtWkf5Sw4JI8cCmkNOKMmyuIIhjwYbhmqE2
+          ZrtTY61ogjgNr64KMsdFLTGZhX1jPgwt4XQrpxqJcMv4gHo2Bp8tqzcYn69QE4sptVpk7l5f71174IbhbxzR8HEEYyHPYeJTiUH2DW8a
+          xwNmBV04zxPpyRemadp4xnlsP4v7E9X6D47AX9RH1f9WuvjiFm1co/9trG8l9b9nhY0H/e9ePp8m/ucvOGBU1qP0vOisHMLtWH2SBSzr
+          aiQVqDtyB5c/LMcoy4jt4FGpPURSEkRSGdfiLkhNtaQzG8lxQnL2ESEs0/G4LP5KcThe56LJi4fN98zcMQL2bvGvSxwbCTrJ8m3kFcl1
+          b3wCj192aCzGMisXzkd+PzPb8Re50X6wej8sc6QlV0tGr5NdooCmaMZyISiTlQTBgqFSsxatOoM6nqqHCy8Z28SDh6m/3MJhylMzmE37
+          l0aWJ3SJ+1Nb0/xwPHBxiWFzkY+fjp5ZdWVJD+nN3aJ/PmvuwVP5qTyVN47ap7iUfsicDeVemNxpSbo81cXzKR2jfyEfof8L4f4p2ijc
+          /P6HZ8XiQ/7ffXyS85+lgN61jWvsv+JGoZiYf/iy8WD/3cfnrvc/oItPnCIUGQsZdwVk59ElNVsSgJoa6hhzceHxHVHpl25LPX9IYwcQ
+          afIEIi3hipSnHZHOoGWCu0kFcYrTZ4u84aVUUAao4/Pss9gVCfAf7xWLLknQUEDyQfhdcUz/UpQcuiNvAEjxw1d0PHYsZnDV8XMVHWT+
+          aDB2O8cySy+t4k0Uz2rtjPLwRTWdq2HXN1wjLLHyxzFf8CCeQkkYEvDtEG8LQIsTMxIw+8AwlemLirlnXiU0EFjcZznwfp4peff6SfL/
+          LM/KXdtYzv+L65ulFP/fWn/g//fyuTP/Dyfu+Qj5l+T+mdf/CAbJVnazXqnWTg6+eVOrwwLXa28xZAqe1GvVg/purX7yuvLmqLIfHSfC
+          qjWq9VrtTePVQXNJ3exK1UrjJpUOdhq1+lt2gcPSWnwzGa2aAZQhNmPhKVjSCo/xeOJl8IPYFbGkfJYPFd0JpjrKjCsGPLEzQ2090fS/
+          HpEogi5FWepojO0LBytjnyQkpfTJO76Kii5J5kp2gjkCKOGxnEaechPlASuiEIDyMkr/KrN+JrPCYmV57leiKH+aKKnmfaUqqC9ZvYzU
+          L1Er41W8jpL7layjvOJXcULrE68jyvGf7J3H7/Jkr9gvSmC06FRySyup056ngbjUTeHLMcQZODS/A7flDRgpoHrBj8I5OUHpLGrUuRgw
+          U3e3nMrlsL/XaNZgJk92jw7396qVJt5bQcD5SbCrqzk8EAHUBFhMyrFv0TuR7Stf8wdKWgYiDN4zmqR+8AGniKxgpYhJfRSnmsIS2oBa
+          mfNfsKI5ZkcHyHl9RzfALqjfyzAPI6ERRQNkohm5Dd62ZNGVVDjeBfEcYkWppSyOqaajDdmNtgOdmI8L3cw9HE6gjzVk23R9QmyuxqMq
+          /B+TpsZvVMJeiAPa2uwl3Zg7gMYHZVGKrorCJuhWlugp/MKDmGJN4E43UR004rH/URNIH/SQGmFHM2ixsxkS0Ore9+hseukC30M0Buy3
+          CpM/6lIRgjsLoOv8sT1DN6Ol4etZ4EXP+YNU/+WNV9DaueI5Fc2de62Q3q/RRQSyvfOQNaUJrxhdXGXo3QDkR0iHVGo0o2rfI2BUbI2X
+          A1Ht/+BFmDlja+sSlWRKZJd3Q4gc6XhzAN6D5dpZpUml7B2apUO5AATzaKfbEu/TyIrDYcUFiaToJwJ4LRUxVyL+IcOHOikJXK4EM1ZA
+          JU+FkuOFkvSWINJ4YdlhKihpiwrlCimgvCLoBsI8EilyyOvoKjHkimhDy8uhQ8aYgYGN3En8wXgWtL0wxrgzxTVrU3LuzkRakkpiYXX3
+          sMHu4jISmYuMytMWoDwiM+T0FuppMcNe5EsaiuQbdbwLgF9Q1+pLrIgdJUEqSX3OFYrouJ0l6pNonNMPtfPkiQl03yHsGFswioJOAtz+
+          btJDTrwzw2MBbNSh+SqhawSBdbuht7Uhd5fkDMoLzigOKMIJDaBCO0Iwnwy1eyB/GFD5QPKUvGNxVMWDxT6dKrr0y3rlNcr5+CE44uT3
+          hRRt0Euk2aw+EvnSN8VuTw4L0dWQ9WhM3XEwRKmlfzfxevAE8+b96WVZewbiduhefIN3oZS1jWKJfr6iG1HK2m+Lm8S6gss30z41W9aK
+          mkiMZLxAarz8cF1obeJ3ylIV8TuWen6GfKE8swRx70X15BMrTwvm/cjX2GntihtAkk608URqeGL+UKOLaZUZGhxrf/fgaGe/9v/tPdtu
+          CP32_R8_PAYLOAD_3
 
-      - name: Decode exact R7 correction payload
+      - name: Stage R8 payload part 4
         shell: bash
         run: |
           set -euo pipefail
-          STAGE="$RUNNER_TEMP/cp32-r7-correction"
+          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_4'
+          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
+          CP32_R8_PAYLOAD_4
+
+      - name: Stage R8 payload part 5
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_5'
+          H8S+E+cdj0DB2pcEwdyAPMQV7Wbcw3jjL1CdfRNKIjWM1Ohuknm3S0kPXsMJhQNIEACEKwfRQl40Vh4xxmwVNIQh3qvxohWOg8FVOZ1S
+          uo3mfrXR26+1u71O63m91zxufO86Zbr46B4220e9g9phFRPHdbrt+n7X5R3RJMc1TZiR7A0nFJXSNBaM+oxwTPHUgDOHI/uKQJgyqwhJ
+          B+jnD6tpUcGE247hZaufn3fwr1UnqAnAFUdeQsRBsQvivHCF31vIGBcyr9PV9WrXOHaAAC0YgPw16zClt2ySUXqeDIEcsqQgwHx4sOEY
+          HoYJ8RJVeeCV/Uazg5F0iFl4LVl82X0Vc8UOESK8wYyP8cyh4ND52q3hkeK9FcUC7aHXosYhofmA5e4YZbKYB6DuyqeDMz0EcfWYFeQX
+          uph1zqK0rWuIeQSmtGS6DApv//FoH/NoSKoqCU19eBBgaCai6Cz7AhygKMTwhAmC6Bpk166js5GqboROO0Ia4RyUDUaxjwqIevfVV0ap
+          aBnRCJZSxzdyQ1RPYDi7kcjH3AMwWkNXAQIWNWACY21+ELSkE4IfNuQCEfuZzFvMYRg9tHvFPt4wJIjGC4hDHJblJZm43Yq87Zl+jURv
+          Md8uIGCOMrkkUTyJovEkjwtdslQ+ir6k3lAF4rDVKpKAjFYpG5uszxEESQk2wkkkGTiDdNepNQ57+89q+88TA0fIduxYI/FngHUKMLzJ
+          OtzRWM2xoKmxVD6dzruCzqM3qk7kXUmqE8i7mb9J+ZBr9tkdFhAjw/K08o5lxS5nf556NkAt1AeHLTRLPG0txUOkBC3J4T7UyFOCflTP
+          z+c+pgJmcyFLYlrJSFssUgm6cetTJkR7tuKq7Rtty8b7b9sezsYknapdwg0ZeUGm1TJmMCm7j5h9XpMX4/68ylv8r+eGFC88wvH/Td4X
+          8RTvmv+l+Li0vbPJ//I5HrH+PG93jhzpFxfBLAe7eM5iRX6sIeAa+7+dYsm2/9vZ3t7Y/32W56Pj/6cl+lwTWkgHY4TCTIKwLu1n1CYx
+          EVTUQ53Hf71czkiDHtG4Pqu2yRRbY0maJ11oivSvKr/ebO6PxnRrHt1TNpO3+0VyoCrWk0RuE7kbdorufiFEJJXwD69K07qEHWFpAzV9
+          nRE15bYpADMickpUVjIz1nGZyUo2F6OwSoJgS1AmpIgklShHGUBNecoEachVcbWS63BlsuCLuQmVAcOUjrJKwo2rESdQ3SargikylaM7
+          JKJdlBuUbl651M5F5lPi4qYUH/lbJp7M+hj1zr7xtKK4kKolJZsEv/g0rkkQORdSGDc1iifHXTN4LjGridYFWQ0E85xsKT1gWRtxnqID
+          Z1Y4ulU0mDVdW5rAmq07wZKxWCkSI2DVKik+bKStakNz/awd9GrtdrPdSWrx3kqEd6RLX1qvQn+Mi3TlnIEELvR8hYDfc3ue0ZwWFPhD
+          mhqGlyDnUXDEaAspiSPE4ibNY2xgczWZscFdtal8Vu0Ie0mxYkT18uZOXaOqwLZYNWu/3krF8azZ6faentTg31b9oHdQPzystWvHsitR
+          Shqpd4J67INqtwq121EIcbQ0AkOowSO1E+imVPoKIc5RwSe5wQ3VX2TY1vX4wgnLBVSfs9krOy5Kdm6Wb3IeuDGrkx6hXjaVKexIjGbA
+          oR5lSSlS8h5IjQhKeqZQe0+uRYx2VhzwRFI6z+otICRP2/DGCHdqtc0Hyy6eY2RS0smwTnhxUyemIj7hAI6C/MD5MHjuArPYp5gqQ4L9
+          65FeN8/HPkL+Q3wMBjnYiXj79AmEPu1ZY//7+HHU/6u0kf8+z5Mo/6WKf2vNdoVI5q/8gaBJafnhRPnFoD99IXGwCwepMqQdhfMzSmqJ
+          SXLmVCCH5adCDhS6U7r/GlZe3s+fgxBzeVb4KZy/HY3hWCuQXQ7IUJg2UjMT9kt+/moyvp91kuqo29VbFO4z883cWX/w9nyOXlN6JSaI
+          wotCtCN6+L3FzB/AwMwqUZnyLAyXQOD7s/gKWsfXAh9j/CRKQZT2XRsVCoPxRdHfLoA1esdTacSXOiPfbB0iHlATP740O7xAdqX7kiU3
+          O0koi4F8xsH0bY7MFHMB+dJHy/KlKsQsmRkKMbnKzIdSPG58WrnhHGYDSobTUXBulFzvfBEt669AtM+dXcI2yqFctcSpiCtI1/05qQKI
+          LRNvNh/TaIwCJmYYhm4l+j2iCIoWiUtDnQCIBTIZ4tyeY99ESTrW0mlGXLnzy/58aCo/VTGYF0Y9kgqsUaNiQeVWkTdQYQaYh5ZPKBNr
+          f+dgbd7KlygDHtV6wLjX2sfVRq960m0eUUD+/GR4/3RXabEq1yxNU+eiT5EHsoxTLb88zSIBRqJMf8iRd2BaqOTNriaCV5h1ZPg2i7kw
+          grFX+fYaoOcZNB6F3ixy4+1ikIPwrSd1aKtgSYEiSsDRYqgUfimFJtyCXHsEMfP6EPhszAZx8zprGqmOvKwrCiPTym0PlpNxxeWEtECK
+          Ogye8KLW+65dbZFsDlP0An522ycdFJz3qp1ao35c65WKpUfFr4s73VKpVHze6eYRlssHf3aFgWRsvQaW8HZx/HJyK9yIk8XGe9aH+XAX
+          F/3SziPXy1/OcDtlCJiXHwaYrzjjXvgrGAAbryu61XlWdbMm5ErFHZ2dDfvDb7a2BmePBt8U+9/s9Pv+8OybwejRo69LxdH21nBQ6j8s
+          PfS/KRa//rr/cHC24/vbw+3i47NSqf+1BTLaav2Hmpul/vG7PGj18cPHpeLOjvFa1tw7qTcOeo3qXq0hKkoTdD2FlYtrkWNrkeNrkeNr
+          kWtv5ezZdz1YX39y5gMuauv7ZlF5ebqrcGYYzCnzgkuUwM26tO/cU89CK8szANN1XCs1KmpRbzwP0JRLUiMQV6dDbguP3ITnveHYbeZC
+          keU9b1eUcOO2NA7B6tObhXcNZ5HBFGXUHvEHGGkli7ajTDWbHZ0yZJMblu83zElQHsGO4wO5YaHEfO86vTTLQMlETSFCgnAIdHz+/r3v
+          wcaN2bE3X0jbX+bHFNkVrkmVDYcnodvj20pxIxX3YrmcLcqFwgIIbjj3OS+VD8LCBEOa+P3zS7/whI6vyk+LxW8eVn9TOoT/iMUS8frw
+          az6czvHEnMPsT6AA+yZ2MgPgAgRoK71uQdZkuG4a0QHVraJJnxqfRHw1LERiPJnVBjeN7FKAUH+i9bHlaquOSp+D2Hou6jCgVMb1vvoq
+          7vvC788HF63+vD9Z5IF7Qo0rlC/A/x3tE2Is4o9xIlSiHDlsENW7/epx87iOVpGHzfZe/eCgdtxrwlZnSWI68JmRIANoHs6K6MuLgGKz
+          y8sI0aS/WlpEQOwmq5CJ75RW1EbVkcDHG9mSZAz6Y9aUDZUbSqwq367wd/8e0OVkoRmoPirJqTSF5GK0g2ta+KwdNw9qvW6j02vXfl/b
+          72IIv5Pus2YbqPFB74dau9mr7nVqx4An9wqZJ2W+K1/lvSf+9N2rfFr1V4vfVuD/l+790yL+w/2Y7FECCpwDO98fOwDH4bbpjlwQra9P
+          UUNb34/t6mG10alpfWX2IifT/uXyIpwHP/tD6EoZ/ifKk9IVVNoGg7V92au2a7360+Mm/CArXKaaNmfrx/cvXy3uw5GQy7H8VLmBj1dh
+          wYBEPdJVQzFW6P2XXmGS2C+gB1fOYhBi8js0+HX81cCfsci5/nwSLLltjKAXyjnzaaO5B5viWbfb6ogeH9Q7GKQRdvG9TIF1jb6T/nHB
+          ZwopOp+oCJ2NPWfU7UlWswEuzC7PxnxG5/6kH0wXDqoBibJwzCeuvzteS9ATnGolaRfDZ9bRiJfsoqb2B9Tq15UxtGhQo01RjGF3nEjL
+          YoqnLGluMXsb5PAGoIIEjio7xBg6wcLB8gVaQracahaI7LaEeLRuLqLSVHQeWu3aYYOwAN1zeh2YBRi82Y4a0/0JnrNAUzQD7vsw+qTy
+          Iitew3Db+T2/SZOrpAn+qD2ewVgD7uxM/oXYX3Hp3R+PXxhEL0ID00gaO9glau4TZkbnMRV5BRiQgLm18bqFSMk1YwP1rYza60DHmhlE
+          eiqvVtf21DQ1UIAEYyWWrDMJ3/pJ0G6tL4riIzAcJ7AxT+q9zlHzeQ05iQ7KG22g4FZqnKzZGQ3rbHsAYjYSCt/nHVVD4wEFHdZf0ire
+          TwMA5CCc4OHqTJC1nfTfArPqLLCUk4P9HI77CB8VAI7QfjCB9T5sgrNweSFaZHVoDtHIALsUTgOkDVRZqiGslW0OWDRIOHeR99BYeeIv
+          iLu4QTbkY7kF75obvAfDVaW46/x0AZUyGfyLbPwpqWFzBGhgBZpys1DG8wB+bgvkCqvTGi+UJRBlKI2S+XD1oLK1iyaKfLTylpsG6hhv
+          w9n/m9EbeaqtsashrB22c4eWwsgky1m5zfQKSRuv09snx3gisnNR8QEFgshPfuTWwtFIY9psogqoPelPaR9JlaPKSEWw8KzDnKssI45G
+          BHTzB82Ootc8hl2vz6BUA2x99ZX2/mXxlFYUT6rbkEutarQTzVZiH1SCJaML8PoDe0AZmGQHbPsXowf2HjL6YX1M7o1N7+2asfzicZWU
+          VjExPbLqTNTIcYLDLVLle7EVYPtOgdNqvvPn+wet5HK1yeWY7U8MBUFuiuINDxOHbMZMNix9ggHhFs6EXGnZFDgqCJiGh8oEo6qMEPbb
+          NRIYYUcIf9soO6y6C50vCLfd1HJZEZbMYfcRY2QwGYEvsK6yTnLyz3uoGWhIJ31YEYyt9fSk2j5IWJKo4QbOcmzROAuNxMIJBhm4DNx5
+          xFF2hQ7prxeOxhoJIzJtiNICRxneVLuYt1gM0GaZdARJtt7BIaTUjDHecUnIAmp1BiME1OR54DDAMdI43vUIGdOtk9b3OFJnTT9jTbJc
+          oZnJhYrYUhpiXawHjh+4K5SLG3vV/edCfu+f++85Jnqv8pMQ1v9V/r38DYrAQAdv3w9hE72/nL2fhO9871WGI3SEPfeyjBtgt7OwY5xp
+          6BAs9HMZ4x2W2auD5hFGENp/DqQPpXjaatQ1kLZnyGGRLzLso1cZ6JZwvqa/X/7onf72VZ46KAqoP/AfD/7ZfYK/3dCfXkq/oaPQGYcA
+          AJKi8IcCTxqFFmIkp6TEc2us4ocEIkXeMw6YG+vYzuUqzjaymZfHq2nBqxndcj8bN6p33o1Y60SrxfJLMFFZy6AnvJTWPEzHCmd/fhye
+          CP32_R8_PAYLOAD_5
+
+      - name: Stage R8 payload part 6
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat >> "$RUNNER_TEMP/cp32-r8-correction.b64" <<'CP32_R8_PAYLOAD_6'
+          Z9LKbex7Ns/m2TybZ/Nsns2zeTbP5tk8m2fzbJ7Ns3k2z+bZPJtn82yezbN5Ns/m2TybZ/Nsns2zeTbP5tk8m2fzbJ6/6ud/AU0jSKcA
+          kAEA
+          CP32_R8_PAYLOAD_6
+
+      - name: Decode and apply bounded R8 correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/cp32-r8-correction"
           rm -rf "$STAGE"; mkdir -p "$STAGE"
-          base64 -d "$RUNNER_TEMP/cp32-r7-correction.b64" > "$RUNNER_TEMP/cp32-r7-correction.tar.gz"
-          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-r7-correction.tar.gz" | awk '{print $1}')"
-          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-r7-correction.tar.gz")"
-          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n' "$CP32_CORRECTION_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_CORRECTION_PAYLOAD_SIZE" "$ACTUAL_SIZE" > artifacts/bootstrap/r7-payload-identity.json
-          [[ "$ACTUAL_SHA" == "$CP32_CORRECTION_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_CORRECTION_PAYLOAD_SIZE" ]] || { echo 'R7_CORRECTION_PAYLOAD_IDENTITY_MISMATCH' >&2; exit 2; }
-          tar -xzf "$RUNNER_TEMP/cp32-r7-correction.tar.gz" -C "$STAGE"
-          echo "CP32_R7_STAGE=$STAGE" >> "$GITHUB_ENV"
-
-      - name: Create bounded R7 branch and apply validation infrastructure only
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'cp32-validation-installer'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch -c "cp32-validation-local-tls-r1-local-$GITHUB_RUN_ID"
-          allowed=(
-            .github/workflows/cp32-trusted-candidate-e2e.yml
-            .github/workflows/cp32-android-background-e2e.yml
-            .github/workflows/cp32-production-e2e.yml
-            tests/helpers/relay-preflight.js
-            tests/helpers/local-candidate-tls.js
-            tests/helpers/two-independent-clients.js
-            tests/android/android-background-player-path.js
-            tools/static-validation.js
-            tools/tls-trust-regression.js
-            playwright.config.js
-          )
-          for f in "${allowed[@]}"; do mkdir -p "$(dirname "$f")"; cp "$CP32_R7_STAGE/$f" "$f"; done
-          { git diff --name-only; git ls-files --others --exclude-standard | sed '/^artifacts\//d'; } | sort -u > artifacts/bootstrap/r7-changed-files.txt
-          python3 - <<'PYBOUND'
+          base64 -d "$RUNNER_TEMP/cp32-r8-correction.b64" > "$RUNNER_TEMP/cp32-r8-correction.tar.gz"
+          ACTUAL_SHA="$(sha256sum "$RUNNER_TEMP/cp32-r8-correction.tar.gz" | awk '{print $1}')"
+          ACTUAL_SIZE="$(stat -c%s "$RUNNER_TEMP/cp32-r8-correction.tar.gz")"
+          printf '{"expectedSha256":"%s","actualSha256":"%s","expectedSize":%s,"actualSize":%s}\n' "$CP32_CORRECTION_PAYLOAD_SHA256" "$ACTUAL_SHA" "$CP32_CORRECTION_PAYLOAD_SIZE" "$ACTUAL_SIZE" > artifacts/bootstrap/r8-payload-identity.json
+          [[ "$ACTUAL_SHA" == "$CP32_CORRECTION_PAYLOAD_SHA256" && "$ACTUAL_SIZE" == "$CP32_CORRECTION_PAYLOAD_SIZE" ]] || { echo R8_CORRECTION_PAYLOAD_IDENTITY_MISMATCH >&2; exit 2; }
+          tar -xzf "$RUNNER_TEMP/cp32-r8-correction.tar.gz" -C "$STAGE"
+          python3 - "$STAGE" <<'PYAPPLY'
+          import json,shutil,sys
           from pathlib import Path
-          allowed={'.github/workflows/cp32-trusted-candidate-e2e.yml','.github/workflows/cp32-android-background-e2e.yml','.github/workflows/cp32-production-e2e.yml','tests/helpers/relay-preflight.js','tests/helpers/local-candidate-tls.js','tests/helpers/two-independent-clients.js','tests/android/android-background-player-path.js','tools/static-validation.js','tools/tls-trust-regression.js','playwright.config.js'}
-          changed={x.strip() for x in Path('artifacts/bootstrap/r7-changed-files.txt').read_text().splitlines() if x.strip()}
-          extra=sorted(changed-allowed)
-          if extra: raise SystemExit('R7_UNBOUNDED_FILE_MUTATION:'+','.join(extra))
-          if 'index.html' in changed or any(x.endswith('.html') for x in changed): raise SystemExit('PRODUCTION_HTML_MUTATION_FORBIDDEN')
-          PYBOUND
+          stage=Path(sys.argv[1]); manifest=json.loads((stage/'R8_CORRECTION_MANIFEST.json').read_text()); root=Path('.')
+          allowed=set(manifest['changedFiles'])
+          for rel in allowed:
+            src=stage/rel; dst=root/rel
+            if not src.is_file(): raise SystemExit(f'R8_PAYLOAD_FILE_MISSING:{rel}')
+            dst.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(src,dst)
+          Path('artifacts/bootstrap/r8-changed-file-allowlist.json').write_text(json.dumps(sorted(allowed),indent=2)+'\n')
+          PYAPPLY
 
-      - name: R7 static, lifecycle, and TLS policy validation
+      - name: Static ownership, R6 lifecycle, and R7 TLS preservation validation
         shell: bash
         run: |
           set -euo pipefail
-          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }" .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > artifacts/bootstrap/r7-workflow-yaml-parse.log
-          for f in tests/helpers/relay-preflight.js tests/helpers/local-candidate-tls.js tests/helpers/two-independent-clients.js tests/android/android-background-player-path.js tools/static-validation.js tools/tls-trust-regression.js playwright.config.js; do node --check "$f"; done > artifacts/bootstrap/r7-node-parse.log 2>&1
-          node tools/static-validation.js > artifacts/bootstrap/r7-static-validation.stdout.log 2> artifacts/bootstrap/r7-static-validation.stderr.log
-          cp artifacts/results/static-validation.json artifacts/bootstrap/r7-static-validation.json
-          python3 - <<'PYR7AUDIT'
-          import json,re
+          node tools/static-validation.js > artifacts/bootstrap/r8-static-validation.stdout.json
+          ruby -e "require 'yaml'; ARGV.each { |f| YAML.load_file(f); puts 'YAML_OK '+f }" .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml > artifacts/bootstrap/r8-yaml-parse.log
+          python3 - <<'PYLIFE'
+          import json
           from pathlib import Path
-          workflows=[Path('.github/workflows/cp32-trusted-candidate-e2e.yml'),Path('.github/workflows/cp32-android-background-e2e.yml'),Path('.github/workflows/cp32-production-e2e.yml')]
-          lifecycle=[]; violations=[]
-          targets={
-            'cp32-trusted-candidate-e2e.yml':['artifacts/preflight/resolved-package-lock.sha256','artifacts/preflight/key.pem','artifacts/preflight/cert.pem','artifacts/preflight/candidate-server.stdout.log','artifacts/preflight/preflight.json'],
-            'cp32-android-background-e2e.yml':['artifacts/preflight/key.pem','artifacts/preflight/cert.pem','artifacts/preflight/candidate-server.stdout.log','artifacts/preflight/android-preflight.json','artifacts/android/logcat.txt'],
-            'cp32-production-e2e.yml':['artifacts/preflight/production-preflight.json'],
+          specs={
+            '.github/workflows/cp32-trusted-candidate-e2e.yml':['resolved-package-lock.sha256','key.pem','cert.pem','candidate-server.stdout.log','candidate-server.stderr.log','candidate-server.pid','preflight.json'],
+            '.github/workflows/cp32-android-background-e2e.yml':['key.pem','cert.pem','candidate-server.stdout.log','candidate-server.stderr.log','candidate-server.pid','android-preflight.json','logcat.txt'],
+            '.github/workflows/cp32-production-e2e.yml':['production-preflight.json'],
           }
-          for p in workflows:
-            lines=p.read_text().splitlines(); init=next((i+1 for i,l in enumerate(lines) if 'Initialize validation evidence filesystem' in l),None)
-            for t in targets[p.name]:
-              hit=next((i+1 for i,l in enumerate(lines) if t in l),None); ok=bool(init and hit and init<hit); row={'workflow':str(p),'target':t,'initLine':init,'firstReferenceLine':hit,'initBeforeReference':ok}; lifecycle.append(row)
-              if not ok: violations.append(row)
-          files=[p for root in [Path('tests'),Path('tools')] for p in root.rglob('*.js')]+[Path('playwright.config.js')]
-          text='\n'.join(p.read_text(errors='ignore') for p in files)
-          security={
-            'NODE_TLS_REJECT_UNAUTHORIZED_ZERO': bool(re.search(r'(?:process\.)?env\.NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["\']0["\']',text)),
-            'GENERIC_REJECT_UNAUTHORIZED_FALSE': bool(re.search(r'rejectUnauthorized\s*:\s*false',text)),
-            'BARE_IGNORE_CERTIFICATE_ERRORS': bool(re.search(r'(?:^|[\s"\'])--ignore-certificate-errors(?:[\s"\']|$)',text,re.M)),
-            'PLAYWRIGHT_IGNORE_HTTPS_TRUE': bool(re.search(r'ignoreHTTPSErrors\s*:\s*true',Path('playwright.config.js').read_text())),
-            'SCOPED_SPKI_PRESENT': '--ignore-certificate-errors-spki-list=' in text,
-            'LOCAL_TLS_OWNER_PRESENT': Path('tests/helpers/local-candidate-tls.js').is_file(),
-          }
-          out={'ARTIFACT_WRITE_BEFORE_INIT':len(violations),'lifecycle':lifecycle,'LOCAL_CANDIDATE_TLS_POLICY_DIVERGENCE':0 if security['SCOPED_SPKI_PRESENT'] and security['LOCAL_TLS_OWNER_PRESENT'] and not any(security[k] for k in ['NODE_TLS_REJECT_UNAUTHORIZED_ZERO','GENERIC_REJECT_UNAUTHORIZED_FALSE','BARE_IGNORE_CERTIFICATE_ERRORS','PLAYWRIGHT_IGNORE_HTTPS_TRUE']) else 1,'security':security}
-          Path('artifacts/bootstrap/r7-infrastructure-audit.json').write_text(json.dumps(out,indent=2)+'\n')
-          if violations or out['LOCAL_CANDIDATE_TLS_POLICY_DIVERGENCE']!=0: raise SystemExit('R7_INFRASTRUCTURE_INVARIANT_FAILED')
-          PYR7AUDIT
-
-      - name: R7 local scoped TLS regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/bootstrap/r7-local-tls artifacts/preflight
-          openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/preflight/key.pem -out artifacts/preflight/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2' > artifacts/bootstrap/r7-local-tls/openssl.stdout.log 2> artifacts/bootstrap/r7-local-tls/openssl.stderr.log
-          SPKI="$(openssl x509 -in artifacts/preflight/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl base64 -A)"
-          export CP32_LOCAL_TRUST_CERT="$GITHUB_WORKSPACE/artifacts/preflight/cert.pem"
+          out={}; bad=0
+          for name,targets in specs.items():
+            s=Path(name).read_text(); init=s.find('Initialize validation evidence filesystem'); rows=[]
+            for target in targets:
+              pos=s.find(target); ok=init>=0 and pos>init; rows.append({'target':target,'found':pos>=0,'afterInit':ok}); bad+=0 if ok else 1
+            out[name]={'targets':rows,'pass':all(x['afterInit'] for x in rows)}
+          out['ARTIFACT_WRITE_BEFORE_INIT']=bad
+          Path('artifacts/bootstrap/r8-artifact-lifecycle.json').write_text(json.dumps(out,indent=2)+'\n')
+          if bad: raise SystemExit('R6_ARTIFACT_LIFECYCLE_REGRESSION')
+          PYLIFE
+          mkdir -p artifacts/bootstrap/r8-tls
+          openssl req -x509 -newkey rsa:2048 -nodes -keyout artifacts/bootstrap/r8-tls/key.pem -out artifacts/bootstrap/r8-tls/cert.pem -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:10.0.2.2' >/dev/null 2>&1
+          SPKI="$(openssl x509 -in artifacts/bootstrap/r8-tls/cert.pem -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl base64 -A)"
+          export CP32_LOCAL_TRUST_CERT="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-tls/cert.pem"
           export CP32_LOCAL_CERT_SPKI="$SPKI"
-          export CP32_CANDIDATE_PORT=9443
           export CP32_CANDIDATE_ORIGIN=https://127.0.0.1:9443
-          node tests/helpers/candidate-https-server.js > artifacts/bootstrap/r7-local-tls/server.stdout.log 2> artifacts/bootstrap/r7-local-tls/server.stderr.log &
+          export CP32_CANDIDATE_PORT=9443
+          export CP32_TLS_CERT="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-tls/cert.pem"
+          export CP32_TLS_KEY="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-tls/key.pem"
+          node tests/helpers/candidate-https-server.js > artifacts/bootstrap/r8-tls/server.stdout.log 2> artifacts/bootstrap/r8-tls/server.stderr.log &
           SERVER_PID=$!
           cleanup_server(){ set +e; kill "$SERVER_PID" 2>/dev/null; wait "$SERVER_PID" 2>/dev/null; set -e; }
           trap cleanup_server EXIT
-          for _ in $(seq 1 50); do [[ -f artifacts/preflight/candidate-server-ready.json ]] && break; sleep .1; done
-          CP32_TLS_REGRESSION_OUTPUT=artifacts/bootstrap/r7-local-tls/TLS_TRUST_REGRESSION.json node tools/tls-trust-regression.js
+          for i in $(seq 1 100); do [[ -f artifacts/preflight/candidate-server-ready.json ]] && break; sleep .1; done
+          CP32_TLS_REGRESSION_OUTPUT=artifacts/bootstrap/r8-tls/TLS_TRUST_REGRESSION.json node tools/tls-trust-regression.js
           cleanup_server
           trap - EXIT
 
-      - name: Verify trusted HTML unchanged and package fallback
+      - name: Install harness regression runtime
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PYSOURCE'
-          import hashlib,json,os
+          npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Playwright runner ownership regression
+        shell: bash
+        env:
+          CP32_TARGET_MODE: production
+          CP32_HARNESS_BOOTSTRAP_ARTIFACT_BASE: artifacts/bootstrap/r8-harness-runner
+        run: |
+          set -euo pipefail
+          npx playwright test tests/e2e/harness-ownership-bootstrap.spec.js --workers=1
+          CP32_HARNESS_SELF_CHECK_OUTPUT=artifacts/bootstrap/r8-harness-node.json node tools/harness-ownership-regression.js
+
+      - name: Verify bounded diff and trusted source preservation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYDIFF'
+          import hashlib,json,subprocess,os
           from pathlib import Path
-          candidates=[Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]
-          rows=[]; ok=False
-          for p in candidates:
-            if p.is_file():
-              b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==os.environ['CP32_EXPECTED_SHA256'] and len(b)==int(os.environ['CP32_EXPECTED_SIZE']) and os.environ['CP32_EXPECTED_BUILD'].encode() in b
-              rows.append({'path':str(p),'sha256':sha,'size':len(b),'exact':exact}); ok=ok or exact
-          Path('artifacts/bootstrap/r7-trusted-source-preservation.json').write_text(json.dumps({'productionSourceMutationCount':0,'indexHtmlMutationCount':0,'relaySourceMutationCount':0,'trustedCandidates':rows,'trustedShaUnchanged':ok},indent=2)+'\n')
-          if not ok: raise SystemExit('TRUSTED_HTML_MUTATION_DETECTED')
-          PYSOURCE
-          FALLBACK="$GITHUB_WORKSPACE/artifacts/bootstrap/cp32-validation-local-tls-r7-ready.zip"
-          (cd "$CP32_R7_STAGE" && zip -qr "$FALLBACK" .github tests tools playwright.config.js R7_CORRECTION_MANIFEST.json)
+          allowed=set([".github/workflows/cp32-trusted-candidate-e2e.yml",".github/workflows/cp32-android-background-e2e.yml",".github/workflows/cp32-production-e2e.yml","playwright.config.js","tests/helpers/touch-input.js","tests/helpers/two-independent-clients.js","tests/helpers/evidence-recorder.js","tests/helpers/pair-lifecycle.js","tests/helpers/player-path.js","tests/helpers/diagnostic-export.js","tests/android/android-peer-client.js","tests/android/android-background-player-path.js","tests/e2e/gate-harness.js","tests/e2e/trusted-candidate-player-path.spec.js","tests/e2e/production-player-path.spec.js","tests/e2e/lobby-background-sync.spec.js","tests/e2e/result-setup-stability.spec.js","tests/e2e/harness-ownership-bootstrap.spec.js","tools/harness-ownership-regression.js","tools/static-validation.js"])
+          diff=set(x for x in subprocess.check_output(['git','status','--porcelain=v1'],text=True).splitlines() for x in [x[3:]] if x and not x.startswith('artifacts/'))
+          unexpected=sorted(diff-allowed); missing=sorted(allowed-diff)
+          trusted=[]; ok=False
+          for p in [Path('trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html'),Path('validation/bootstrap/CP32_TRUSTED_CANDIDATE.html'),Path('validation/bootstrap/MOBILE_UPLOAD_02_CP32_TRUSTED_CANDIDATE.html')]:
+            if not p.is_file(): continue
+            b=p.read_bytes(); sha=hashlib.sha256(b).hexdigest(); exact=sha==os.environ['CP32_EXPECTED_SHA256'] and len(b)==int(os.environ['CP32_EXPECTED_SIZE']) and os.environ['CP32_EXPECTED_BUILD'].encode() in b
+            trusted.append({'path':str(p),'sha256':sha,'size':len(b),'exact':exact}); ok=ok or exact
+          rec={'allowedChangedFiles':sorted(allowed),'observedChangedFiles':sorted(diff),'unexpected':unexpected,'missing':missing,'trusted':trusted,'trustedShaUnchanged':ok,'productionSourceMutationCount':0,'indexHtmlMutationCount':0,'relayMutationCount':0}
+          Path('artifacts/bootstrap/r8-bounded-diff.json').write_text(json.dumps(rec,indent=2)+'\n')
+          if unexpected or missing or not ok: raise SystemExit('R8_BOUNDED_DIFF_OR_TRUSTED_SOURCE_FAILURE')
+          PYDIFF
+          FALLBACK="$GITHUB_WORKSPACE/artifacts/bootstrap/cp32-player-path-harness-r8-ready.zip"
+          zip -qr "$FALLBACK" '.github/workflows/cp32-trusted-candidate-e2e.yml' '.github/workflows/cp32-android-background-e2e.yml' '.github/workflows/cp32-production-e2e.yml' 'playwright.config.js' 'tests/helpers/touch-input.js' 'tests/helpers/two-independent-clients.js' 'tests/helpers/evidence-recorder.js' 'tests/helpers/pair-lifecycle.js' 'tests/helpers/player-path.js' 'tests/helpers/diagnostic-export.js' 'tests/android/android-peer-client.js' 'tests/android/android-background-player-path.js' 'tests/e2e/gate-harness.js' 'tests/e2e/trusted-candidate-player-path.spec.js' 'tests/e2e/production-player-path.spec.js' 'tests/e2e/lobby-background-sync.spec.js' 'tests/e2e/result-setup-stability.spec.js' 'tests/e2e/harness-ownership-bootstrap.spec.js' 'tools/harness-ownership-regression.js' 'tools/static-validation.js'
           sha256sum "$FALLBACK" > "$FALLBACK.sha256"
 
-      - name: Commit bounded R7 correction locally
+      - name: Commit bounded R8 correction locally
         id: localcommit
         shell: bash
         run: |
           set -euo pipefail
-          git add .github/workflows/cp32-trusted-candidate-e2e.yml .github/workflows/cp32-android-background-e2e.yml .github/workflows/cp32-production-e2e.yml tests/helpers/relay-preflight.js tests/helpers/local-candidate-tls.js tests/helpers/two-independent-clients.js tests/android/android-background-player-path.js tools/static-validation.js tools/tls-trust-regression.js playwright.config.js
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c cp32-player-path-harness-ownership-r1
+          git add '.github/workflows/cp32-trusted-candidate-e2e.yml' '.github/workflows/cp32-android-background-e2e.yml' '.github/workflows/cp32-production-e2e.yml' 'playwright.config.js' 'tests/helpers/touch-input.js' 'tests/helpers/two-independent-clients.js' 'tests/helpers/evidence-recorder.js' 'tests/helpers/pair-lifecycle.js' 'tests/helpers/player-path.js' 'tests/helpers/diagnostic-export.js' 'tests/android/android-peer-client.js' 'tests/android/android-background-player-path.js' 'tests/e2e/gate-harness.js' 'tests/e2e/trusted-candidate-player-path.spec.js' 'tests/e2e/production-player-path.spec.js' 'tests/e2e/lobby-background-sync.spec.js' 'tests/e2e/result-setup-stability.spec.js' 'tests/e2e/harness-ownership-bootstrap.spec.js' 'tools/harness-ownership-regression.js' 'tools/static-validation.js'
           git diff --cached --check
-          git commit -m 'Correct CP32 local candidate TLS trust policy'
+          git commit -m 'Correct CP32 external player-path harness ownership'
           LOCAL_SHA="$(git rev-parse HEAD)"
           echo "local_sha=$LOCAL_SHA" >> "$GITHUB_OUTPUT"
-          printf '%s\n' "$LOCAL_SHA" > artifacts/bootstrap/r7-local-commit-sha.txt
+          printf '%s\n' "$LOCAL_SHA" > artifacts/bootstrap/r8-local-commit-sha.txt
 
-      - name: Authenticate, push R7 correction branch, verify remote, and create PR
+      - name: Authenticate, push R8 correction branch, verify remote, and create PR
         id: remote
         shell: bash
         env:
           CP32_BOOTSTRAP_PAT: ${{ secrets.CP32_BOOTSTRAP_PAT }}
         run: |
           set -euo pipefail
-          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/r7-remote-install-status.json"
+          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/r8-remote-install-status.json"
           BASE="${{ github.event.repository.default_branch }}"
-          BRANCH='cp32-validation-local-tls-r1'
+          BRANCH='cp32-player-path-harness-ownership-r1'
           LOCAL_SHA='${{ steps.localcommit.outputs.local_sha }}'
-          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-r7-gitconfig"
-          API_IDENTITY_AUTH='NOT_RUN'; API_REPOSITORY_ACCESS='NOT_RUN'; GIT_HTTPS_READ_AUTH='NOT_RUN'; GIT_HTTPS_WRITE_AUTH='NOT_RUN'; REMOTE_SHA=''; PR_URL=''; PR_STATE=''; PUSH_RC=99; PR_RC=99
-          write_status(){ python3 - "$STATUS_FILE" "$1" "$BRANCH" "$BASE" "$LOCAL_SHA" "$REMOTE_SHA" "$PR_URL" "$PR_STATE" "$PUSH_RC" "$PR_RC" "$API_IDENTITY_AUTH" "$API_REPOSITORY_ACCESS" "$GIT_HTTPS_READ_AUTH" "$GIT_HTTPS_WRITE_AUTH" <<'PYSTATUS'
-          import json,sys
-          path,status,branch,base,local_sha,remote_sha,pr_url,pr_state,push_rc,pr_rc,api_id,api_repo,git_read,git_write=sys.argv[1:]
-          open(path,'w').write(json.dumps({'status':status,'branch':branch,'base':base,'localCommitSha':local_sha,'remoteCommitSha':remote_sha,'remoteBranchExists':bool(remote_sha),'prUrl':pr_url,'prState':pr_state,'pushExitCode':int(push_rc),'prExitCode':int(pr_rc),'authOwner':'GH_CLI_GIT_CREDENTIAL_HELPER','secretName':'CP32_BOOTSTRAP_PAT','API_IDENTITY_AUTH':api_id,'API_REPOSITORY_ACCESS':api_repo,'GIT_HTTPS_READ_AUTH':git_read,'GIT_HTTPS_WRITE_AUTH':git_write,'tokenMaterialRecorded':False},indent=2)+'\n')
-          PYSTATUS
-          }
+          GIT_AUTH_CONFIG="$RUNNER_TEMP/cp32-r8-gitconfig"
+          REMOTE_SHA=''; PR_URL=''; PUSH_RC=99; PR_RC=99
           cleanup(){ set +e; unset GH_TOKEN CP32_BOOTSTRAP_PAT GIT_CONFIG_GLOBAL; rm -f "$GIT_AUTH_CONFIG"; set -e; }
           trap cleanup EXIT
-          if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then write_status 'CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL'; exit 21; fi
+          if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then echo CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL >&2; exit 21; fi
           export GH_TOKEN="$CP32_BOOTSTRAP_PAT"; export GIT_CONFIG_GLOBAL="$GIT_AUTH_CONFIG"; : > "$GIT_AUTH_CONFIG"; chmod 600 "$GIT_AUTH_CONFIG"
           git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
-          LOGIN="$(gh api user --jq '.login' 2> artifacts/bootstrap/r7-api-identity.stderr.log)" || { API_IDENTITY_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_AUTH_FAILED'; exit 22; }
-          [[ -n "$LOGIN" ]] || { API_IDENTITY_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_AUTH_FAILED'; exit 22; }; API_IDENTITY_AUTH='PASS'
-          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,visibility:.visibility,permissions:.permissions}' > artifacts/bootstrap/r7-api-repository-access.json 2> artifacts/bootstrap/r7-api-repository-access.stderr.log || { API_REPOSITORY_ACCESS='FAIL'; write_status 'CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED'; exit 26; }; API_REPOSITORY_ACCESS='PASS'
-          gh auth setup-git --hostname github.com --force > artifacts/bootstrap/r7-gh-auth-setup-git.stdout.log 2> artifacts/bootstrap/r7-gh-auth-setup-git.stderr.log || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED'; exit 27; }
-          BASE_LINE="$(git ls-remote origin "refs/heads/$BASE" 2> artifacts/bootstrap/r7-git-read.stderr.log)" || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'; exit 28; }
-          [[ -n "$BASE_LINE" ]] || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_BASE_REF_NOT_OBSERVED'; exit 29; }; GIT_HTTPS_READ_AUTH='PASS'
-          EXISTING="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r7-branch-check.stderr.log)" || { GIT_HTTPS_READ_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED'; exit 28; }
-          if [[ -n "$EXISTING" ]]; then BRANCH="cp32-validation-local-tls-r1-$GITHUB_RUN_ID"; fi
-          git branch -m "$BRANCH"
-          set +e; git push -u origin "$BRANCH" > artifacts/bootstrap/r7-git-push.stdout.log 2> artifacts/bootstrap/r7-git-push.stderr.log; PUSH_RC=$?; set -e
-          if [[ $PUSH_RC -ne 0 ]]; then GIT_HTTPS_WRITE_AUTH='FAIL'; write_status 'CP32_BOOTSTRAP_REMOTE_PUSH_FAILED'; exit 23; fi; GIT_HTTPS_WRITE_AUTH='PASS'
-          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r7-remote-branch-check.stderr.log)" || { write_status 'CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED'; exit 30; }
-          REMOTE_SHA="${REMOTE_LINE%%[[:space:]]*}"; [[ -n "$REMOTE_SHA" ]] || { write_status 'CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED'; exit 31; }; [[ "$REMOTE_SHA" == "$LOCAL_SHA" ]] || { write_status 'CP32_BOOTSTRAP_REMOTE_SHA_MISMATCH'; exit 32; }
-          set +e; PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Correct CP32 validation local TLS trust policy' --body 'Bounded validation-infrastructure correction. Local candidate HTTPS trusts only the runtime test certificate/SPKI; production and public relay TLS remain strict. R6 artifact lifecycle is preserved. Trusted game HTML, index.html, and relay source are unchanged.' 2> artifacts/bootstrap/r7-pr-create.stderr.log)"; PR_RC=$?; set -e
-          if [[ $PR_RC -ne 0 || -z "$PR_URL" ]]; then write_status 'CP32_BOOTSTRAP_PR_CREATE_FAILED'; exit 24; fi
-          PR_JSON="$(gh pr view "$PR_URL" --json headRefName,baseRefName,state,url 2> artifacts/bootstrap/r7-pr-view.stderr.log)" || { write_status 'CP32_BOOTSTRAP_PR_VERIFICATION_FAILED'; exit 25; }
-          printf '%s\n' "$PR_JSON" > artifacts/bootstrap/r7-pr-verification.json; export PR_JSON BRANCH BASE
-          PR_STATE="$(python3 - <<'PYPR'
+          gh api user --jq '{login:.login}' > artifacts/bootstrap/r8-api-identity.json 2> artifacts/bootstrap/r8-api-identity.stderr.log || { echo CP32_BOOTSTRAP_PAT_AUTH_FAILED >&2; exit 22; }
+          gh api "repos/$GITHUB_REPOSITORY" --jq '{fullName:.full_name,defaultBranch:.default_branch,permissions:.permissions}' > artifacts/bootstrap/r8-api-repository-access.json 2> artifacts/bootstrap/r8-api-repository-access.stderr.log || { echo CP32_BOOTSTRAP_PAT_REPOSITORY_ACCESS_FAILED >&2; exit 26; }
+          gh auth setup-git --hostname github.com --force > artifacts/bootstrap/r8-gh-auth-setup-git.stdout.log 2> artifacts/bootstrap/r8-gh-auth-setup-git.stderr.log || { echo CP32_BOOTSTRAP_GIT_CREDENTIAL_SETUP_FAILED >&2; exit 27; }
+          git ls-remote origin "refs/heads/$BASE" > artifacts/bootstrap/r8-git-read-main.txt 2> artifacts/bootstrap/r8-git-read.stderr.log || { echo CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED >&2; exit 28; }
+          EXISTING="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r8-branch-check.stderr.log)" || { echo CP32_BOOTSTRAP_GIT_HTTPS_READ_AUTH_FAILED >&2; exit 28; }
+          if [[ -n "$EXISTING" ]]; then BRANCH="cp32-player-path-harness-ownership-r1-$GITHUB_RUN_ID"; git branch -m "$BRANCH"; fi
+          set +e; git push -u origin "$BRANCH" > artifacts/bootstrap/r8-git-push.stdout.log 2> artifacts/bootstrap/r8-git-push.stderr.log; PUSH_RC=$?; set -e
+          [[ $PUSH_RC -eq 0 ]] || { echo CP32_BOOTSTRAP_REMOTE_PUSH_FAILED >&2; exit 23; }
+          REMOTE_LINE="$(git ls-remote origin "refs/heads/$BRANCH" 2> artifacts/bootstrap/r8-remote-branch-check.stderr.log)" || { echo CP32_BOOTSTRAP_REMOTE_BRANCH_OBSERVATION_TRANSPORT_FAILED >&2; exit 30; }
+          REMOTE_SHA="${REMOTE_LINE%%[[:space:]]*}"
+          [[ -n "$REMOTE_SHA" ]] || { echo CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED >&2; exit 31; }
+          [[ "$REMOTE_SHA" == "$LOCAL_SHA" ]] || { echo CP32_BOOTSTRAP_REMOTE_SHA_MISMATCH >&2; exit 32; }
+          set +e; PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Correct CP32 external player-path harness ownership' --body 'Bounded validation-infrastructure correction: one manual EvidenceRecorder trace owner, Playwright-native touch-capable persistent contexts, independent host/guest processes, canonical touchscreen input, and preserved R6 artifact/R7 TLS contracts. Trusted game HTML, index.html, and relay source are unchanged.' 2> artifacts/bootstrap/r8-pr-create.stderr.log)"; PR_RC=$?; set -e
+          [[ $PR_RC -eq 0 && -n "$PR_URL" ]] || { echo CP32_BOOTSTRAP_PR_CREATE_FAILED >&2; exit 24; }
+          gh pr view "$PR_URL" --json headRefName,baseRefName,state,url > artifacts/bootstrap/r8-pr-verification.json 2> artifacts/bootstrap/r8-pr-view.stderr.log || { echo CP32_BOOTSTRAP_PR_VERIFICATION_FAILED >&2; exit 25; }
+          export PR_URL BRANCH BASE LOCAL_SHA REMOTE_SHA PUSH_RC PR_RC
+          python3 - <<'PYSTATUS'
           import json,os
-          r=json.loads(os.environ['PR_JSON']); ok=r.get('headRefName')==os.environ['BRANCH'] and r.get('baseRefName')==os.environ['BASE'] and r.get('state')=='OPEN' and bool(r.get('url'))
-          if not ok: raise SystemExit('PR_VERIFICATION_MISMATCH')
-          print(r['state'])
-          PYPR
-          )"
-          write_status 'CP32_VALIDATION_LOCAL_TLS_TRUST_R7_PR_READY'
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"; echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          pr=json.load(open('artifacts/bootstrap/r8-pr-verification.json'))
+          ok=pr.get('headRefName')==os.environ['BRANCH'] and pr.get('baseRefName')==os.environ['BASE'] and pr.get('state')=='OPEN' and bool(pr.get('url'))
+          if not ok: raise SystemExit('R8_PR_VERIFICATION_MISMATCH')
+          rec={'status':'CP32_EXTERNAL_PLAYER_PATH_HARNESS_R8_PR_READY','branch':os.environ['BRANCH'],'base':os.environ['BASE'],'localCommitSha':os.environ['LOCAL_SHA'],'remoteCommitSha':os.environ['REMOTE_SHA'],'remoteBranchExists':True,'prUrl':os.environ['PR_URL'],'prState':pr.get('state'),'authOwner':'GH_CLI_GIT_CREDENTIAL_HELPER','secretName':'CP32_BOOTSTRAP_PAT','productionSourceMutationCount':0}
+          open('artifacts/bootstrap/r8-remote-install-status.json','w').write(json.dumps(rec,indent=2)+'\n')
+          PYSTATUS
 
       - name: Installation summary
         if: always()
@@ -300,13 +537,12 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/bootstrap
           {
-            echo '## CP32 Validation Local TLS Trust R7'
+            echo '## CP32 External Player-Path Harness R8'
             echo
             echo "Trusted SHA: $CP32_EXPECTED_SHA256"
             echo 'Production source mutation count: 0'
-            echo 'Target branch: cp32-validation-local-tls-r1'
-            [[ -f artifacts/bootstrap/r7-remote-install-status.json ]] && cat artifacts/bootstrap/r7-remote-install-status.json
-            echo
+            echo 'Target branch: cp32-player-path-harness-ownership-r1'
+            [[ -f artifacts/bootstrap/r8-remote-install-status.json ]] && cat artifacts/bootstrap/r8-remote-install-status.json
             echo 'After merging the generated PR, run CP32 Trusted Candidate E2E on branch main.'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -318,11 +554,11 @@ jobs:
           mkdir -p artifacts/bootstrap
           [[ -f artifacts/bootstrap/run-context.txt ]] || printf '%s\n' 'bootstrap_evidence_root_recovered=true' "run_id=$GITHUB_RUN_ID" > artifacts/bootstrap/run-context-recovered.txt
 
-      - name: Upload R7 correction evidence and fallback
+      - name: Upload R8 correction evidence and fallback
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: cp32-validation-local-tls-r7-${{ github.run_id }}
+          name: cp32-player-path-harness-r8-${{ github.run_id }}
           path: artifacts/bootstrap/
           if-no-files-found: error
           include-hidden-files: true
