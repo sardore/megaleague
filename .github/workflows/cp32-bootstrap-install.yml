@@ -30,6 +30,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Prepare evidence directory
         shell: bash
@@ -509,40 +510,162 @@ jobs:
           zip -qr cp32-validation-install-ready.zip repository-ready
           sha256sum cp32-validation-install-ready.zip > cp32-validation-install-ready.zip.sha256
 
-      - name: Attempt AUTO_INSTALL branch and PR
+      - name: Require PAT and perform authenticated remote install
         id: autoinstall
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          CP32_BOOTSTRAP_PAT: ${{ secrets.CP32_BOOTSTRAP_PAT }}
         run: |
           set -euo pipefail
           READY="$GITHUB_WORKSPACE/artifacts/bootstrap/repository-ready"
           BASE="${{ github.event.repository.default_branch }}"
           BRANCH='cp32-validation-bootstrap'
-          if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" >/dev/null 2>&1; then BRANCH="cp32-validation-bootstrap-${{ github.run_id }}"; fi
-          git config user.name 'github-actions[bot]'
+          STATUS_FILE="$GITHUB_WORKSPACE/artifacts/bootstrap/auto-install-status.json"
+          ASKPASS="$RUNNER_TEMP/cp32-bootstrap-askpass.sh"
+          LOCAL_SHA=''
+          REMOTE_SHA=''
+          PR_URL=''
+          PUSH_RC=99
+          PR_RC=99
+          REMOTE_BRANCH_EXISTS=false
+
+          write_status() {
+            python3 - "$STATUS_FILE" "$1" "$BRANCH" "$BASE" "$PUSH_RC" "$PR_RC" "$PR_URL" "$LOCAL_SHA" "$REMOTE_SHA" "$REMOTE_BRANCH_EXISTS" <<'PYSTATUS'
+          import json,sys
+          path,status,branch,base,push_rc,pr_rc,pr_url,local_sha,remote_sha,remote_exists=sys.argv[1:]
+          rec={
+            'status':status,
+            'branch':branch,
+            'base':base,
+            'pushExitCode':int(push_rc),
+            'prExitCode':int(pr_rc),
+            'prUrl':pr_url,
+            'localCommitSha':local_sha,
+            'remoteCommitSha':remote_sha,
+            'remoteBranchExists':remote_exists.lower()=='true',
+            'fallbackArtifact':'cp32-validation-install-ready.zip',
+            'authMode':'CP32_BOOTSTRAP_PAT_GIT_ASKPASS',
+            'secretName':'CP32_BOOTSTRAP_PAT'
+          }
+          open(path,'w',encoding='utf-8').write(json.dumps(rec,indent=2)+'\\n')
+          PYSTATUS
+          }
+
+          cleanup_credentials() {
+            rm -f "$ASKPASS"
+            unset CP32_BOOTSTRAP_PAT GH_TOKEN || true
+          }
+          trap cleanup_credentials EXIT
+
+          if [[ -z "${CP32_BOOTSTRAP_PAT:-}" ]]; then
+            STATUS='CP32_BOOTSTRAP_PAT_REQUIRED_FOR_WORKFLOW_FILE_INSTALL'
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 21
+          fi
+
+          # Fail closed on an invalid/expired token before modifying the remote.
+          set +e
+          GH_TOKEN="$CP32_BOOTSTRAP_PAT" gh api user --jq '.login' > "$GITHUB_WORKSPACE/artifacts/bootstrap/pat-auth-user.txt" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pat-auth.stderr.log"
+          AUTH_RC=$?
+          set -e
+          if [[ $AUTH_RC -ne 0 ]]; then
+            rm -f "$GITHUB_WORKSPACE/artifacts/bootstrap/pat-auth-user.txt"
+            STATUS='CP32_BOOTSTRAP_PAT_AUTH_FAILED'
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 22
+          fi
+          # The username is not secret; the PAT is supplied only through GIT_ASKPASS.
+          cat > "$ASKPASS" <<'ASKPASS_EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\\n' 'x-access-token' ;;
+            *Password*) printf '%s\\n' "$CP32_BOOTSTRAP_PAT" ;;
+            *) printf '%s\\n' '' ;;
+          esac
+          ASKPASS_EOF
+          chmod 700 "$ASKPASS"
+          export GIT_ASKPASS="$ASKPASS" GIT_TERMINAL_PROMPT=0
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+
+          if git ls-remote --exit-code --heads origin "refs/heads/$BRANCH" >/dev/null 2>&1; then
+            BRANCH="cp32-validation-bootstrap-${{ github.run_id }}"
+          fi
+
+          git config user.name 'cp32-bootstrap-installer'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c "$BRANCH"
           rsync -a "$READY/" "$GITHUB_WORKSPACE/"
           git add .github/workflows tests tools trusted validation/bootstrap playwright.config.js package.json package-lock.json README_EXTERNAL_AUTOMATION.md
+
           if git diff --cached --quiet; then
-            STATUS='AUTO_INSTALL_ALREADY_PRESENT'; PUSH_RC=0; PR_RC=0; PR_URL='';
-          else
-            git commit -m 'Install CP32 external validation pipeline'
-            set +e
-            git push -u origin "$BRANCH" > artifacts/bootstrap/git-push.stdout.log 2> artifacts/bootstrap/git-push.stderr.log
-            PUSH_RC=$?
-            set -e
-            PR_RC=99; PR_URL=''
-            if [[ $PUSH_RC -eq 0 ]]; then
-              set +e
-              PR_URL="$(gh pr create --base "$BASE" --head "$BRANCH" --title 'Install CP32 validation automation' --body 'Installs exact-byte candidate, web E2E, Android lifecycle E2E, and production identity/player-path validation. Does not modify production game source.' 2> artifacts/bootstrap/pr-create.stderr.log)"
-              PR_RC=$?
-              set -e
-              if [[ $PR_RC -eq 0 ]]; then STATUS='AUTO_INSTALL_PR_READY'; else STATUS='AUTO_INSTALL_BRANCH_READY_PR_BLOCKED'; fi
-            else STATUS='GITHUB_REPOSITORY_WRITE_BLOCKED_ARTIFACT_READY'; fi
+            LOCAL_SHA="$(git rev-parse HEAD)"
+            STATUS='AUTO_INSTALL_ALREADY_PRESENT'
+            PUSH_RC=0
+            PR_RC=0
+            write_status "$STATUS"
+            echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "pr_url=" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          printf '{"status":"%s","branch":"%s","base":"%s","pushExitCode":%s,"prExitCode":%s,"prUrl":"%s","fallbackArtifact":"cp32-validation-install-ready.zip"}\n' "$STATUS" "$BRANCH" "$BASE" "$PUSH_RC" "$PR_RC" "$PR_URL" > artifacts/bootstrap/auto-install-status.json
+
+          git commit -m 'Install CP32 external validation pipeline'
+          LOCAL_SHA="$(git rev-parse HEAD)"
+
+          set +e
+          git push -u origin "$BRANCH" > "$GITHUB_WORKSPACE/artifacts/bootstrap/git-push.stdout.log" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/git-push.stderr.log"
+          PUSH_RC=$?
+          set -e
+          if [[ $PUSH_RC -ne 0 ]]; then
+            STATUS='CP32_BOOTSTRAP_REMOTE_PUSH_FAILED'
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 23
+          fi
+
+          # Independent remote observation: the branch must exist remotely and point at the local install commit.
+          set +e
+          REMOTE_LINE="$(git ls-remote --heads origin "refs/heads/$BRANCH" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-check.stderr.log")"
+          REMOTE_CHECK_RC=$?
+          set -e
+          REMOTE_SHA="$(printf '%s\\n' "$REMOTE_LINE" | awk 'NF>=2 {print $1; exit}')"
+          if [[ $REMOTE_CHECK_RC -ne 0 || -z "$REMOTE_SHA" || "$REMOTE_SHA" != "$LOCAL_SHA" ]]; then
+            STATUS='CP32_BOOTSTRAP_REMOTE_BRANCH_NOT_OBSERVED'
+            REMOTE_BRANCH_EXISTS=false
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 24
+          fi
+          REMOTE_BRANCH_EXISTS=true
+          printf '%s\\n' "REMOTE_BRANCH_EXISTS=true" "LOCAL_SHA=$LOCAL_SHA" "REMOTE_SHA=$REMOTE_SHA" > "$GITHUB_WORKSPACE/artifacts/bootstrap/remote-branch-proof.txt"
+
+          set +e
+          PR_URL="$(GH_TOKEN="$CP32_BOOTSTRAP_PAT" gh pr create --repo "$GITHUB_REPOSITORY" --base "$BASE" --head "$BRANCH" --title 'Install CP32 validation automation' --body 'Installs exact-byte candidate, web E2E, Android lifecycle E2E, and production identity/player-path validation. Does not modify production game source.' 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-create.stderr.log")"
+          PR_RC=$?
+          set -e
+          if [[ $PR_RC -ne 0 || -z "$PR_URL" ]]; then
+            STATUS='CP32_BOOTSTRAP_PR_CREATE_FAILED'
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 25
+          fi
+
+          # Verify the PR is observable with the requested head/base after creation.
+          set +e
+          GH_TOKEN="$CP32_BOOTSTRAP_PAT" gh pr view "$PR_URL" --repo "$GITHUB_REPOSITORY" --json url,headRefName,baseRefName,state > "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.json" 2> "$GITHUB_WORKSPACE/artifacts/bootstrap/pr-proof.stderr.log"
+          PR_VERIFY_RC=$?
+          set -e
+          if [[ $PR_VERIFY_RC -ne 0 ]]; then
+            STATUS='CP32_BOOTSTRAP_PR_CREATE_FAILED'
+            write_status "$STATUS"
+            echo "$STATUS" >&2
+            exit 25
+          fi
+
+          STATUS='AUTO_INSTALL_PR_READY'
+          write_status "$STATUS"
           echo "status=$STATUS" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
@@ -559,7 +682,7 @@ jobs:
             echo "Relay: $CP32_RELAY_ENDPOINT"
             [[ -f artifacts/bootstrap/auto-install-status.json ]] && cat artifacts/bootstrap/auto-install-status.json
             echo
-            echo 'If repository writes are blocked, download the single `cp32-validation-install-ready.zip` artifact. No production game source was patched.'
+            echo 'AUTO_INSTALL requires repository secret `CP32_BOOTSTRAP_PAT`. If PAT authentication, workflow-file push, or PR creation is blocked, the single `cp32-validation-install-ready.zip` fallback artifact remains available. No production game source was patched.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload bootstrap evidence / fallback installer
