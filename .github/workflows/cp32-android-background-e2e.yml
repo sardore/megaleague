@@ -14,6 +14,24 @@ jobs:
       CP32_PEER_CANDIDATE_URL: https://127.0.0.1:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
     steps:
       - uses: actions/checkout@v6
+      - name: Initialize validation evidence filesystem
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/preflight artifacts/results artifacts/android
+          python3 - <<'PYEVIDENCEINIT'
+          import json, os
+          from pathlib import Path
+          p=Path('artifacts/preflight/artifact-lifecycle-init.json')
+          p.write_text(json.dumps({
+            'status':'INITIALIZED',
+            'workflow':os.environ.get('GITHUB_WORKFLOW'),
+            'job':os.environ.get('GITHUB_JOB'),
+            'runId':os.environ.get('GITHUB_RUN_ID'),
+            'sha':os.environ.get('GITHUB_SHA'),
+            'directories':['artifacts/preflight','artifacts/results','artifacts/android']
+          },indent=2)+'\n')
+          PYEVIDENCEINIT
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -35,8 +53,59 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: node tests/android/android-background-player-path.js
-      - if: always()
-        run: adb logcat -d > artifacts/android/logcat.txt || true
+      - name: Capture Android logcat
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          adb logcat -d > artifacts/android/logcat.txt 2> artifacts/android/logcat.stderr.log
+          RC=$?
+          set -e
+          printf '{"exitCode":%s,"stdoutPath":"artifacts/android/logcat.txt","stderrPath":"artifacts/android/logcat.stderr.log"}\n' "$RC" > artifacts/preflight/android-logcat-capture.json
+      - name: Validate required evidence on successful run
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            artifacts/preflight/artifact-lifecycle-init.json
+            artifacts/preflight/key.pem
+            artifacts/preflight/cert.pem
+            artifacts/preflight/candidate-server.stdout.log
+            artifacts/preflight/candidate-server.stderr.log
+            artifacts/preflight/candidate-server.pid
+            artifacts/results/static-validation.json
+            artifacts/android/android-result.json
+            artifacts/android/logcat.txt
+            artifacts/preflight/android-logcat-capture.json
+          )
+          missing=0
+          for f in "${required[@]}"; do
+            if [[ ! -e "$f" ]]; then echo "REQUIRED_EVIDENCE_MISSING:$f" >&2; missing=1; fi
+          done
+          [[ $missing -eq 0 ]] || exit 31
+          python3 - <<'PYLOGCAT'
+          import json
+          from pathlib import Path
+          rec=json.loads(Path('artifacts/preflight/android-logcat-capture.json').read_text())
+          if rec.get('exitCode') != 0: raise SystemExit('ANDROID_LOGCAT_CAPTURE_FAILED')
+          if Path('artifacts/android/logcat.txt').stat().st_size == 0: raise SystemExit('ANDROID_LOGCAT_EMPTY')
+          PYLOGCAT
+      - name: Finalize evidence lifecycle
+        if: always()
+        shell: bash
+        env:
+          CP32_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/preflight artifacts/results artifacts/android
+          python3 - <<'PYEVIDENCEFINAL'
+          import json, os
+          from pathlib import Path
+          root=Path('artifacts'); init=root/'preflight/artifact-lifecycle-init.json'
+          files=[str(p) for p in root.rglob('*') if p.is_file()]
+          rec={'status':'FINALIZED','jobStatus':os.environ.get('CP32_JOB_STATUS'),'initObserved':init.exists(),'fileCount':len(files),'runId':os.environ.get('GITHUB_RUN_ID')}
+          (root/'preflight/artifact-lifecycle-final.json').write_text(json.dumps(rec,indent=2)+'\n')
+          PYEVIDENCEFINAL
       - if: always()
         uses: actions/upload-artifact@v7
         with:
