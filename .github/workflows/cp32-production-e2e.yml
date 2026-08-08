@@ -13,6 +13,24 @@ jobs:
       CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
     steps:
       - uses: actions/checkout@v6
+      - name: Initialize validation evidence filesystem
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/preflight artifacts/results
+          python3 - <<'PYEVIDENCEINIT'
+          import json, os
+          from pathlib import Path
+          p=Path('artifacts/preflight/artifact-lifecycle-init.json')
+          p.write_text(json.dumps({
+            'status':'INITIALIZED',
+            'workflow':os.environ.get('GITHUB_WORKFLOW'),
+            'job':os.environ.get('GITHUB_JOB'),
+            'runId':os.environ.get('GITHUB_RUN_ID'),
+            'sha':os.environ.get('GITHUB_SHA'),
+            'directories':['artifacts/preflight','artifacts/results']
+          },indent=2)+'\n')
+          PYEVIDENCEINIT
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -27,6 +45,37 @@ jobs:
         run: CP32_PREFLIGHT_OUTPUT=artifacts/preflight/production-preflight.json node -e "import('./tests/helpers/relay-preflight.js').then(async m=>{const fs=await import('node:fs');try{const r=await m.runPreflight({candidate:false,production:true});fs.writeFileSync(process.env.CP32_PREFLIGHT_OUTPUT,JSON.stringify(r,null,2))}catch(e){fs.writeFileSync(process.env.CP32_PREFLIGHT_OUTPUT,JSON.stringify({ok:false,error:String(e)},null,2));process.exit(2)}})"
       - name: Exact deployed identity and actual player path
         run: npx playwright test tests/e2e/production-player-path.spec.js --workers=1
+      - name: Validate required evidence on successful run
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            artifacts/preflight/artifact-lifecycle-init.json
+            artifacts/preflight/production-preflight.json
+            artifacts/results/static-validation.json
+            artifacts/results/playwright-results.json
+          )
+          missing=0
+          for f in "${required[@]}"; do
+            if [[ ! -e "$f" ]]; then echo "REQUIRED_EVIDENCE_MISSING:$f" >&2; missing=1; fi
+          done
+          [[ $missing -eq 0 ]] || exit 31
+      - name: Finalize evidence lifecycle
+        if: always()
+        shell: bash
+        env:
+          CP32_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/preflight artifacts/results
+          python3 - <<'PYEVIDENCEFINAL'
+          import json, os
+          from pathlib import Path
+          root=Path('artifacts'); init=root/'preflight/artifact-lifecycle-init.json'
+          files=[str(p) for p in root.rglob('*') if p.is_file()]
+          rec={'status':'FINALIZED','jobStatus':os.environ.get('CP32_JOB_STATUS'),'initObserved':init.exists(),'fileCount':len(files),'runId':os.environ.get('GITHUB_RUN_ID')}
+          (root/'preflight/artifact-lifecycle-final.json').write_text(json.dumps(rec,indent=2)+'\n')
+          PYEVIDENCEFINAL
       - if: always()
         uses: actions/upload-artifact@v7
         with:
