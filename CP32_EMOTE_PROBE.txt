@@ -1,0 +1,1647 @@
+===== emote-bar count=3 =====
+--- emote-bar #1 offset=134034 ---
+form:rotate(var(--beam-angle)) scaleX(.05);background:linear-gradient(90deg,#fff,#6fe4ff,#765cff);clip-path:polygon(0 45%,86% 0,100% 50%,86% 100%,0 55%);filter:drop-shadow(0 0 8px #6adfff);animation:circuitBlade .62s ease-out forwards}.voltage-orbit{width:calc(52px + var(--ring-index)*15px);height:calc(52px + var(--ring-index)*15px);border:2px solid rgba(145,238,255,.85);border-radius:50%;animation:voltageOrbit 1.15s linear forwards}.voltage-core{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,#fff 0 12%,#91f6ff 25%,#3479ff 55%,transparent 72%);box-shadow:0 0 35px #7defff,0 0 70px #395cff;animation:voltageCore .9s ease-out forwards}.fragment-pop{font-weight:1000;color:#8eeeff;text-shadow:0 0 12px #397fff;animation:jcLeaf 1s ease-out forwards}
+      .gz-orb{width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 10px #ff374d,0 0 22px #9d001a;left:0;top:0;animation:gzThrow .54s ease-in forwards}.gz-mega{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 35px 18px #ff253e,0 0 110px 75px #8c0019;animation:gzMega 1.2s ease-out forwards}.gz-mega-ring{width:46px;height:46px;border:6px solid #ff4157;border-radius:50%;box-shadow:0 0 40px #ff1235;animation:gzRing 1.15s ease-out forwards}
+      .vortex-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vortex-pair>div{padding:8px;border:1px solid #365170;border-radius:12px;background:#071525}.online-room-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:46vh;overflow:auto}.online-room-card{padding:6px;border:1px solid #46526d;border-radius:10px;background:#10182a;text-align:center}.online-room-card.selected{outline:2px solid #6aff9e;background:#173225}.online-room-card .char-emoji{font-size:28px;min-height:34px}.emote-bar{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}.emote-bar button{font-size:24px}.battle-emote{position:fixed;z-index:9999;right:18px;top:74px;padding:10px 15px;border-radius:18px;background:#111c38e8;border:2px solid #87a9ff;font-size:28px;animation:emoteFloat 2.2s ease-out forwards}@keyframes emoteFloat{0%{opacity:0;transform:translateY(18px) scale(.7)}20%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-34px) scale(1.1)}}
+      @keyframes jcVine{0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(0)}25%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}@keyframes jcWrap{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(-30deg)}40%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.55) rotate(25deg)}}@keyframes jcLeaf{0%{opacity:0;transform:translate(-50%,10px) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-55px) scale(1.3)}}@keyframes jcTravel{0%{opacity:1;transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%))}100%{opacity:0;transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)) scale(1.8)}}@keyframes jcSummon{0%{opacity:0;transform:translate(-50%,-20%) scale(.2) rotate(-90deg)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.6) rotate(150deg)}}@keyframes jcClaw{0%{opacity:0;transform:translate(-50%,-50%) scale(2) rotate(-30deg)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.7) rotate(-12deg)}}@keyframes jcCoil{0%{opacity:0;transform:translate(-50%,-50%) scale(1.6)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.45)}}@keyframes circuitRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(0)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5) rotate(220deg)}}@keyframes circuitBlade{0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(.05)}20%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}@keyframes voltageOrbit{0%{opacity:0;transform:translate(-50%,-50%) rotate(0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) rotate(540deg) scale(1.4)}}@keyframes voltageCore{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(5)}}@keyframes gzThrow{0%{opacity:0;transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%)) scale(.4)}18%{opacity:1}100%{opacity:1;transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)) scale(1.3)}}@keyframes gzMega{0%{opacity:0;transform:translate(-50%,-50%) scale(.05)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(8)}}@keyframes gzRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(9);border-width:1px}}
+      @media(max-width:720px){.summon-list{grid-template-columns:repeat(2,minmax(0,1fr))}.online-room-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.vortex-pair{grid-template-columns:1fr}}
+
+    .league-select-shell{margin:0 0 18px;padding:0;background:none;border:0;box-shadow:none}
+    .league-select-head{display:none}
+    .league-chooser{display:grid;grid-template-columns:1fr
+--- emote-bar #2 offset=134094 ---
+-gradient(90deg,#fff,#6fe4ff,#765cff);clip-path:polygon(0 45%,86% 0,100% 50%,86% 100%,0 55%);filter:drop-shadow(0 0 8px #6adfff);animation:circuitBlade .62s ease-out forwards}.voltage-orbit{width:calc(52px + var(--ring-index)*15px);height:calc(52px + var(--ring-index)*15px);border:2px solid rgba(145,238,255,.85);border-radius:50%;animation:voltageOrbit 1.15s linear forwards}.voltage-core{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,#fff 0 12%,#91f6ff 25%,#3479ff 55%,transparent 72%);box-shadow:0 0 35px #7defff,0 0 70px #395cff;animation:voltageCore .9s ease-out forwards}.fragment-pop{font-weight:1000;color:#8eeeff;text-shadow:0 0 12px #397fff;animation:jcLeaf 1s ease-out forwards}
+      .gz-orb{width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 10px #ff374d,0 0 22px #9d001a;left:0;top:0;animation:gzThrow .54s ease-in forwards}.gz-mega{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 35px 18px #ff253e,0 0 110px 75px #8c0019;animation:gzMega 1.2s ease-out forwards}.gz-mega-ring{width:46px;height:46px;border:6px solid #ff4157;border-radius:50%;box-shadow:0 0 40px #ff1235;animation:gzRing 1.15s ease-out forwards}
+      .vortex-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vortex-pair>div{padding:8px;border:1px solid #365170;border-radius:12px;background:#071525}.online-room-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:46vh;overflow:auto}.online-room-card{padding:6px;border:1px solid #46526d;border-radius:10px;background:#10182a;text-align:center}.online-room-card.selected{outline:2px solid #6aff9e;background:#173225}.online-room-card .char-emoji{font-size:28px;min-height:34px}.emote-bar{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}.emote-bar button{font-size:24px}.battle-emote{position:fixed;z-index:9999;right:18px;top:74px;padding:10px 15px;border-radius:18px;background:#111c38e8;border:2px solid #87a9ff;font-size:28px;animation:emoteFloat 2.2s ease-out forwards}@keyframes emoteFloat{0%{opacity:0;transform:translateY(18px) scale(.7)}20%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-34px) scale(1.1)}}
+      @keyframes jcVine{0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(0)}25%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}@keyframes jcWrap{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(-30deg)}40%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.55) rotate(25deg)}}@keyframes jcLeaf{0%{opacity:0;transform:translate(-50%,10px) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-55px) scale(1.3)}}@keyframes jcTravel{0%{opacity:1;transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%))}100%{opacity:0;transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)) scale(1.8)}}@keyframes jcSummon{0%{opacity:0;transform:translate(-50%,-20%) scale(.2) rotate(-90deg)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.6) rotate(150deg)}}@keyframes jcClaw{0%{opacity:0;transform:translate(-50%,-50%) scale(2) rotate(-30deg)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.7) rotate(-12deg)}}@keyframes jcCoil{0%{opacity:0;transform:translate(-50%,-50%) scale(1.6)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.45)}}@keyframes circuitRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(0)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5) rotate(220deg)}}@keyframes circuitBlade{0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(.05)}20%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}@keyframes voltageOrbit{0%{opacity:0;transform:translate(-50%,-50%) rotate(0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) rotate(540deg) scale(1.4)}}@keyframes voltageCore{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(5)}}@keyframes gzThrow{0%{opacity:0;transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%)) scale(.4)}18%{opacity:1}100%{opacity:1;transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)) scale(1.3)}}@keyframes gzMega{0%{opacity:0;transform:translate(-50%,-50%) scale(.05)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(8)}}@keyframes gzRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(9);border-width:1px}}
+      @media(max-width:720px){.summon-list{grid-template-columns:repeat(2,minmax(0,1fr))}.online-room-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.vortex-pair{grid-template-columns:1fr}}
+
+    .league-select-shell{margin:0 0 18px;padding:0;background:none;border:0;box-shadow:none}
+    .league-select-head{display:none}
+    .league-chooser{display:grid;grid-template-columns:1fr;gap:12px}
+    .league-banner{--league-accent:#8a77ff;--leag
+--- emote-bar #3 offset=6359569 ---
+ = roomRoot();
+          if (!modal || !root) return false;
+          const existing = document.getElementById("onlineRoomDeck");
+          const modalOpen = modal.classList.contains("open");
+          const portalOpen = roomPortalOpen();
+          const snapshot = captureRoomScroll();
+          const forceFullRender = options.force === true || options.surfaceIntent === "DECK";
+
+          // A remote state update must not close an already open portal selector.
+          if (portalOpen && modalOpen && !forceFullRender) {
+            project("portal-open-refresh");
+            syncChat();
+            renderCount++;
+            return true;
+          }
+          // Repeated rendering of the same logical room updates controls only.
+          if (existing && modalOpen && !forceFullRender) {
+            project("existing-room-refresh");
+            restoreRoomScroll(snapshot);
+            renderCount++;
+            return true;
+          }
+
+          const league = onlineLeagueNow(), composition = onlineCompositionNow();
+          const changed = sanitizeOnlineRoomSelection(league, composition);
+          
+          const title = p2p.sessionMode === "matchmaking" ? "자동 매칭 대기실" : `온라인 대전 룸 · ${p2p.roomCode}`;
+          const currentInvader = currentSelectedInvader(), portalAllowed = LeagueFormatOwner.invaderAllowed(league, composition);
+          root.innerHTML = `<h2>${title}</h2><p class="tiny muted">${LeagueFormatOwner.definition(league).label} · ${LeagueFormatOwner.rulesText(league, composition)}</p><p id="roomReadyState">${onlineRoomReadyText()}</p><div id="onlineRoomDeck" class="online-room-grid"></div>${portalAllowed ? InvaderPortalView.buttonHTML({buttonId:"onlineInvaderPortalButton", selectedId:currentInvader, areaClass:"online-invader-portal-area"}) : ""}<div class="emote-bar"><b>감정 표현</b>${["👍","🔥","😮","😂","💢","GG"].map(e => `<button data-emote="${e}">${e}</button>`).join("")}</div><div class="choice-list"><button id="onlineRoomStart" class="primary">${p2p.role === "host" ? "전투 시작" : "상대 준비 대기"}</button><button id="onlineRoomLeave">연결 끊기</button></div><p class="tiny muted">시작 화면과 동일한 리그 구성 규칙을 사용합니다. 폼 캐릭터는 이 리그에서 합법인 폼만 전환됩니다.${portalAllowed ? " 침략자는 초차원 포탈에서 최대 한 명 선택할 수 있습니다." : ""}</p>`;
+          const box = document.getElementById("onlineRoomDeck");
+          const draw = () => {
+            box.replaceChildren();
+            const normalPool = LeagueFormatOwner.setupPool(league, composition, selected, plusStarSelection, onlineLocalTeam());
+            const seen = new Set();
+            for (const rawId of normalPool) {
+              const id = rawId;
+              if (seen.has(id)) continue;
+              seen.add(id);
+              const c = CARDS.find(card => card.id === id);
+              if (!c || isInvaderCardId(id)) continue;
+              const element = document.createElement("div");
+              element.tabIndex = 0;
+              element.setAttribute("role", "button");
+              const slotBlocked = !selected.includes(id) && !LeagueFormatOwner.partialValid([...selected,id], league, composition, plusStarSelection, onlineLocalTeam());
+              element.className = `card compact-card selectable online-room-card ${selected.includes(id) ? "selected" : ""} ${slotBlocked ? "league-slot-blocked" : ""}`;
+              element.setAttribute("aria-disabled", String(slotBlocked));
+              element.dataset.infoCard = "setup";
+              element.dataset.infoSurface = p2p.role === "host" ? "host-lobby" : "guest-lobby";
+              element.dataset.infoTeam = "P";
+              element.dataset.infoSlotIndex = String(selected.indexOf(id));
+              element.dataset.cardId = id;
+              element.dataset.id = rawId;
+              const slotIndex = selected.indexOf(c.id);
+              const effectiveCard = EffectiveCardPresentationOwner.resolve(c,null,{deck:selected,plusStarChoice:plusStarSelection,team:onlineLocalTeam(),slotIndex,surface:p2p.role === "host" ? "host-lobby" : "guest-lobby",sourceRevision:game?.networkRevision||0});
+              const plusActive = effectiveCard.plusStar,
+                legalForms = c.formGroup ? LeagueFormatOwner.eligibleForms(c.formGroup, selected, league, composition, plusStarSelection, onlineLocalTeam()) : [],
+                nextForm = c.formGroup ? nextLeagueFormId(c.formGroup, c.id, selected, league, composition, plusStarSelection, onlineLocalTeam()) : null;
+              const toggle = c.formGroup && legalForms.length > 1 && nextForm
+                ? `<button type="button" class="form-toggle" data-online-form="${c.formGroup}">${c.name} → ${CARDS.find(card => card.id === nextForm)?.name || c.name}</button>`
+                : "";
+              const formInfo = c.formGroup && legalForms.length ? `<div class="form-eligibility"><b>폼</b>${legalForms.map(fid=>{const fc=CARDS.find(x=>x.id===fid);return `<span class="form-chip">${fc?.name||fid} ${fc?.grade||""}</span>`;}).join("")}</div>` : "";
+              const plusToggle = PLUS_STAR_ELIGIBLE.has(c.id)
+
+===== battle-emote count=6 =====
+--- battle-emote #1 offset=134127 ---
+cff);clip-path:polygon(0 45%,86% 0,100% 50%,86% 100%,0 55%);filter:drop-shadow(0 0 8px #6adfff);animation:circuitBlade .62s ease-out forwards}.voltage-orbit{width:calc(52px + var(--ring-index)*15px);height:calc(52px + var(--ring-index)*15px);border:2px solid rgba(145,238,255,.85);border-radius:50%;animation:voltageOrbit 1.15s linear forwards}.voltage-core{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,#fff 0 12%,#91f6ff 25%,#3479ff 55%,transparent 72%);box-shadow:0 0 35px #7defff,0 0 70px #395cff;animation:voltageCore .9s ease-out forwards}.fragment-pop{font-weight:1000;color:#8eeeff;text-shadow:0 0 12px #397fff;animation:jcLeaf 1s ease-out forwards}
+      .gz-orb{width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 10px #ff374d,0 0 22px #9d001a;left:0;top:0;animation:gzThrow .54s ease-in forwards}.gz-mega{width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 0 35px 18px #ff253e,0 0 110px 75px #8c0019;animation:gzMega 1.2s ease-out forwards}.gz-mega-ring{width:46px;height:46px;border:6px solid #ff4157;border-radius:50%;box-shadow:0 0 40px #ff1235;animation:gzRing 1.15s ease-out forwards}
+      .vortex-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.vortex-pair>div{padding:8px;border:1px solid #365170;border-radius:12px;background:#071525}.online-room-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;max-height:46vh;overflow:auto}.online-room-card{padding:6px;border:1px solid #46526d;border-radius:10px;background:#10182a;text-align:center}.online-room-card.selected{outline:2px solid #6aff9e;background:#173225}.online-room-card .char-emoji{font-size:28px;min-height:34px}.emote-bar{display:flex;gap:6px;flex-wrap:wrap;margin:9px 0}.emote-bar button{font-size:24px}.battle-emote{position:fixed;z-index:9999;right:18px;top:74px;padding:10px 15px;border-radius:18px;background:#111c38e8;border:2px solid #87a9ff;font-size:28px;animation:emoteFloat 2.2s ease-out forwards}@keyframes emoteFloat{0%{opacity:0;transform:translateY(18px) scale(.7)}20%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-34px) scale(1.1)}}
+      @keyframes jcVine{0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(0)}25%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}@keyframes jcWrap{0%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(-30deg)}40%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.55) rotate(25deg)}}@keyframes jcLeaf{0%{opacity:0;transform:translate(-50%,10px) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-55px) scale(1.3)}}@keyframes jcTravel{0%{opacity:1;transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%))}100%{opacity:0;transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)) scale(1.8)}}@keyframes jcSummon{0%{opacity:0;transform:translate(-50%,-20%) scale(.2) rotate(-90deg)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.6) rotate(150deg)}}@keyframes jcClaw{0%{opacity:0;transform:translate(-50%,-50%) scale(2) rotate(-30deg)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.7) rotate(-12deg)}}@keyframes jcCoil{0%{opacity:0;transform:translate(-50%,-50%) scale(1.6)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.45)}}@keyframes circuitRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(0)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5) rotate(220deg)}}@keyframes circuitBlade{0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(.05)}20%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}@keyframes voltageOrbit{0%{opacity:0;transform:translate(-50%,-50%) rotate(0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) rotate(540deg) scale(1.4)}}@keyframes voltageCore{0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(5)}}@keyframes gzThrow{0%{opacity:0;transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%)) scale(.4)}18%{opacity:1}100%{opacity:1;transform:translate(calc(var(--to-x) - 50%),calc(var(--to-y) - 50%)) scale(1.3)}}@keyframes gzMega{0%{opacity:0;transform:translate(-50%,-50%) scale(.05)}22%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(8)}}@keyframes gzRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(9);border-width:1px}}
+      @media(max-width:720px){.summon-list{grid-template-columns:repeat(2,minmax(0,1fr))}.online-room-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.vortex-pair{grid-template-columns:1fr}}
+
+    .league-select-shell{margin:0 0 18px;padding:0;background:none;border:0;box-shadow:none}
+    .league-select-head{display:none}
+    .league-chooser{display:grid;grid-template-columns:1fr;gap:12px}
+    .league-banner{--league-accent:#8a77ff;--league-accent-soft:#b9a8ff;--league-glow
+--- battle-emote #2 offset=6168576 ---
+      history = pvpHistoryRecord(won);
+        $("#modalContent").innerHTML = `<div class="victory-window ${won ? "" : "defeat"}"><div class="victory-title">${won ? "VICTORY" : "DEFEAT"}</div><div class="victory-sub">온라인 대전에서 ${won ? "승리했습니다!" : "패배했습니다."}</div>${mvpResultHTML(game, local)}${ResultContributionPresentationOwner.html(game)}</div><p>총 ${game.stats.turns}행동 · 공용 판정: 피해 난수 OFF</p><div class="stats"><span>내 생존 ${mine.alive}/4</span><span>가한 피해 ${Math.round(mine.dealt)}</span><span>받은 피해 ${Math.round(mine.taken)}</span><span>기술 ${mine.skills}회</span><span>상태 기여 ${Math.round(mine.status)}</span><span>실드 흡수 ${Math.round(mine.shield)}</span><span>에너지 방해 ${Math.round(mine.disrupt)}</span><span>교체 ${mine.switches}</span></div><h3>상대 요약</h3><p>생존 ${theirs.alive}/4 · 가한 피해 ${Math.round(theirs.dealt)} · 받은 피해 ${Math.round(theirs.taken)} · 기술 ${theirs.skills}회 · 교체 ${theirs.switches}</p><h3>이 기기 PvP 누적</h3><p>${history.matches}전 ${history.wins}승 ${history.losses}패 · 승률 ${history.matches ? Math.round((history.wins / history.matches) * 100) : 0}%</p><div class="choice-list"><button id="pvpResultClose">전장 결과 보기</button><button id="pvpResultMenu">메인 메뉴</button></div>`;
+        $("#modal").classList.add("open");
+        ResultContributionPresentationOwner.bind($("#modalContent"), game);
+        $("#pvpResultClose").onclick = () => $("#modal").classList.remove("open");
+        $("#pvpResultMenu").onclick = () => window.OnlineRuntime?.returnToSetup?.("pvp-result-menu");
+      }
+      const NavigationApplication = (() => {
+        const project = (id) => {
+          hideCardTooltip();
+          $$(".screen").forEach((x) => x.classList.toggle("active", x.id === id));
+          if (id !== "game") stopBgm();
+          if (id === "setup") {
+            document.querySelectorAll(".battle-emote").forEach((node) => node.remove());
+            (document.scrollingElement || document.documentElement)?.scrollTo({ top: 0, left: 0, behavior: "auto" });
+            syncGrandFieldBackground(null);
+          }
+          window.__megaSyncOnlineChatUI?.();
+          return true;
+        };
+        const request = (id, reason = "navigation") => {
+          if (id === "setup" && game) game.paused = true;
+          const committed = project(id);
+          return Object.freeze({ committed, id, reason, paused:!!game?.paused });
+        };
+        const resumeBattle = (reason = "battle-resume", options = {}) => {
+          if (game && !game.winner) game.paused = false;
+          if (options.render === true && game) render();
+          return Object.freeze({ committed:true, reason, paused:!!game?.paused });
+        };
+        return Object.freeze({ request, resumeBattle });
+      })();
+      function openChoice(html, items) {
+        $("#modalContent").innerHTML = html + '<div class="choice-list"></div>';
+        let list = $("#modalContent .choice-list");
+        items.forEach((x) => {
+          let b = document.createElement("button");
+          b.textContent = x.label;
+          b.onclick = () => {
+            $("#modal").classList.remove("open");
+            x.fn();
+          };
+          list.appendChild(b);
+        });
+        $("#modal").classList.add("open");
+      }
+      function showCodex() {
+        let html =
+          `<h2>카드 도감 — 총 ${CARDS.length}장</h2><p>카드 설명은 컴퓨터에서 마우스를 올리거나 모바일에서 반초간 길게 눌러 확인합니다. 브케노↔휴브, 이루마↔각성이루마, 화락나리↔루나리↔호리진탈은 하나의 폼 패밀리이며, 리그 편성에서는 해당 구성에서 사용 가능한 폼만 표시·전환됩니다.</p><div class="cards-grid">` +
+          CARDS.map(
+            (c) =>
+              `<div class="card compact-card ${c.grade !== "2☆" ? "mega-card" : ""}" data-info-card="codex" data-card-id="${c.id}">${pictogramHTML("small", c.id)}<h3 class="card-title-line"><span>${c.name}</span><span>${c.grade}</span></h3><div class="stats"><span>HP ${c.maxHp}</span><span>실드 ${c.shield || 0}</span>${(c.baseDefense || 0) !== 0 ? `<span>방어 ${c.baseDefense || 0}</span>` : ""}<span>최대E ${c.maxEnergy}</span></div><p class="tiny compact-role"><b>${c.role}</b></p></div>`,
+          ).join("") +
+          "</div>";
+        openChoice(html, []);
+      }
+      function severeDeckConflict(ids) {
+        return (
+          ids.includes("flameflower") &&
+          (ids.includes("kingprawn") || ids.includes("iceknight"))
+        );
+      }
+      function randomBattleDeck(r, league = "mega", composition = comprehensiveComposition) {
+        league = LeagueFormatOwner.normalizeLeague(league);
+        composition = LeagueFormatOwner.normalizeComposition(composition);
+        let pool = [...poolForLeague(league, composition)], d = [];
+        while (d.length < 4) {
+          const valid = pool.filter(id => LeagueFormatOwner.partialValid([...d, id], league, composition)),
+            compatible = league === "mega" ? valid.filter(id => !severeDeckConflict([...d, id])) : valid,
+            choices = compatible.length ? compatible : valid;
+          if (!choices.length) throw new Error(`random deck composition exhausted: ${league}/${composition}/${d.join(",")}`);
+          const id = r.pick(
+--- battle-emote #3 offset=6229472 ---
+Fx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();
+        if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        sendOnlineEmoteAck(msg);
+        if(msg?.emoteId&&!rememberB
+--- battle-emote #4 offset=6229918 ---
+,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();
+        if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        sendOnlineEmoteAck(msg);
+        if(msg?.emoteId&&!rememberBattleEmote(msg.emoteId))return true;
+        showBattleEmote(String(msg?.emoji||"👍").slice(0,4),"상대");
+        return true;
+      }
+      function receiveOnlineEmoteAck(msg){
+        if(msg?.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        const id=String(msg?.emoteId||""),entry=batt
+--- battle-emote #5 offset=6233318 ---
+th.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();
+        if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        sendOnlineEmoteAck(msg);
+        if(msg?.emoteId&&!rememberBattleEmote(msg.emoteId))return true;
+        showBattleEmote(String(msg?.emoji||"👍").slice(0,4),"상대");
+        return true;
+      }
+      function receiveOnlineEmoteAck(msg){
+        if(msg?.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        const id=String(msg?.emoteId||""),entry=battleEmotePending.get(id);if(!entry)return true;
+        cancelBattleEmoteRetry(entry.timerId);battleEmotePending.delete(id);return true;
+      }
+      registerOnlineConnectionRoute("emote","battle-emote",receiveOnlineEmote,20);
+      registerOnlineConnectionRoute("emoteAckR1","battle-emote-ack",receiveOnlineEmoteAck,20);
+
+      /* 소환물 수동 조작 */
+      function ensurePendingSummonIdentity(g,q,u){
+        if(!q)return q;
+        const battleId=g?.battleId||g?.matchId||"battle";
+        const serial=Number(q.summonSerial??u?.summonSerial??0);
+        q.actionId ||= `${battleId}:summon:${Number(g?.turnSerial||0)}:${q.summonUid}:${serial}`;
+        q.transactionId ||= `${q.actionId}:tx`;
+        q.submitState ||= "AWAITING_INPUT";
+        return q;
+      }
+      function normalizePendingSummonTurns(g){
+        g.pendingSummonTurns ||= [];
+        while(g.pendingSummonTurns.length){
+          const q=g.pendingSummonTurns[0], u=findUnit(g,q.summonUid), owner=findUnit(g,q.ownerUid);
+          if(!u||u.dead||!u.isSummon||!owner||owner.dead||teamOf(g,u)!==q.team){g.pendingSummonTurns.shift();continue;}
+          ensurePendingSummonIdentity(g,q,u);
+          return {q,u,owner};
+        }
+        return null;
+      }
+      function summonSkillCost(g,t,u,skillRef){
+        const sk=skillOf(u,skillRef);
+        if(skillDefHasRuntimeKind(sk,"summonRageClaw")){
+          const n=Math.max(0,(g.teams[t].deathSerial||0)-(u.deathBaseline||0));
+          return '*'.repeat(Math.max(0,3-n));
+        }
+        return sk?.cost||'';
+      }
+      function summonTargetRefs(g,t,ally){
+        const team=ally?t:other(t);
+        return allBattleUnits(g,team,true).map(u=>({u,ref:targetRef(g,team,u)}));
+      }
+      function summonActionOptions(g,t,u){
+        const out=[{type:'summonGather',label:'에너지 모으기'}];
+        if(status(u,'freeze')||status(u,'paralyze'))return out;
+        const skills={
+          heal:firstSkillByRuntimeKind(u,"summonHeal"),
+          peck:firstSkillByRuntimeKind(u,"summonEnergyPeck"),
+          constrict:firstSkillByRuntimeKind(u,"summonConstrict"),
+          rage:firstSkillByRuntimeKind(u,"summonRageClaw"),
+        };
+        const behavior=cardCapability(u,'summonBehavior','');
+        if(behavior==='support'){
+          const heal=skills.heal,healCost=summonSkillCost(g,t,u,heal);
+          if(heal&&!u.skillSeals?.[heal.id]&&canPayAction(g,t,u,healCost))
+            for(const {u:target} of summonTargetRefs(g,t,true))out.push({type:'summonSkill',skill:heal.id,targetUid:target.uid,label:`${heal.name} → ${target.name}`});
+          const peck=skills.peck,peckCost=summonSkillCost(g,t,u,peck);
+          if(peck&&!u.skillSeals?.[peck.id]&&canPayAction(g,t,u,peckCost))
+            for(const {u:target} of summonTargetRefs(g,t,false))out.push({type:'summonSkill',skill:peck.id,targetUid:target.uid,label:`${peck.name} → ${target.name}`});
+        }else if(behavior==='constrict'){
+          const sk=skills.constrict,cost=summonSkillCost(g,t,u,sk);
+          if(sk&&!u.skillSeals?.[sk.id]&&canPayAction(g,t,u,cost))
+            for(const {u:target} of summonTargetRefs(g,t,false))out.push({type:'summonSkill',skill:sk.id,targetUid:target.uid,label:`${sk.name} → ${target.name}`});
+        }else if(behavior==='rage'){
+          const sk=skills.rage,n=Math.max(0,(g.teams[t].deathSerial||0)-(u.deathBaseline||0)),cost=summonSkillCost(g,t,u,sk),effect=sk?.effects?.f
+--- battle-emote #6 offset=6233406 ---
+protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();
+        if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        sendOnlineEmoteAck(msg);
+        if(msg?.emoteId&&!rememberBattleEmote(msg.emoteId))return true;
+        showBattleEmote(String(msg?.emoji||"👍").slice(0,4),"상대");
+        return true;
+      }
+      function receiveOnlineEmoteAck(msg){
+        if(msg?.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        const id=String(msg?.emoteId||""),entry=battleEmotePending.get(id);if(!entry)return true;
+        cancelBattleEmoteRetry(entry.timerId);battleEmotePending.delete(id);return true;
+      }
+      registerOnlineConnectionRoute("emote","battle-emote",receiveOnlineEmote,20);
+      registerOnlineConnectionRoute("emoteAckR1","battle-emote-ack",receiveOnlineEmoteAck,20);
+
+      /* 소환물 수동 조작 */
+      function ensurePendingSummonIdentity(g,q,u){
+        if(!q)return q;
+        const battleId=g?.battleId||g?.matchId||"battle";
+        const serial=Number(q.summonSerial??u?.summonSerial??0);
+        q.actionId ||= `${battleId}:summon:${Number(g?.turnSerial||0)}:${q.summonUid}:${serial}`;
+        q.transactionId ||= `${q.actionId}:tx`;
+        q.submitState ||= "AWAITING_INPUT";
+        return q;
+      }
+      function normalizePendingSummonTurns(g){
+        g.pendingSummonTurns ||= [];
+        while(g.pendingSummonTurns.length){
+          const q=g.pendingSummonTurns[0], u=findUnit(g,q.summonUid), owner=findUnit(g,q.ownerUid);
+          if(!u||u.dead||!u.isSummon||!owner||owner.dead||teamOf(g,u)!==q.team){g.pendingSummonTurns.shift();continue;}
+          ensurePendingSummonIdentity(g,q,u);
+          return {q,u,owner};
+        }
+        return null;
+      }
+      function summonSkillCost(g,t,u,skillRef){
+        const sk=skillOf(u,skillRef);
+        if(skillDefHasRuntimeKind(sk,"summonRageClaw")){
+          const n=Math.max(0,(g.teams[t].deathSerial||0)-(u.deathBaseline||0));
+          return '*'.repeat(Math.max(0,3-n));
+        }
+        return sk?.cost||'';
+      }
+      function summonTargetRefs(g,t,ally){
+        const team=ally?t:other(t);
+        return allBattleUnits(g,team,true).map(u=>({u,ref:targetRef(g,team,u)}));
+      }
+      function summonActionOptions(g,t,u){
+        const out=[{type:'summonGather',label:'에너지 모으기'}];
+        if(status(u,'freeze')||status(u,'paralyze'))return out;
+        const skills={
+          heal:firstSkillByRuntimeKind(u,"summonHeal"),
+          peck:firstSkillByRuntimeKind(u,"summonEnergyPeck"),
+          constrict:firstSkillByRuntimeKind(u,"summonConstrict"),
+          rage:firstSkillByRuntimeKind(u,"summonRageClaw"),
+        };
+        const behavior=cardCapability(u,'summonBehavior','');
+        if(behavior==='support'){
+          const heal=skills.heal,healCost=summonSkillCost(g,t,u,heal);
+          if(heal&&!u.skillSeals?.[heal.id]&&canPayAction(g,t,u,healCost))
+            for(const {u:target} of summonTargetRefs(g,t,true))out.push({type:'summonSkill',skill:heal.id,targetUid:target.uid,label:`${heal.name} → ${target.name}`});
+          const peck=skills.peck,peckCost=summonSkillCost(g,t,u,peck);
+          if(peck&&!u.skillSeals?.[peck.id]&&canPayAction(g,t,u,peckCost))
+            for(const {u:target} of summonTargetRefs(g,t,false))out.push({type:'summonSkill',skill:peck.id,targetUid:target.uid,label:`${peck.name} → ${target.name}`});
+        }else if(behavior==='constrict'){
+          const sk=skills.constrict,cost=summonSkillCost(g,t,u,sk);
+          if(sk&&!u.skillSeals?.[sk.id]&&canPayAction(g,t,u,cost))
+            for(const {u:target} of summonTargetRefs(g,t,false))out.push({type:'summonSkill',skill:sk.id,targetUid:target.uid,label:`${sk.name} → ${target.name}`});
+        }else if(behavior==='rage'){
+          const sk=skills.rage,n=Math.max(0,(g.teams[t].deathSerial||0)-(u.deathBaseline||0)),cost=summonSkillCost(g,t,u,sk),effect=sk?.effects?.find(e=>e.type==='summonRageClaw'),damage=Number(effect?.base||80)+Number(effect?.perDeat
+===== sendEmote count=0 =====
+===== showEmote count=0 =====
+===== emoteType count=0 =====
+===== type:"emote" count=1 =====
+--- type:"emote" #1 offset=6231593 ---
+       if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();
+        if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        sendOnlineEmoteAck(msg);
+        if(msg?.emoteId&&!rememberBattleEmote(msg.emoteId))return true;
+        showBattleEmote(String(msg?.emoji||"👍").slice(0,4),"상대");
+        return true;
+      }
+      function receiveOnlineEmoteAck(msg){
+        if(msg?.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        const id=String(msg?.emoteId||""),entry=battleEmotePending.get(id);if(!entry)return true;
+        cancelBattleEmoteRetry(entry.timerId);battleEmotePending.delete(id);return true;
+      }
+      registerOnlineConnectionRoute("emote","battle-emote",receiveOnlineEmote,20);
+      registerOnlineConnectionRoute("emoteAckR1","battle-emote-ack",receiveOnlineEmoteAck,20);
+
+      /* 소환물 수동 조작 */
+      function ensurePendingSummonIdentity(g,q,u){
+        if(!q)return q;
+        const battleId=g?.battleId||g?.matchId||"battle";
+        const serial=Number(q.summonSerial??u?.summonSerial??0);
+        q.actionId ||= `${battleId}:summon:${Number(g?.turnSerial||0)}:${q.summonUid}:${serial}`;
+        q.transactionId ||= `${q.actionId}:tx`;
+        q.submitState ||= "AWAITING_INPUT";
+        return q;
+      }
+      function normalizePendingSummonTurns(g){
+        g.pendingSummonTurns ||= [];
+        while(g.pendingSummonTurns.length){
+          const q=g.pendingSummonTurns[0], u=findUnit(g,q.summonUid), owner=findUnit(g,q.ownerUid);
+          if(!u||u.dead||!u.isSummon||!owner||owner.dead||teamOf(g,u)!==q.team){g.pendingSummonTurns.shift();continue;}
+          ensurePendingSummonIdentity(g,q,u);
+          return {q,u,owner};
+        }
+        return null;
+      }
+      function summonSkillCost(g,t,u,skillRef){
+        const sk=skillOf(u,skillRef);
+        if(skillDefHasRuntimeKind(sk,"summonRageClaw")){
+          const n=Math.max(0,(g.teams[t].deathSerial||0)-(u.deathBaseline||0));
+          return '*'.repeat(Math.max(0,3-n));
+        }
+        return sk?.cost||'';
+      }
+      function summonTargetRefs(g,t,ally){
+        const team=ally?t:other(t);
+        return allBattleUnits(g,team,true).map(u=>({u,ref:t
+===== type: "emote" count=0 =====
+===== case "emote" count=0 =====
+===== case 'emote' count=0 =====
+===== emoteCooldown count=0 =====
+===== emotes count=18 =====
+--- emotes #1 offset=200463 ---
+; top: -6px; min-width: 18px; height: 18px; padding: 0 5px;
+      display: grid; place-items: center; border-radius: 999px; background: #ff466d; color: #fff;
+      font-size: 10px; font-weight: 1000; box-shadow: 0 0 10px rgba(255,70,109,.72);
+    }
+    .online-chat-panel {
+      position: fixed; z-index: 24000; right: 12px; bottom: 12px; width: min(390px, calc(100vw - 24px));
+      max-height: min(540px, 72vh); display: grid; grid-template-rows: auto minmax(130px, 1fr) auto auto;
+      border: 1px solid rgba(111,147,211,.7); border-radius: 16px; overflow: hidden;
+      background: rgba(9,14,25,.96); box-shadow: 0 18px 55px rgba(0,0,0,.58), 0 0 22px rgba(63,119,226,.18);
+      backdrop-filter: blur(12px);
+    }
+    .online-chat-panel[hidden] { display: none !important; }
+    .online-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: rgba(29,43,70,.92); }
+    .online-chat-head b { font-size: 15px; }
+    .online-chat-head button { min-width: 42px; padding: 6px 9px; }
+    .online-chat-messages { overflow-y: auto; overscroll-behavior: contain; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+    .online-chat-empty { margin: auto; color: var(--muted); font-size: 13px; text-align: center; }
+    .online-chat-message { max-width: 84%; padding: 7px 10px; border-radius: 12px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .online-chat-message.mine { align-self: flex-end; background: #245ac7; color: #fff; border-bottom-right-radius: 4px; }
+    .online-chat-message.remote { align-self: flex-start; background: #253044; color: #f4f7ff; border-bottom-left-radius: 4px; }
+    .online-chat-meta { display: block; margin-top: 3px; font-size: 9px; opacity: .65; }
+    .online-chat-emotes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 9px 0;
+      border-top: 1px solid rgba(94,119,166,.25);
+    }
+    .online-chat-emotes button {
+      min-width: 42px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      font-size: 17px;
+      line-height: 1;
+    }
+    .online-chat-compose { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; padding: 9px; border-top: 1px solid rgba(94,119,166,.35); }
+    .online-chat-compose input { min-width: 0; width: 100%; }
+    .online-chat-compose button { min-width: 62px; }
+    .online-resync-toast {
+      position: fixed; z-index: 25000; left: 50%; bottom: 18px; transform: translateX(-50%);
+      padding: 8px 13px; border: 1px solid rgba(119,168,255,.72); border-radius: 999px;
+      background: rgba(13,24,43,.94); color: #dceaff; font-weight: 800; font-size: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4); pointer-events: none;
+      animation: onlineResyncToast 1.8s ease forwards;
+    }
+    @keyframes onlineResyncToast { 0%{opacity:0;transform:translate(-50%,10px)} 18%,72%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-8px)} }
+    @media(max-width:600px){
+      .online-chat-panel { right: 6px; bottom: 6px; width: calc(100vw - 12px); max-height: 66vh; }
+      #onlineChatBtn { right: 5px; bottom: calc(126px + env(safe-area-inset-bottom)); }
+    }
+  </style>
+<style id="stableKoreanTextMetricsPatch">
+    html, body, button, input, select, textarea, option {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "SamsungOneKorean", "Noto Sans KR", "Noto Sans CJK KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      font-kerning: auto !important;
+      font-variant-ligatures: normal !important;
+      font-synthesis: weight style !important;
+      text-rendering: auto !important;
+    }
+    h1,h2,h3,h4,p,b,strong,span,div,label,button,input,select,textarea {
+      word-spacing: normal !important;
+    }
+    .developer-seed-control { display:none !important; }
+  </style>
+<style id="bossRedLiveGlowHardFix">
+  #onlineChatBtn[hidden] { display:none !important; visibility:hidden !important; pointer-events:none !important; }
+
+  .battle-unit-card[data-boss-red-timeora="true"],
+  .battle-unit-card.boss-red-live-card {
+    overflow:visible !important;
+  }
+  .battle-unit-card[data-boss-red-timeora="true"] .boss-red-live-stage,
+  .battle-unit-card.boss-red-live-card .boss-red-live-stage {
+    position:relative !important;
+    overflow:visible !important;
+    isolation:isolate !important;
+  }
+  .battle-unit-card[data-boss-red-timeora="true"] .boss-red-live-stage::before,
+  .battle-unit-card.boss-red-live-card .boss-red-live-stage::before {
+    content:"";
+    position:absolute;
+    z-index:0;
+    left:50%;
+    top:52%;
+    width:clamp(48px, 34%, 66px);
+    height:clamp(48px, 34%, 66px);
+    transform:translate(-50%,-50%) scale(.98);
+    border-radius:50%;
+    pointer-events:none;
+    background:radial-gradient(circle,
+      rgba(255,92,108,.32) 0 10%,
+      rgba(255,33,62,.18) 27%,
+      rgba(1
+--- emotes #2 offset=200631 ---
+-size: 10px; font-weight: 1000; box-shadow: 0 0 10px rgba(255,70,109,.72);
+    }
+    .online-chat-panel {
+      position: fixed; z-index: 24000; right: 12px; bottom: 12px; width: min(390px, calc(100vw - 24px));
+      max-height: min(540px, 72vh); display: grid; grid-template-rows: auto minmax(130px, 1fr) auto auto;
+      border: 1px solid rgba(111,147,211,.7); border-radius: 16px; overflow: hidden;
+      background: rgba(9,14,25,.96); box-shadow: 0 18px 55px rgba(0,0,0,.58), 0 0 22px rgba(63,119,226,.18);
+      backdrop-filter: blur(12px);
+    }
+    .online-chat-panel[hidden] { display: none !important; }
+    .online-chat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; background: rgba(29,43,70,.92); }
+    .online-chat-head b { font-size: 15px; }
+    .online-chat-head button { min-width: 42px; padding: 6px 9px; }
+    .online-chat-messages { overflow-y: auto; overscroll-behavior: contain; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+    .online-chat-empty { margin: auto; color: var(--muted); font-size: 13px; text-align: center; }
+    .online-chat-message { max-width: 84%; padding: 7px 10px; border-radius: 12px; line-height: 1.4; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .online-chat-message.mine { align-self: flex-end; background: #245ac7; color: #fff; border-bottom-right-radius: 4px; }
+    .online-chat-message.remote { align-self: flex-start; background: #253044; color: #f4f7ff; border-bottom-left-radius: 4px; }
+    .online-chat-meta { display: block; margin-top: 3px; font-size: 9px; opacity: .65; }
+    .online-chat-emotes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 9px 0;
+      border-top: 1px solid rgba(94,119,166,.25);
+    }
+    .online-chat-emotes button {
+      min-width: 42px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      font-size: 17px;
+      line-height: 1;
+    }
+    .online-chat-compose { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; padding: 9px; border-top: 1px solid rgba(94,119,166,.35); }
+    .online-chat-compose input { min-width: 0; width: 100%; }
+    .online-chat-compose button { min-width: 62px; }
+    .online-resync-toast {
+      position: fixed; z-index: 25000; left: 50%; bottom: 18px; transform: translateX(-50%);
+      padding: 8px 13px; border: 1px solid rgba(119,168,255,.72); border-radius: 999px;
+      background: rgba(13,24,43,.94); color: #dceaff; font-weight: 800; font-size: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4); pointer-events: none;
+      animation: onlineResyncToast 1.8s ease forwards;
+    }
+    @keyframes onlineResyncToast { 0%{opacity:0;transform:translate(-50%,10px)} 18%,72%{opacity:1;transform:translate(-50%,0)} 100%{opacity:0;transform:translate(-50%,-8px)} }
+    @media(max-width:600px){
+      .online-chat-panel { right: 6px; bottom: 6px; width: calc(100vw - 12px); max-height: 66vh; }
+      #onlineChatBtn { right: 5px; bottom: calc(126px + env(safe-area-inset-bottom)); }
+    }
+  </style>
+<style id="stableKoreanTextMetricsPatch">
+    html, body, button, input, select, textarea, option {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "SamsungOneKorean", "Noto Sans KR", "Noto Sans CJK KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+      font-kerning: auto !important;
+      font-variant-ligatures: normal !important;
+      font-synthesis: weight style !important;
+      text-rendering: auto !important;
+    }
+    h1,h2,h3,h4,p,b,strong,span,div,label,button,input,select,textarea {
+      word-spacing: normal !important;
+    }
+    .developer-seed-control { display:none !important; }
+  </style>
+<style id="bossRedLiveGlowHardFix">
+  #onlineChatBtn[hidden] { display:none !important; visibility:hidden !important; pointer-events:none !important; }
+
+  .battle-unit-card[data-boss-red-timeora="true"],
+  .battle-unit-card.boss-red-live-card {
+    overflow:visible !important;
+  }
+  .battle-unit-card[data-boss-red-timeora="true"] .boss-red-live-stage,
+  .battle-unit-card.boss-red-live-card .boss-red-live-stage {
+    position:relative !important;
+    overflow:visible !important;
+    isolation:isolate !important;
+  }
+  .battle-unit-card[data-boss-red-timeora="true"] .boss-red-live-stage::before,
+  .battle-unit-card.boss-red-live-card .boss-red-live-stage::before {
+    content:"";
+    position:absolute;
+    z-index:0;
+    left:50%;
+    top:52%;
+    width:clamp(48px, 34%, 66px);
+    height:clamp(48px, 34%, 66px);
+    transform:translate(-50%,-50%) scale(.98);
+    border-radius:50%;
+    pointer-events:none;
+    background:radial-gradient(circle,
+      rgba(255,92,108,.32) 0 10%,
+      rgba(255,33,62,.18) 27%,
+      rgba(190,0,37,.07) 48%,
+      transparent 72%);
+    filter:blur(4px);
+    box-shadow:
+      0 0 7px rgba(255,52,78,.24),
+      0 0 14px rgba(210,0,42,.11);
+    opacity:.46;
+ 
+--- emotes #3 offset=6228959 ---
+summonType]?.summonColor||'#d4ed62');return;}if(v.type==="jcSummonAction"){const cls=v.kind==="coil"?'coil-fx':v.kind==="claw"?'claw-fx':'feather-fx',n=visualNode(arena,`jc-fx ${cls}`,v.kind==="heal"?'🪶':'',1100);positionFx(n,to);return;}if(v.type==="circuitRoundFx"){const ring=visualNode(arena,'jc-fx circuit-ring','',1100);positionFx(ring,from);for(const uid of v.targetUids||[]){const pt=pointForUid(arena,uid),r=visualNode(arena,'jc-fx circuit-ring','',900);positionFx(r,pt);}return;}if(v.type==="circuitArmsFx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        ret
+--- emotes #4 offset=6229200 ---
+v.type==="circuitRoundFx"){const ring=visualNode(arena,'jc-fx circuit-ring','',1100);positionFx(ring,from);for(const uid of v.targetUids||[]){const pt=pointForUid(arena,uid),r=visualNode(arena,'jc-fx circuit-ring','',900);positionFx(r,pt);}return;}if(v.type==="circuitArmsFx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.pr
+--- emotes #5 offset=6229240 ---
+sualNode(arena,'jc-fx circuit-ring','',1100);positionFx(ring,from);for(const uid of v.targetUids||[]){const pt=pointForUid(arena,uid),r=visualNode(arena,'jc-fx circuit-ring','',900);positionFx(r,pt);}return;}if(v.type==="circuitArmsFx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return fa
+--- emotes #6 offset=6229270 ---
+ring','',1100);positionFx(ring,from);for(const uid of v.targetUids||[]){const pt=pointForUid(arena,uid),r=visualNode(arena,'jc-fx circuit-ring','',900);positionFx(r,pt);}return;}if(v.type==="circuitArmsFx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMat
+--- emotes #7 offset=6229298 ---
+ng,from);for(const uid of v.targetUids||[]){const pt=pointForUid(arena,uid),r=visualNode(arena,'jc-fx circuit-ring','',900);positionFx(r,pt);}return;}if(v.type==="circuitArmsFx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),
+--- emotes #8 offset=6229324 ---
+v.targetUids||[]){const pt=pointForUid(arena,uid),r=visualNode(arena,'jc-fx circuit-ring','',900);positionFx(r,pt);}return;}if(v.type==="circuitArmsFx"){const dx=to.x-from.x,dy=to.y-from.y;for(let k=0;k<2;k++){const blade=visualNode(arena,'jc-fx circuit-blade','',900);blade?.style.setProperty('--from-x',`${from.x}px`);blade?.style.setProperty('--from-y',`${from.y+(k?9:-9)}px`);blade?.style.setProperty('--beam-length',`${Math.hypot(dx,dy)}px`);blade?.style.setProperty('--beam-angle',`${Math.atan2(dy,dx)+(k?-.04:.04)}rad`);}const pop=visualNode(arena,'jc-fx fragment-pop',`방어 +${v.defense}`,1100);positionFx(pop,from);return;}if(v.type==="voltagePrepareFx"){for(let i=0;i<v.rings;i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1300);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}return;}if(v.type==="voltageFailFx"){const ring=visualNode(arena,'jc-fx circuit-ring','실패',900);positionFx(ring,from);return;}if(v.type==="voltageBurstFx"){for(let i=0;i<Math.max(1,Math.ceil(v.m));i++){const ring=visualNode(arena,'jc-fx voltage-orbit','',1000);positionFx(ring,from);ring?.style.setProperty('--ring-index',i);}window.TimerManager.setTimeout(()=>{const core=visualNode(arena,'jc-fx voltage-core','',1200);positionFx(core,to);visualNode(battleEntityElement(v.targetUid),'float-num status-pop',`${v.amount}D`,900);},360);return;}}
+      const BATTLE_EMOTE_PROTOCOL = "mega-online-emote-r1";
+      const battleEmoteSeenIds = new Set();
+      const battleEmotePending = new Map();
+      function battleEmoteMatchId(){return String(p2p?.matchId||game?.matchId||p2p?.roomCode||"");}
+      function rememberBattleEmote(id){id=String(id||"");if(!id||battleEmoteSeenIds.has(id))return false;battleEmoteSeenIds.add(id);if(battleEmoteSeenIds.size>160)battleEmoteSeenIds.delete(battleEmoteSeenIds.values().next().value);return true;}
+      function showBattleEmote(emoji,who="상대"){const n=document.createElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatc
+--- emotes #9 offset=6231239 ---
+reateElement('div');n.className='battle-emote';n.style.zIndex="26000";n.textContent=`${who} ${emoji}`;document.body.appendChild(n);window.TimerManager.setTimeout(()=>n.remove(),2300);return n;}
+      function sendBattleEmoteControl(packet){
+        try{
+          const sent=window.OnlineRuntime?.sendControl?.(packet);
+          if(sent)return true;
+          if(p2p?.conn?.open)return p2pSend(packet) !== false;
+        }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
+        return false;
+      }
+      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function scheduleBattleEmoteRetry(entry){
+        if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
+        if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
+        const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
+        const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
+        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        return true;
+      }
+      function resetBattleEmoteReliability(reason="session-reset"){
+        for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
+        battleEmotePending.clear();battleEmoteSeenIds.clear();
+        return String(reason);
+      }
+      function sendOnlineEmote(emoji){
+        const value=String(emoji||"👍").slice(0,4),matchId=battleEmoteMatchId();
+        const emoteId=`emote:${window.OnlineRuntime?.identity?.().generation||0}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+        const packet=Object.freeze({type:"emote",protocol:BATTLE_EMOTE_PROTOCOL,emoji:value,emoteId,matchId,sentAt:Date.now()});
+        const entry={packet,createdAt:Date.now(),attempts:1,lastSentAt:Date.now(),lastSendSucceeded:false,timerId:0};
+        rememberBattleEmote(emoteId);battleEmotePending.set(emoteId,entry);
+        entry.lastSendSucceeded=sendBattleEmoteControl(packet);scheduleBattleEmoteRetry(entry);
+        showBattleEmote(value,"나");
+        return true;
+      }
+      function sendOnlineEmoteAck(msg){
+        const emoteId=String(msg?.emoteId||"");if(!emoteId)return false;
+        return sendBattleEmoteControl({type:"emoteAckR1",protocol:BATTLE_EMOTE_PROTOCOL,emoteId,matchId:String(msg?.matchId||battleEmoteMatchId()),receivedAt:Date.now()});
+      }
+      function receiveOnlineEmote(msg){
+        if(msg?.protocol&&msg.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();
+        if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        sendOnlineEmoteAck(msg);
+        if(msg?.emoteId&&!rememberBattleEmote(msg.emoteId))return true;
+        showBattleEmote(String(msg?.emoji||"👍").slice(0,4),"상대");
+        return true;
+      }
+      function receiveOnlineEmoteAck(msg){
+        if(msg?.protocol!==BATTLE_EMOTE_PROTOCOL)return false;
+        const incomingMatch=String(msg?.matchId||""),localMatch=battleEmoteMatchId();if(incomingMatch&&localMatch&&incomingMatch!==localMatch)return false;
+        const id=String(msg?.emoteId||""),entry=battleEmotePending.get(id);if(!entry)return true;
+        cancelBattleEmoteRetry(entry.timerId);battleEmotePending.delete(id);return true;
+      }
+      registerOnlineConnectionRoute("emote","battle-emote",receiveOnlineEmote,20);
+      registerOnlineConnectionRoute("emoteAckR1","battle-emote-ack",receiveOnlineEmoteAck,20);
+
+      /* 소환물 수동 조작 */
+      function ensurePendingSummonIdentity(g,q,u){
+        if(!q)return q;
+        const battleId=g?.battleId||g?.matchId||"battle";
+        const serial=Number(q.summonSerial??u?.summonSerial??0);
+        q.actionId ||= `${battleId}:summon:${Number(g?.turnSerial||0)}:${q.summonUid}:${serial}`;
+        q.transactionId ||= `${q.actionId}:tx`;
+        q.submitState ||= "AWAITING_INPUT";
+        return q;
+      }
+      function normalizePendingSummonTurns(g){
+        g.pendingSummonTurns ||= [];
+        while(g.pendingSummonTurns.length){
+          const q=g.pendingSummonTurns[0], u=findUnit(g,q.summonUid), owner=findUnit(g,q.ownerUid);
+          if(!u||u.dead||!u.isSummon||!owner||owner.dead||teamOf(g,u)!==q.team){g.pendingSummonTurns.shift();continue;}
+          ensurePendingSummonIdentity(g,q,u);
+          return {q,u,owner};
+        }
+        return null;
+      }
+      function summonSkillCost(g,t,u,skillRef){
+        const sk=skillOf(u,skillRef);
+        
+--- emotes #10 offset=6335248 ---
+t localPlayerId = () => String(p2p?.playerId || fallbackLocalPlayerId);
+        const remotePlayerId = () => String(p2p?.remotePlayerId || p2p?.remotePeerId || "remote");
+        const authorityPlayerId = () => String(p2p?.role === "host" ? localPlayerId() : remotePlayerId());
+        const sendPacket = packet => {
+          try{
+            const sent=window.OnlineRuntime?.sendControl?.(packet);
+            if(sent)return true;
+            if(p2p?.conn?.open)return p2pSend(packet) !== false;
+          }catch(error){window.__megaRecordRecoveredError?.(error,"lobby-engine-control-send");}
+          return false;
+        };
+        const participant = id => canonical.participants.get(String(id||"")) || null;
+        const cloneParticipant = row => row ? Object.freeze({
+          playerId:String(row.playerId||""), deck:Object.freeze([...(row.deck||[])]), plusStar:row.plusStar||null,
+          composition:row.composition||null, ready:!!row.ready, digest:String(row.digest||""), sequence:Number(row.sequence||0)
+        }) : null;
+        const digest = (deck, plusStar, league, composition = onlineCompositionNow()) => `${league}:${league === "comprehensive" ? composition : "-"}:${(deck||[]).join("|")}:${plusStar||""}`;
+        const record = (stage, detail = {}) => {
+          const state=readyState(); const identity=runtimeIdentity();
+          const entry = { at:Date.now(), stage:String(stage||"unknown"), scope:scope(),
+            runtimeGeneration:Number(identity.generation||0), bindingGeneration:Number(identity.bindingGeneration||0),
+            sessionToken:String(identity.sessionToken||""), projectionEpoch:Number(identity.projectionEpoch||0),
+            canonicalRevision:Number(canonical.revision||0), role:p2p?.role||null,
+            localSlots:[...state.localDeck], remoteSlots:[...state.remoteDeck], remoteSelectedCount:state.remoteDeck.length,
+            remoteReady:state.remote, ...detail };
+          trace.push(entry); if(trace.length>480)trace.splice(0,trace.length-320);  return entry;
+        };
+        const sanitizeParticipant = (row, league=onlineLeagueNow(), fallbackComposition=null) => {
+          const playerId=String(row?.playerId||""), team=playerId===localPlayerId()?onlineLocalTeam():onlineRemoteTeam(),
+            requestedComposition=String(row?.composition||"").trim(), invalidComposition=league==="comprehensive"&&!!requestedComposition&&!LeagueFormatOwner.comprehensivePatterns[requestedComposition],
+            composition=league==="comprehensive" ? LeagueFormatOwner.normalizeComposition(requestedComposition || fallbackComposition || (team==="P"?onlineCompositionNow():onlineRemoteCompositionNow())) : null,
+            deck=cloneAndSanitizeOnlineDeck(row?.deck||[],league,composition), requestedPlus=row?.plusStar ?? null,
+            plusStar=resolvePlusStarChoice(requestedPlus,deck,team),
+            plusValid=!plusStar || LeagueFormatOwner.partialValid(deck,league,composition,plusStar,team),
+            admittedPlus=plusValid?plusStar:null,
+            invalidRequestedPlus=!!requestedPlus&&!plusValid;
+          return { playerId,deck,plusStar:admittedPlus,composition,ready:!!row?.ready&&!invalidComposition&&!invalidRequestedPlus&&onlineDeckIsReady(deck,league,composition,admittedPlus,team),digest:digest(deck,admittedPlus,league,composition),sequence:Number(row?.sequence||0) };
+        };
+        const ensureParticipant = (id, seed={}) => {
+          id=String(id||""); if(!id)return null;
+          if(!canonical.participants.has(id))canonical.participants.set(id,sanitizeParticipant({playerId:id,...seed}));
+          return canonical.participants.get(id);
+        };
+        const importLocalDraft = (reason="local-draft") => {
+          const league=onlineLeagueNow(), composition=onlineCompositionNow(); sanitizeOnlineRoomSelection(league,composition);
+          const id=localPlayerId(); const prior=ensureParticipant(id);
+          const next=sanitizeParticipant({playerId:id,deck:[...selected],plusStar:plusStarSelection,composition,ready:onlineDeckIsReady(selected,league,composition,plusStarSelection,onlineLocalTeam()),sequence:Number(prior?.sequence||0)+1},league,composition);
+          canonical.participants.set(id,next); pendingLocalSequence=Math.max(pendingLocalSequence,next.sequence); canonical.authorityPlayerId=authorityPlayerId();
+          if(p2p?.role==="host") canonical.revision++;
+          record("canonical-local-mutation",{reason,participantId:id,participantSequence:next.sequence,digest:next.digest,authorityRevisionAdvanced:p2p?.role==="host"}); return next;
+        };
+        const readyState = () => {
+          const league=onlineLeagueNow(), composition=onlineCompositionNow(), remoteComposition=onlineRemoteCompositionNow(), local=participant(localPlayerId())||sanitizeParticipant({playerId:localPlayerId(),composition},league,composition),remote=participant(remotePlayerId())||sanitizeParticipant({playerId:remotePlayerId(),composition:remoteComposition},league,remoteComposition);
+    
+--- emotes #11 offset=6335283 ---
+.playerId || fallbackLocalPlayerId);
+        const remotePlayerId = () => String(p2p?.remotePlayerId || p2p?.remotePeerId || "remote");
+        const authorityPlayerId = () => String(p2p?.role === "host" ? localPlayerId() : remotePlayerId());
+        const sendPacket = packet => {
+          try{
+            const sent=window.OnlineRuntime?.sendControl?.(packet);
+            if(sent)return true;
+            if(p2p?.conn?.open)return p2pSend(packet) !== false;
+          }catch(error){window.__megaRecordRecoveredError?.(error,"lobby-engine-control-send");}
+          return false;
+        };
+        const participant = id => canonical.participants.get(String(id||"")) || null;
+        const cloneParticipant = row => row ? Object.freeze({
+          playerId:String(row.playerId||""), deck:Object.freeze([...(row.deck||[])]), plusStar:row.plusStar||null,
+          composition:row.composition||null, ready:!!row.ready, digest:String(row.digest||""), sequence:Number(row.sequence||0)
+        }) : null;
+        const digest = (deck, plusStar, league, composition = onlineCompositionNow()) => `${league}:${league === "comprehensive" ? composition : "-"}:${(deck||[]).join("|")}:${plusStar||""}`;
+        const record = (stage, detail = {}) => {
+          const state=readyState(); const identity=runtimeIdentity();
+          const entry = { at:Date.now(), stage:String(stage||"unknown"), scope:scope(),
+            runtimeGeneration:Number(identity.generation||0), bindingGeneration:Number(identity.bindingGeneration||0),
+            sessionToken:String(identity.sessionToken||""), projectionEpoch:Number(identity.projectionEpoch||0),
+            canonicalRevision:Number(canonical.revision||0), role:p2p?.role||null,
+            localSlots:[...state.localDeck], remoteSlots:[...state.remoteDeck], remoteSelectedCount:state.remoteDeck.length,
+            remoteReady:state.remote, ...detail };
+          trace.push(entry); if(trace.length>480)trace.splice(0,trace.length-320);  return entry;
+        };
+        const sanitizeParticipant = (row, league=onlineLeagueNow(), fallbackComposition=null) => {
+          const playerId=String(row?.playerId||""), team=playerId===localPlayerId()?onlineLocalTeam():onlineRemoteTeam(),
+            requestedComposition=String(row?.composition||"").trim(), invalidComposition=league==="comprehensive"&&!!requestedComposition&&!LeagueFormatOwner.comprehensivePatterns[requestedComposition],
+            composition=league==="comprehensive" ? LeagueFormatOwner.normalizeComposition(requestedComposition || fallbackComposition || (team==="P"?onlineCompositionNow():onlineRemoteCompositionNow())) : null,
+            deck=cloneAndSanitizeOnlineDeck(row?.deck||[],league,composition), requestedPlus=row?.plusStar ?? null,
+            plusStar=resolvePlusStarChoice(requestedPlus,deck,team),
+            plusValid=!plusStar || LeagueFormatOwner.partialValid(deck,league,composition,plusStar,team),
+            admittedPlus=plusValid?plusStar:null,
+            invalidRequestedPlus=!!requestedPlus&&!plusValid;
+          return { playerId,deck,plusStar:admittedPlus,composition,ready:!!row?.ready&&!invalidComposition&&!invalidRequestedPlus&&onlineDeckIsReady(deck,league,composition,admittedPlus,team),digest:digest(deck,admittedPlus,league,composition),sequence:Number(row?.sequence||0) };
+        };
+        const ensureParticipant = (id, seed={}) => {
+          id=String(id||""); if(!id)return null;
+          if(!canonical.participants.has(id))canonical.participants.set(id,sanitizeParticipant({playerId:id,...seed}));
+          return canonical.participants.get(id);
+        };
+        const importLocalDraft = (reason="local-draft") => {
+          const league=onlineLeagueNow(), composition=onlineCompositionNow(); sanitizeOnlineRoomSelection(league,composition);
+          const id=localPlayerId(); const prior=ensureParticipant(id);
+          const next=sanitizeParticipant({playerId:id,deck:[...selected],plusStar:plusStarSelection,composition,ready:onlineDeckIsReady(selected,league,composition,plusStarSelection,onlineLocalTeam()),sequence:Number(prior?.sequence||0)+1},league,composition);
+          canonical.participants.set(id,next); pendingLocalSequence=Math.max(pendingLocalSequence,next.sequence); canonical.authorityPlayerId=authorityPlayerId();
+          if(p2p?.role==="host") canonical.revision++;
+          record("canonical-local-mutation",{reason,participantId:id,participantSequence:next.sequence,digest:next.digest,authorityRevisionAdvanced:p2p?.role==="host"}); return next;
+        };
+        const readyState = () => {
+          const league=onlineLeagueNow(), composition=onlineCompositionNow(), remoteComposition=onlineRemoteCompositionNow(), local=participant(localPlayerId())||sanitizeParticipant({playerId:localPlayerId(),composition},league,composition),remote=participant(remotePlayerId())||sanitizeParticipant({playerId:remotePlayerId(),composition:remoteComposition},league,remoteComposition);
+          return Object.freeze({ league
+--- emotes #12 offset=6343245 ---
+ctorAll("[role=button],.online-room-card")]:[];
+          const enabledCards=cards.filter(node=>!node.disabled&&node.getAttribute("aria-disabled")!=="true"&&getComputedStyle(node).pointerEvents!=="none");
+          const portalEnabled=!!(portalButton&&!portalButton.disabled&&portalButton.getAttribute("aria-disabled")!=="true"&&getComputedStyle(portalButton).pointerEvents!=="none");
+          const interactionReady=visible&&(surfaceKind==="PORTAL"?portalEnabled:enabledCards.length>0);
+          return Object.freeze({surfaceKind,targetId:surfaceKind==="DECK"?deck?.id||null:portalButton?.id||null,connected,visible,modalOpen:!!modal?.classList.contains("open"),onlineRoomClass:!!modal?.classList.contains("online-room-r22"),blockingSyncModal:!!(modal?.classList.contains("open")&&!modal?.classList.contains("online-room-r22")),cardCount:cards.length,enabledCardCount:enabledCards.length,portalEnabled,interactionReady,activeNavigationSurface:document.documentElement.dataset.onlineActiveSurface||null});
+        };
+        const project = (reason="projection") => {
+          const state=readyState(),before=inspectSurface();
+          if(!before.connected||!before.visible){record("projection-skipped-no-current-surface",{reason,surface:before});return Object.freeze({ok:false,state,surface:before,reason:"CURRENT_LOBBY_SURFACE_UNAVAILABLE"});}
+          if(p2p){ p2p.localDeck=[...state.localDeck];p2p.remoteDeck=[...state.remoteDeck];p2p.localReady=state.local;p2p.remoteReady=state.remote;p2p.remotePlusStar=state.remotePlusStar;p2p.localComposition=state.localComposition;p2p.remoteComposition=state.remoteComposition; }
+          projectControls();
+          const label=document.getElementById("roomReadyState");
+          if(label){ label.textContent=onlineRoomReadyText();label.dataset.remoteSelectedCount=String(state.remoteDeck.length);label.dataset.lobbyProjectionRevision=String(state.revision);label.dataset.lobbyProjectionEpoch=String(runtimeIdentity().projectionEpoch||0); }
+          const surface=inspectSurface();
+          const ok=!!(surface.connected&&surface.visible&&surface.interactionReady&&(surface.surfaceKind==="PORTAL"||label));
+          record("projection-commit",{reason,committed:ok,surfaceKind:surface.surfaceKind,targetSurfaceId:surface.targetId,surfaceConnected:surface.connected,surfaceVisible:surface.visible,interactionReady:surface.interactionReady,visibleRemoteSelectedCount:label?Number(label.dataset.remoteSelectedCount||0):null,viewModelSignature:`${state.revision}:${state.league}:${state.localDeck.join("|")}:${state.remoteDeck.join("|")}:${state.local?1:0}:${state.remote?1:0}`});
+          return Object.freeze({ok,state,surface,reason:ok?null:"LOBBY_SURFACE_NOT_PLAYABLE"});
+        };
+        const lobbyPhaseActive = () => {
+          const phase=String(runtimeIdentity()?.phase||"");
+          const activeGame=typeof game!=="undefined"?game:null;
+          return !["STARTING_BATTLE","IN_BATTLE","TERMINAL","SETUP"].includes(phase)&&!p2p?.battleStarted&&activeGame?.mode!=="online"&&!activeGame?.bossRaid?.online;
+        };
+        const requestProjection = reason => {
+          if(!lobbyPhaseActive()){
+            record("lobby-projection-suppressed-after-phase-cutover",{reason:String(reason||"lobby"),phase:String(runtimeIdentity()?.phase||""),battleStarted:!!p2p?.battleStarted});
+            return Object.freeze({ok:true,suppressed:true,reason:"PHASE_ALREADY_CUT_OVER"});
+          }
+          return window.OnlineRuntime?.projection?.request?.(String(reason||"lobby"),{phase:"LOBBY",canonicalRevision:Number(canonical.revision||0)}) ?? project(reason);
+        };
+        const applyReadyState = (reason="compat-projection") => requestProjection(reason);
+        const publishEnvelope = (reason="authority-publish") => {
+          if(p2p?.role!=="host"||!p2p?.conn?.open)return false;
+          const packet=immutableEnvelope(reason);const sent=sendPacket(packet);record("authority-envelope-published",{reason,envelopeId:packet.envelopeId,revision:packet.revision,sent});return sent;
+        };
+        const publishMutation = (reason="participant-mutation") => {
+          if(p2p?.role!=="guest"||!p2p?.conn?.open)return false;
+          const local=participant(localPlayerId())||importLocalDraft(reason);const identity=runtimeIdentity();
+          const packet={type:"lobbyMutationR2",protocol:PROTOCOL,scope:scope(),senderId:localPlayerId(),participant:cloneParticipant(local),knownRevision:Number(canonical.revision||0),sessionGeneration:Number(identity.generation||0),sessionToken:String(identity.sessionToken||""),reason:String(reason),at:Date.now()};
+          const sent=sendPacket(packet);record("participant-mutation-published",{reason,participantSequence:local.sequence,digest:local.digest,sent});return sent;
+        };
+        const sendState = (reason="local-mutation") => {
+          importLocalDraft(reason);requestProjection(`local:${reason}`);
+          if(!p2p?.connected||!p2p?.conn?.open){record("state-publication-de
+--- emotes #13 offset=6343847 ---
+onnected,visible,modalOpen:!!modal?.classList.contains("open"),onlineRoomClass:!!modal?.classList.contains("online-room-r22"),blockingSyncModal:!!(modal?.classList.contains("open")&&!modal?.classList.contains("online-room-r22")),cardCount:cards.length,enabledCardCount:enabledCards.length,portalEnabled,interactionReady,activeNavigationSurface:document.documentElement.dataset.onlineActiveSurface||null});
+        };
+        const project = (reason="projection") => {
+          const state=readyState(),before=inspectSurface();
+          if(!before.connected||!before.visible){record("projection-skipped-no-current-surface",{reason,surface:before});return Object.freeze({ok:false,state,surface:before,reason:"CURRENT_LOBBY_SURFACE_UNAVAILABLE"});}
+          if(p2p){ p2p.localDeck=[...state.localDeck];p2p.remoteDeck=[...state.remoteDeck];p2p.localReady=state.local;p2p.remoteReady=state.remote;p2p.remotePlusStar=state.remotePlusStar;p2p.localComposition=state.localComposition;p2p.remoteComposition=state.remoteComposition; }
+          projectControls();
+          const label=document.getElementById("roomReadyState");
+          if(label){ label.textContent=onlineRoomReadyText();label.dataset.remoteSelectedCount=String(state.remoteDeck.length);label.dataset.lobbyProjectionRevision=String(state.revision);label.dataset.lobbyProjectionEpoch=String(runtimeIdentity().projectionEpoch||0); }
+          const surface=inspectSurface();
+          const ok=!!(surface.connected&&surface.visible&&surface.interactionReady&&(surface.surfaceKind==="PORTAL"||label));
+          record("projection-commit",{reason,committed:ok,surfaceKind:surface.surfaceKind,targetSurfaceId:surface.targetId,surfaceConnected:surface.connected,surfaceVisible:surface.visible,interactionReady:surface.interactionReady,visibleRemoteSelectedCount:label?Number(label.dataset.remoteSelectedCount||0):null,viewModelSignature:`${state.revision}:${state.league}:${state.localDeck.join("|")}:${state.remoteDeck.join("|")}:${state.local?1:0}:${state.remote?1:0}`});
+          return Object.freeze({ok,state,surface,reason:ok?null:"LOBBY_SURFACE_NOT_PLAYABLE"});
+        };
+        const lobbyPhaseActive = () => {
+          const phase=String(runtimeIdentity()?.phase||"");
+          const activeGame=typeof game!=="undefined"?game:null;
+          return !["STARTING_BATTLE","IN_BATTLE","TERMINAL","SETUP"].includes(phase)&&!p2p?.battleStarted&&activeGame?.mode!=="online"&&!activeGame?.bossRaid?.online;
+        };
+        const requestProjection = reason => {
+          if(!lobbyPhaseActive()){
+            record("lobby-projection-suppressed-after-phase-cutover",{reason:String(reason||"lobby"),phase:String(runtimeIdentity()?.phase||""),battleStarted:!!p2p?.battleStarted});
+            return Object.freeze({ok:true,suppressed:true,reason:"PHASE_ALREADY_CUT_OVER"});
+          }
+          return window.OnlineRuntime?.projection?.request?.(String(reason||"lobby"),{phase:"LOBBY",canonicalRevision:Number(canonical.revision||0)}) ?? project(reason);
+        };
+        const applyReadyState = (reason="compat-projection") => requestProjection(reason);
+        const publishEnvelope = (reason="authority-publish") => {
+          if(p2p?.role!=="host"||!p2p?.conn?.open)return false;
+          const packet=immutableEnvelope(reason);const sent=sendPacket(packet);record("authority-envelope-published",{reason,envelopeId:packet.envelopeId,revision:packet.revision,sent});return sent;
+        };
+        const publishMutation = (reason="participant-mutation") => {
+          if(p2p?.role!=="guest"||!p2p?.conn?.open)return false;
+          const local=participant(localPlayerId())||importLocalDraft(reason);const identity=runtimeIdentity();
+          const packet={type:"lobbyMutationR2",protocol:PROTOCOL,scope:scope(),senderId:localPlayerId(),participant:cloneParticipant(local),knownRevision:Number(canonical.revision||0),sessionGeneration:Number(identity.generation||0),sessionToken:String(identity.sessionToken||""),reason:String(reason),at:Date.now()};
+          const sent=sendPacket(packet);record("participant-mutation-published",{reason,participantSequence:local.sequence,digest:local.digest,sent});return sent;
+        };
+        const sendState = (reason="local-mutation") => {
+          importLocalDraft(reason);requestProjection(`local:${reason}`);
+          if(!p2p?.connected||!p2p?.conn?.open){record("state-publication-deferred",{reason,dropReason:"TRANSPORT_NOT_READY"});return false;}
+          return p2p.role==="host"?publishEnvelope(reason):publishMutation(reason);
+        };
+        const requestPeerState = (reason="authoritative-resync") => {
+          if(!p2p?.connected||!p2p?.conn?.open)return false;
+          const identity=runtimeIdentity(),requestId=`${instanceId}:request:${++stateRequestSerial}`;
+          const sent=sendPacket({type:"lobbyStateRequestR2",protocol:PROTOCOL,scope:scope(),requestId,senderId:localPlayerId(),knownRevision:Number(canonical.revision||0),senderSessionGeneration:Number(identi
+--- emotes #14 offset=6343894 ---
+ontains("open"),onlineRoomClass:!!modal?.classList.contains("online-room-r22"),blockingSyncModal:!!(modal?.classList.contains("open")&&!modal?.classList.contains("online-room-r22")),cardCount:cards.length,enabledCardCount:enabledCards.length,portalEnabled,interactionReady,activeNavigationSurface:document.documentElement.dataset.onlineActiveSurface||null});
+        };
+        const project = (reason="projection") => {
+          const state=readyState(),before=inspectSurface();
+          if(!before.connected||!before.visible){record("projection-skipped-no-current-surface",{reason,surface:before});return Object.freeze({ok:false,state,surface:before,reason:"CURRENT_LOBBY_SURFACE_UNAVAILABLE"});}
+          if(p2p){ p2p.localDeck=[...state.localDeck];p2p.remoteDeck=[...state.remoteDeck];p2p.localReady=state.local;p2p.remoteReady=state.remote;p2p.remotePlusStar=state.remotePlusStar;p2p.localComposition=state.localComposition;p2p.remoteComposition=state.remoteComposition; }
+          projectControls();
+          const label=document.getElementById("roomReadyState");
+          if(label){ label.textContent=onlineRoomReadyText();label.dataset.remoteSelectedCount=String(state.remoteDeck.length);label.dataset.lobbyProjectionRevision=String(state.revision);label.dataset.lobbyProjectionEpoch=String(runtimeIdentity().projectionEpoch||0); }
+          const surface=inspectSurface();
+          const ok=!!(surface.connected&&surface.visible&&surface.interactionReady&&(surface.surfaceKind==="PORTAL"||label));
+          record("projection-commit",{reason,committed:ok,surfaceKind:surface.surfaceKind,targetSurfaceId:surface.targetId,surfaceConnected:surface.connected,surfaceVisible:surface.visible,interactionReady:surface.interactionReady,visibleRemoteSelectedCount:label?Number(label.dataset.remoteSelectedCount||0):null,viewModelSignature:`${state.revision}:${state.league}:${state.localDeck.join("|")}:${state.remoteDeck.join("|")}:${state.local?1:0}:${state.remote?1:0}`});
+          return Object.freeze({ok,state,surface,reason:ok?null:"LOBBY_SURFACE_NOT_PLAYABLE"});
+        };
+        const lobbyPhaseActive = () => {
+          const phase=String(runtimeIdentity()?.phase||"");
+          const activeGame=typeof game!=="undefined"?game:null;
+          return !["STARTING_BATTLE","IN_BATTLE","TERMINAL","SETUP"].includes(phase)&&!p2p?.battleStarted&&activeGame?.mode!=="online"&&!activeGame?.bossRaid?.online;
+        };
+        const requestProjection = reason => {
+          if(!lobbyPhaseActive()){
+            record("lobby-projection-suppressed-after-phase-cutover",{reason:String(reason||"lobby"),phase:String(runtimeIdentity()?.phase||""),battleStarted:!!p2p?.battleStarted});
+            return Object.freeze({ok:true,suppressed:true,reason:"PHASE_ALREADY_CUT_OVER"});
+          }
+          return window.OnlineRuntime?.projection?.request?.(String(reason||"lobby"),{phase:"LOBBY",canonicalRevision:Number(canonical.revision||0)}) ?? project(reason);
+        };
+        const applyReadyState = (reason="compat-projection") => requestProjection(reason);
+        const publishEnvelope = (reason="authority-publish") => {
+          if(p2p?.role!=="host"||!p2p?.conn?.open)return false;
+          const packet=immutableEnvelope(reason);const sent=sendPacket(packet);record("authority-envelope-published",{reason,envelopeId:packet.envelopeId,revision:packet.revision,sent});return sent;
+        };
+        const publishMutation = (reason="participant-mutation") => {
+          if(p2p?.role!=="guest"||!p2p?.conn?.open)return false;
+          const local=participant(localPlayerId())||importLocalDraft(reason);const identity=runtimeIdentity();
+          const packet={type:"lobbyMutationR2",protocol:PROTOCOL,scope:scope(),senderId:localPlayerId(),participant:cloneParticipant(local),knownRevision:Number(canonical.revision||0),sessionGeneration:Number(identity.generation||0),sessionToken:String(identity.sessionToken||""),reason:String(reason),at:Date.now()};
+          const sent=sendPacket(packet);record("participant-mutation-published",{reason,participantSequence:local.sequence,digest:local.digest,sent});return sent;
+        };
+        const sendState = (reason="local-mutation") => {
+          importLocalDraft(reason);requestProjection(`local:${reason}`);
+          if(!p2p?.connected||!p2p?.conn?.open){record("state-publication-deferred",{reason,dropReason:"TRANSPORT_NOT_READY"});return false;}
+          return p2p.role==="host"?publishEnvelope(reason):publishMutation(reason);
+        };
+        const requestPeerState = (reason="authoritative-resync") => {
+          if(!p2p?.connected||!p2p?.conn?.open)return false;
+          const identity=runtimeIdentity(),requestId=`${instanceId}:request:${++stateRequestSerial}`;
+          const sent=sendPacket({type:"lobbyStateRequestR2",protocol:PROTOCOL,scope:scope(),requestId,senderId:localPlayerId(),knownRevision:Number(canonical.revision||0),senderSessionGeneration:Number(identity.generation||0),sessionToken:String(identity.
+--- emotes #15 offset=6370507 ---
+s.clear();if(typeof onlineCoinShownScopes!=="undefined")onlineCoinShownScopes.clear();
+          if(setupSnapshot){selected.splice(0,selected.length,...setupSnapshot.deck);plusStarSelection=setupSnapshot.plusStar;}
+          setupSnapshot=null;draftIdentity=null;canonical.revision=0;pendingLocalSequence=0;canonical.participants.clear();canonical.startTransaction=null;canonical.appliedEnvelopeId=null;
+          if(p2p){p2p.localDeck=[];p2p.remoteDeck=[];p2p.localReady=false;p2p.remoteReady=false;p2p.lobbyConsensusReady=false;p2p.__startedOnlineScope=null;p2p.__coinScope=null;p2p.__coinShown=false;p2p.coinResult=null;p2p.onlineStartPending=false;p2p.autoStarting=false;}
+          if(typeof resetOnlineStartTransactionState==="function")resetOnlineStartTransactionState("lobby-reset");
+          document.getElementById("modal")?.classList.remove("online-room-r22","online-room-closing");projectControls();return debug();
+        };
+        const hasAuthoritativeState = () => p2p?.role==="host" || (!!canonical.appliedEnvelopeId && canonical.authorityPlayerId===remotePlayerId());
+        const debug = () => {const state=readyState();return {version:VERSION,protocol:PROTOCOL,scope:scope(),revision:Number(canonical.revision||0),authorityPlayerId:canonical.authorityPlayerId,participantCount:canonical.participants.size,stateRequestSerial,pendingLocalSequence,hasAuthoritativeState:hasAuthoritativeState(),active:isRegularActive(),roomVisible:roomVisible(),renderCount,selectedDeckIds:[...selected],readyState:state,draftIdentity,setupSnapshotDeck:setupSnapshot?[...setupSnapshot.deck]:null,appliedEnvelopeId:canonical.appliedEnvelopeId,startTransaction:canonical.startTransaction?{...canonical.startTransaction}:null,trace:trace.map(entry=>({...entry,localSlots:[...(entry.localSlots||[])],remoteSlots:[...(entry.remoteSlots||[])]}))};};
+        return Object.freeze({VERSION,PROTOCOL,beginFreshDraft,ready:readyState,project,applyReadyState,submitDeck,sendState,requestPeerState,receiveState,receiveStateRequest,onTransportReady,acquireSurface,inspectSurface,showRoom,closeRoom,syncRoom,onRoomShown,onConnectionOpen,setStartTransaction,hasAuthoritativeState,canStart,requestConsensus,reset,debug});
+      })();
+
+
+      
+      function finishOnlineInvaderEdit() {
+        sanitizeOnlineRoomSelection(onlineLeagueNow(), onlineCompositionNow());
+        LobbyEngine.submitDeck();
+        window.OnlineRuntime?.projection?.request?.("invader-edit-complete",{phase:"LOBBY"});
+      }
+      function clearOnlineInvaderSelection() {
+        DeckDraftApplication.clearInvaders();
+        finishOnlineInvaderEdit();
+      }
+      function applyOnlineInvader(id) {
+        const league = onlineLeagueNow(), composition = onlineCompositionNow();
+        if (!isInvaderCardId(id) || !LeagueFormatOwner.cardAllowed(id, league, composition)) return;
+        sanitizeOnlineRoomSelection(league, composition);
+        const context = {mode:league, composition, plusStar:plusStarSelection, team:onlineLocalTeam()};
+        const application = DeckDraftApplication.applyInvader(id, 4, context);
+        if (application.applied) { finishOnlineInvaderEdit(); return; }
+        if (!application.needsReplacement) return;
+        const c = CARDS.find(x => x.id === id);
+        document.getElementById("modalContent").innerHTML = `<div class="invader-selector"><h2>${c?.name || "침략자"} 적용</h2><p>덱이 가득 찼습니다. 교체할 카드를 선택하세요.</p><div class="invader-replace-list">${selected.map((sid, i) => { const sc = CARDS.find(x => x.id === sid); return `<button type="button" data-online-invader-replace="${i}">${sc?.name || sid} 교체</button>`; }).join("")}</div><div class="invader-selector-actions"><button id="onlineInvaderReplaceCancel" type="button">취소</button></div></div>`;
+        document.querySelectorAll("[data-online-invader-replace]").forEach(button => button.onclick = () => {
+          const i = Number(button.dataset.onlineInvaderReplace);
+          if (!Number.isInteger(i) || i < 0 || i >= selected.length) return;
+          if (!DeckDraftApplication.replaceAt(i, id, context)) return;
+          finishOnlineInvaderEdit();
+        });
+        document.getElementById("onlineInvaderReplaceCancel").onclick = renderOnlineInvaderPortal;
+      }
+      function renderOnlineInvaderPortal() {
+        onlineInvaderPortalIndex = InvaderPortalView.renderSelector({
+          prefix: "invaderPortalOnline",
+          index: onlineInvaderPortalIndex,
+          selectedId: currentSelectedInvader(),
+          onIndex: next => { onlineInvaderPortalIndex = next; renderOnlineInvaderPortal(); },
+          onApply: id => applyOnlineInvader(id),
+          onClear: clearOnlineInvaderSelection,
+          onCancel: () => window.OnlineRuntime?.projection?.request?.("invader-portal-cancel",{phase:"LOBBY",allowDuringRestore:true,surfaceIntent:"DECK"}),
+          emptyButtonLabel: "대기실로 돌아가기"
+        });
+      }
+      function openOnlineInvaderPortal() {
+        const list = invaderCards(), current = currentSelectedInvader();
+    
+--- emotes #16 offset=6370530 ---
+ineCoinShownScopes!=="undefined")onlineCoinShownScopes.clear();
+          if(setupSnapshot){selected.splice(0,selected.length,...setupSnapshot.deck);plusStarSelection=setupSnapshot.plusStar;}
+          setupSnapshot=null;draftIdentity=null;canonical.revision=0;pendingLocalSequence=0;canonical.participants.clear();canonical.startTransaction=null;canonical.appliedEnvelopeId=null;
+          if(p2p){p2p.localDeck=[];p2p.remoteDeck=[];p2p.localReady=false;p2p.remoteReady=false;p2p.lobbyConsensusReady=false;p2p.__startedOnlineScope=null;p2p.__coinScope=null;p2p.__coinShown=false;p2p.coinResult=null;p2p.onlineStartPending=false;p2p.autoStarting=false;}
+          if(typeof resetOnlineStartTransactionState==="function")resetOnlineStartTransactionState("lobby-reset");
+          document.getElementById("modal")?.classList.remove("online-room-r22","online-room-closing");projectControls();return debug();
+        };
+        const hasAuthoritativeState = () => p2p?.role==="host" || (!!canonical.appliedEnvelopeId && canonical.authorityPlayerId===remotePlayerId());
+        const debug = () => {const state=readyState();return {version:VERSION,protocol:PROTOCOL,scope:scope(),revision:Number(canonical.revision||0),authorityPlayerId:canonical.authorityPlayerId,participantCount:canonical.participants.size,stateRequestSerial,pendingLocalSequence,hasAuthoritativeState:hasAuthoritativeState(),active:isRegularActive(),roomVisible:roomVisible(),renderCount,selectedDeckIds:[...selected],readyState:state,draftIdentity,setupSnapshotDeck:setupSnapshot?[...setupSnapshot.deck]:null,appliedEnvelopeId:canonical.appliedEnvelopeId,startTransaction:canonical.startTransaction?{...canonical.startTransaction}:null,trace:trace.map(entry=>({...entry,localSlots:[...(entry.localSlots||[])],remoteSlots:[...(entry.remoteSlots||[])]}))};};
+        return Object.freeze({VERSION,PROTOCOL,beginFreshDraft,ready:readyState,project,applyReadyState,submitDeck,sendState,requestPeerState,receiveState,receiveStateRequest,onTransportReady,acquireSurface,inspectSurface,showRoom,closeRoom,syncRoom,onRoomShown,onConnectionOpen,setStartTransaction,hasAuthoritativeState,canStart,requestConsensus,reset,debug});
+      })();
+
+
+      
+      function finishOnlineInvaderEdit() {
+        sanitizeOnlineRoomSelection(onlineLeagueNow(), onlineCompositionNow());
+        LobbyEngine.submitDeck();
+        window.OnlineRuntime?.projection?.request?.("invader-edit-complete",{phase:"LOBBY"});
+      }
+      function clearOnlineInvaderSelection() {
+        DeckDraftApplication.clearInvaders();
+        finishOnlineInvaderEdit();
+      }
+      function applyOnlineInvader(id) {
+        const league = onlineLeagueNow(), composition = onlineCompositionNow();
+        if (!isInvaderCardId(id) || !LeagueFormatOwner.cardAllowed(id, league, composition)) return;
+        sanitizeOnlineRoomSelection(league, composition);
+        const context = {mode:league, composition, plusStar:plusStarSelection, team:onlineLocalTeam()};
+        const application = DeckDraftApplication.applyInvader(id, 4, context);
+        if (application.applied) { finishOnlineInvaderEdit(); return; }
+        if (!application.needsReplacement) return;
+        const c = CARDS.find(x => x.id === id);
+        document.getElementById("modalContent").innerHTML = `<div class="invader-selector"><h2>${c?.name || "침략자"} 적용</h2><p>덱이 가득 찼습니다. 교체할 카드를 선택하세요.</p><div class="invader-replace-list">${selected.map((sid, i) => { const sc = CARDS.find(x => x.id === sid); return `<button type="button" data-online-invader-replace="${i}">${sc?.name || sid} 교체</button>`; }).join("")}</div><div class="invader-selector-actions"><button id="onlineInvaderReplaceCancel" type="button">취소</button></div></div>`;
+        document.querySelectorAll("[data-online-invader-replace]").forEach(button => button.onclick = () => {
+          const i = Number(button.dataset.onlineInvaderReplace);
+          if (!Number.isInteger(i) || i < 0 || i >= selected.length) return;
+          if (!DeckDraftApplication.replaceAt(i, id, context)) return;
+          finishOnlineInvaderEdit();
+        });
+        document.getElementById("onlineInvaderReplaceCancel").onclick = renderOnlineInvaderPortal;
+      }
+      function renderOnlineInvaderPortal() {
+        onlineInvaderPortalIndex = InvaderPortalView.renderSelector({
+          prefix: "invaderPortalOnline",
+          index: onlineInvaderPortalIndex,
+          selectedId: currentSelectedInvader(),
+          onIndex: next => { onlineInvaderPortalIndex = next; renderOnlineInvaderPortal(); },
+          onApply: id => applyOnlineInvader(id),
+          onClear: clearOnlineInvaderSelection,
+          onCancel: () => window.OnlineRuntime?.projection?.request?.("invader-portal-cancel",{phase:"LOBBY",allowDuringRestore:true,surfaceIntent:"DECK"}),
+          emptyButtonLabel: "대기실로 돌아가기"
+        });
+      }
+      function openOnlineInvaderPortal() {
+        const list = invaderCards(), current = currentSelectedInvader();
+        onlineInvaderPortal
+--- emotes #17 offset=6510508 ---
+ (Number(p2p.__reliableStateAck || 0) >= Number(packet.revision || 0)) return;
+          if (!force && Date.now() - Number(p2p.__reliableStateSentAt || 0) < 720) return;
+          // Reliable retries are immutable: state/turn must stay paired with packet.revision.
+          p2p.__reliableStateSentAt = Date.now();
+          sendOnlinePacketSafe(packet);
+        }
+
+        function chatTimeLabel(ts) {
+          try { return new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}); }
+          catch { return ""; }
+        }
+        function ensureOnlineChatUI() {
+          let button = document.getElementById("onlineChatBtn");
+          if (!button) {
+            button = document.createElement("button");
+            button.id = "onlineChatBtn";
+            button.type = "button";
+            button.hidden = true;
+            button.setAttribute("aria-label", "온라인 채팅 열기");
+            button.title = "온라인 채팅";
+            document.body.appendChild(button);
+            button.onclick = () => {
+              onlineChatPanelOpen = !onlineChatPanelOpen;
+              onlineChatUnread = 0;
+              syncOnlineChatUI();
+              if (onlineChatPanelOpen) window.TimerManager.setTimeout(() => document.getElementById("onlineChatInput")?.focus(), 0);
+            };
+          }
+          let panel = document.getElementById("onlineChatPanel");
+          if (!panel) {
+            panel = document.createElement("section");
+            panel.id = "onlineChatPanel";
+            panel.className = "online-chat-panel";
+            panel.hidden = true;
+            panel.innerHTML = `<div class="online-chat-head"><b>온라인 채팅</b><button id="onlineChatClose" type="button">닫기</button></div><div id="onlineChatMessages" class="online-chat-messages"></div><div class="online-chat-emotes" id="onlineChatEmotes">${["👍","🔥","😮","😂","💢","GG"].map(e => `<button type="button" data-chat-emote="${e}" aria-label="${e}">${e}</button>`).join("")}</div><form id="onlineChatForm" class="online-chat-compose"><input id="onlineChatInput" maxlength="120" autocomplete="off" placeholder="메시지 입력"><button type="submit" class="primary">전송</button></form>`;
+            document.body.appendChild(panel);
+            panel.querySelector("#onlineChatClose").onclick = () => { onlineChatPanelOpen = false; syncOnlineChatUI(); };
+            panel.querySelectorAll("[data-chat-emote]").forEach(btn => {
+              btn.addEventListener("click", () => sendOnlineEmote(btn.dataset.chatEmote || btn.textContent || "👍"));
+            });
+            panel.querySelector("#onlineChatForm").addEventListener("submit", event => {
+              event.preventDefault();
+              const input = panel.querySelector("#onlineChatInput");
+              const value = String(input.value || "").trim();
+              if (!value) return;
+              input.value = "";
+              sendOnlineChat(value);
+            });
+          }
+          return {button, panel};
+        }
+        function renderOnlineChatMessages() {
+          const box = document.getElementById("onlineChatMessages");
+          if (!box) return;
+          box.textContent = "";
+          if (!onlineChatMessages.length) {
+            const empty = document.createElement("div");
+            empty.className = "online-chat-empty";
+            empty.textContent = "상대와 메시지를 주고받을 수 있습니다.";
+            box.appendChild(empty);
+            return;
+          }
+          for (const message of onlineChatMessages.slice(-80)) {
+            const row = document.createElement("div");
+            row.className = `online-chat-message ${message.mine ? "mine" : "remote"}`;
+            const body = document.createElement("span");
+            body.textContent = message.text;
+            const meta = document.createElement("span");
+            meta.className = "online-chat-meta";
+            meta.textContent = `${message.sender || (message.mine ? "나" : (game?.bossRaid?.online ? "레이드 동료" : "상대"))} · ${chatTimeLabel(message.sentAt)}`;
+            row.append(body, meta);
+            box.appendChild(row);
+          }
+          box.scrollTop = box.scrollHeight;
+        }
+        function syncOnlineChatUI() {
+          const {button, panel} = ensureOnlineChatUI();
+          const battleScreenOpen = !!document.getElementById("game")?.classList.contains("active");
+          const modalOpen = !!document.getElementById("modal")?.classList.contains("open");
+          const directOnlineSession = !!(p2p?.connected && (battleScreenOpen || modalOpen));
+          // 매칭/레이드 대기, 전투 중 일시 단절, 탭 복귀 재연결 중에도 채팅 UI를 숨기지 않는다.
+          const persistentOnlineContext = !!((battleScreenOpen || modalOpen) && (
+            p2p?.sessionMode === "matchmaking" ||
+            p2p?.sessionMode === "bossRaid" ||
+            game?.mode === "online" ||
+            game?.mode === "spectator" ||
+            !!game?.bossRaid?.online
+          ));
+          const spectatorSession = !!(game?.mode === "spectator" && window.__megaSpectatorR18?.isWatching?.());
+          con
+--- emotes #18 offset=6510530 ---
+eStateAck || 0) >= Number(packet.revision || 0)) return;
+          if (!force && Date.now() - Number(p2p.__reliableStateSentAt || 0) < 720) return;
+          // Reliable retries are immutable: state/turn must stay paired with packet.revision.
+          p2p.__reliableStateSentAt = Date.now();
+          sendOnlinePacketSafe(packet);
+        }
+
+        function chatTimeLabel(ts) {
+          try { return new Date(ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}); }
+          catch { return ""; }
+        }
+        function ensureOnlineChatUI() {
+          let button = document.getElementById("onlineChatBtn");
+          if (!button) {
+            button = document.createElement("button");
+            button.id = "onlineChatBtn";
+            button.type = "button";
+            button.hidden = true;
+            button.setAttribute("aria-label", "온라인 채팅 열기");
+            button.title = "온라인 채팅";
+            document.body.appendChild(button);
+            button.onclick = () => {
+              onlineChatPanelOpen = !onlineChatPanelOpen;
+              onlineChatUnread = 0;
+              syncOnlineChatUI();
+              if (onlineChatPanelOpen) window.TimerManager.setTimeout(() => document.getElementById("onlineChatInput")?.focus(), 0);
+            };
+          }
+          let panel = document.getElementById("onlineChatPanel");
+          if (!panel) {
+            panel = document.createElement("section");
+            panel.id = "onlineChatPanel";
+            panel.className = "online-chat-panel";
+            panel.hidden = true;
+            panel.innerHTML = `<div class="online-chat-head"><b>온라인 채팅</b><button id="onlineChatClose" type="button">닫기</button></div><div id="onlineChatMessages" class="online-chat-messages"></div><div class="online-chat-emotes" id="onlineChatEmotes">${["👍","🔥","😮","😂","💢","GG"].map(e => `<button type="button" data-chat-emote="${e}" aria-label="${e}">${e}</button>`).join("")}</div><form id="onlineChatForm" class="online-chat-compose"><input id="onlineChatInput" maxlength="120" autocomplete="off" placeholder="메시지 입력"><button type="submit" class="primary">전송</button></form>`;
+            document.body.appendChild(panel);
+            panel.querySelector("#onlineChatClose").onclick = () => { onlineChatPanelOpen = false; syncOnlineChatUI(); };
+            panel.querySelectorAll("[data-chat-emote]").forEach(btn => {
+              btn.addEventListener("click", () => sendOnlineEmote(btn.dataset.chatEmote || btn.textContent || "👍"));
+            });
+            panel.querySelector("#onlineChatForm").addEventListener("submit", event => {
+              event.preventDefault();
+              const input = panel.querySelector("#onlineChatInput");
+              const value = String(input.value || "").trim();
+              if (!value) return;
+              input.value = "";
+              sendOnlineChat(value);
+            });
+          }
+          return {button, panel};
+        }
+        function renderOnlineChatMessages() {
+          const box = document.getElementById("onlineChatMessages");
+          if (!box) return;
+          box.textContent = "";
+          if (!onlineChatMessages.length) {
+            const empty = document.createElement("div");
+            empty.className = "online-chat-empty";
+            empty.textContent = "상대와 메시지를 주고받을 수 있습니다.";
+            box.appendChild(empty);
+            return;
+          }
+          for (const message of onlineChatMessages.slice(-80)) {
+            const row = document.createElement("div");
+            row.className = `online-chat-message ${message.mine ? "mine" : "remote"}`;
+            const body = document.createElement("span");
+            body.textContent = message.text;
+            const meta = document.createElement("span");
+            meta.className = "online-chat-meta";
+            meta.textContent = `${message.sender || (message.mine ? "나" : (game?.bossRaid?.online ? "레이드 동료" : "상대"))} · ${chatTimeLabel(message.sentAt)}`;
+            row.append(body, meta);
+            box.appendChild(row);
+          }
+          box.scrollTop = box.scrollHeight;
+        }
+        function syncOnlineChatUI() {
+          const {button, panel} = ensureOnlineChatUI();
+          const battleScreenOpen = !!document.getElementById("game")?.classList.contains("active");
+          const modalOpen = !!document.getElementById("modal")?.classList.contains("open");
+          const directOnlineSession = !!(p2p?.connected && (battleScreenOpen || modalOpen));
+          // 매칭/레이드 대기, 전투 중 일시 단절, 탭 복귀 재연결 중에도 채팅 UI를 숨기지 않는다.
+          const persistentOnlineContext = !!((battleScreenOpen || modalOpen) && (
+            p2p?.sessionMode === "matchmaking" ||
+            p2p?.sessionMode === "bossRaid" ||
+            game?.mode === "online" ||
+            game?.mode === "spectator" ||
+            !!game?.bossRaid?.online
+          ));
+          const spectatorSession = !!(game?.mode === "spectator" && window.__megaSpectatorR18?.isWatching?.());
+          const spectatorHostSessio
