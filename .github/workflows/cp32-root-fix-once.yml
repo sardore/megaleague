@@ -1,6 +1,10 @@
 name: CP32 Root Fix Once
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cp32-root-fix-once.yml'
   push:
     branches: [ci/real-relay-e2e]
 
@@ -8,19 +12,32 @@ permissions:
   contents: write
 
 jobs:
-  patch-in-place:
+  patch-test-commit:
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'ci/real-relay-e2e')
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 45
+    env:
+      CP32_RELAY_SOURCE_SHA: e6b97f0e63298d0766fc179bcfe76e80c2df44eb
+      CP32_CURRENT_APP_URL: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
+      CP32_LOCAL_RELAY: ws://127.0.0.1:8787/online
+      CP32_REAL_RELAY_ARTIFACTS: artifacts/real-relay
     steps:
       - uses: actions/checkout@v6
         with:
           ref: ci/real-relay-e2e
           fetch-depth: 1
           persist-credentials: true
-      - name: Replace peer reconnect feedback path in place
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Apply peer reconnect fix directly in OnlineRuntime
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p artifacts/real-relay
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
@@ -46,21 +63,21 @@ jobs:
           }'''
           old_count=text.count(old)
           new_count=text.count(new)
-          if old_count == 0 and new_count == 1:
+          if old_count == 1 and new_count == 0:
+              if before_sha != 'e32105dd317923587ba7eae589ad920a5e70b9c4ed9cbc94ca10cbf882d8a3dd':
+                  raise SystemExit(f'ROOT_FIX_SOURCE_SHA_MISMATCH:{before_sha}')
+              text=text.replace(old,new,1)
+              p.write_text(text,encoding='utf-8',newline='')
+              print('ROOT_FIX_APPLIED')
+          elif old_count == 0 and new_count == 1:
               print('ROOT_FIX_ALREADY_APPLIED')
-              raise SystemExit(0)
-          if old_count != 1 or new_count != 0:
+          else:
               raise SystemExit(f'ROOT_FIX_PREIMAGE_MISMATCH old={old_count} new={new_count} sha={before_sha}')
-          if before_sha != 'e32105dd317923587ba7eae589ad920a5e70b9c4ed9cbc94ca10cbf882d8a3dd':
-              raise SystemExit(f'ROOT_FIX_SOURCE_SHA_MISMATCH:{before_sha}')
-          text=text.replace(old,new,1)
-          p.write_text(text,encoding='utf-8',newline='')
           after=p.read_bytes()
-          print('ROOT_FIX_APPLIED')
-          print('BEFORE_SHA',before_sha)
-          print('AFTER_SHA',hashlib.sha256(after).hexdigest())
-          print('SIZE',len(after))
+          Path('artifacts/real-relay/root-fix-sha.txt').write_text(f'before={before_sha}\nafter={hashlib.sha256(after).hexdigest()}\nsize={len(after)}\n')
+          print(Path('artifacts/real-relay/root-fix-sha.txt').read_text())
           PY
+
       - name: Check all inline scripts
         shell: bash
         run: |
@@ -70,7 +87,7 @@ jobs:
           import re, subprocess, tempfile
           html=Path('index.html').read_text(encoding='utf-8')
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.I|re.S)
-          if not scripts: raise SystemExit('NO_INLINE_SCRIPTS')
+          if len(scripts) != 12: raise SystemExit(f'INLINE_SCRIPT_COUNT:{len(scripts)}')
           for i,s in enumerate(scripts):
               f=Path(tempfile.gettempdir())/f'cp32-root-fix-{i}.js'
               f.write_text(s,encoding='utf-8')
@@ -78,18 +95,72 @@ jobs:
               if r.returncode:
                   print(r.stderr)
                   raise SystemExit(f'INLINE_SCRIPT_SYNTAX_FAIL:{i}')
-          print('INLINE_SCRIPT_SYNTAX_PASS',len(scripts))
+          print('INLINE_SCRIPT_SYNTAX_PASS:12')
           PY
-      - name: Commit root fix if changed
+
+      - name: Install E2E dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Check out exact relay source
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- index.html; then
-            echo ROOT_FIX_NO_CHANGE
-            exit 0
-          fi
+          git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
+          git -C relay-src checkout --detach "$CP32_RELAY_SOURCE_SHA"
+          test "$(git -C relay-src rev-parse HEAD)" = "$CP32_RELAY_SOURCE_SHA"
+          node --check relay-src/server.js
+
+      - name: Start exact relay and patched app
+        shell: bash
+        run: |
+          set -euo pipefail
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/real-relay/relay.stdout.log 2> artifacts/real-relay/relay.stderr.log &
+          echo $! > artifacts/real-relay/relay.pid
+          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/real-relay/app.stdout.log 2> artifacts/real-relay/app.stderr.log &
+          echo $! > artifacts/real-relay/app.pid
+          for i in $(seq 1 60); do
+            APP_OK=0; RELAY_OK=0
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null 2>&1 && APP_OK=1 || true
+            grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log 2>/dev/null && RELAY_OK=1 || true
+            if [ "$APP_OK" = 1 ] && [ "$RELAY_OK" = 1 ]; then break; fi
+            sleep .25
+          done
+          curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log
+
+      - name: Two independent mobile browsers against exact relay
+        run: npx playwright test tests/e2e/current-real-relay.spec.js --workers=1
+
+      - name: Commit verified core edit and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/cp32-root-fix-once.yml
           git add index.html
-          git commit -m 'Fix peer reconnect restore feedback loop'
+          git diff --cached --check
+          git commit -m 'Fix peer reconnect restore feedback loop in core runtime'
           git push origin HEAD:ci/real-relay-e2e
+
+      - name: Preserve process evidence
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          ps -ef > artifacts/real-relay/processes.txt 2>/dev/null || true
+          for f in artifacts/real-relay/*.pid; do
+            [ -f "$f" ] || continue
+            kill "$(cat "$f")" 2>/dev/null || true
+          done
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-root-fix-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: warn
+          include-hidden-files: true
