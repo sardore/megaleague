@@ -1,17 +1,21 @@
 name: CP32 Form Placement Root Fix Once
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cp32-form-order-fix-once.yml'
   push:
     branches: [ci/real-relay-e2e]
     paths:
       - '.github/workflows/cp32-form-order-fix-once.yml'
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   patch-test-commit:
+    if: github.event_name == 'push' || (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'ci/real-relay-e2e')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -27,94 +31,54 @@ jobs:
           ref: ci/real-relay-e2e
           fetch-depth: 1
           persist-credentials: true
-
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
           package-manager-cache: false
-
-      - name: Apply stable form-family composition order in core LeagueFormatOwner
-        shell: bash
+      - name: Apply stable form-family order in LeagueFormatOwner
         run: |
           set -euo pipefail
           mkdir -p artifacts/real-relay
           python3 - <<'PY'
           from pathlib import Path
-          import base64, hashlib, os
-          p=Path('index.html')
-          data=p.read_bytes()
-          before=hashlib.sha256(data).hexdigest()
-          text=data.decode('utf-8')
-          old=base64.b64decode(os.environ['FORM_OLD_B64']).decode('utf-8')
-          new=base64.b64decode(os.environ['FORM_NEW_B64']).decode('utf-8')
-          if text.count(old) != 1 or text.count(new) != 0:
-              raise SystemExit(f'FORM_ORDER_PREIMAGE_MISMATCH old={text.count(old)} new={text.count(new)} sha={before}')
-          if before != '544b216fdc6bc45c59582981c0de4962b8db0d00cb84634e2e060651eb319da0':
-              raise SystemExit(f'FORM_ORDER_SOURCE_SHA_MISMATCH:{before}')
-          text=text.replace(old,new,1)
-          p.write_text(text,encoding='utf-8',newline='')
-          after=p.read_bytes()
-          Path('artifacts/real-relay/form-order-sha.txt').write_text(f'before={before}\nafter={hashlib.sha256(after).hexdigest()}\nsize={len(after)}\n')
+          import base64,hashlib,os
+          p=Path('index.html'); data=p.read_bytes(); before=hashlib.sha256(data).hexdigest(); text=data.decode()
+          old=base64.b64decode(os.environ['FORM_OLD_B64']).decode(); new=base64.b64decode(os.environ['FORM_NEW_B64']).decode()
+          if text.count(old)!=1 or text.count(new)!=0: raise SystemExit(f'FORM_PREIMAGE old={text.count(old)} new={text.count(new)} sha={before}')
+          if before!='544b216fdc6bc45c59582981c0de4962b8db0d00cb84634e2e060651eb319da0': raise SystemExit(f'FORM_SOURCE_SHA:{before}')
+          p.write_text(text.replace(old,new,1),encoding='utf-8',newline='')
+          after=p.read_bytes(); Path('artifacts/real-relay/form-order-sha.txt').write_text(f'before={before}\nafter={hashlib.sha256(after).hexdigest()}\nsize={len(after)}\n')
           print(Path('artifacts/real-relay/form-order-sha.txt').read_text())
           PY
-
-      - name: Check all inline scripts
-        shell: bash
+      - name: Syntax check current app
         run: |
-          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import re, subprocess, tempfile
-          html=Path('index.html').read_text(encoding='utf-8')
-          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.I|re.S)
-          if len(scripts) != 12: raise SystemExit(f'INLINE_SCRIPT_COUNT:{len(scripts)}')
+          import re,subprocess,tempfile
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',Path('index.html').read_text(),flags=re.I|re.S)
+          if len(scripts)!=12: raise SystemExit(f'SCRIPT_COUNT:{len(scripts)}')
           for i,s in enumerate(scripts):
-              f=Path(tempfile.gettempdir())/f'cp32-form-order-{i}.js'
-              f.write_text(s,encoding='utf-8')
-              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
-              if r.returncode:
-                  print(r.stderr)
-                  raise SystemExit(f'INLINE_SCRIPT_SYNTAX_FAIL:{i}')
+            f=Path(tempfile.gettempdir())/f'form-{i}.js'; f.write_text(s); r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode: print(r.stderr); raise SystemExit(f'SYNTAX:{i}')
           print('INLINE_SCRIPT_SYNTAX_PASS:12')
           PY
-
-      - name: Install E2E dependencies
+      - name: Install E2E
         run: |
           npm install --ignore-scripts --no-audit --no-fund
           npx playwright install --with-deps chromium
-
-      - name: Check out exact relay source
-        shell: bash
+      - name: Start exact relay and app
         run: |
-          set -euo pipefail
           git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
           git -C relay-src checkout --detach "$CP32_RELAY_SOURCE_SHA"
           test "$(git -C relay-src rev-parse HEAD)" = "$CP32_RELAY_SOURCE_SHA"
-          node --check relay-src/server.js
-
-      - name: Start exact relay and patched app
-        shell: bash
-        run: |
-          set -euo pipefail
-          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/real-relay/relay.stdout.log 2> artifacts/real-relay/relay.stderr.log &
-          echo $! > artifacts/real-relay/relay.pid
-          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/real-relay/app.stdout.log 2> artifacts/real-relay/app.stderr.log &
-          echo $! > artifacts/real-relay/app.pid
-          for i in $(seq 1 60); do
-            APP_OK=0; RELAY_OK=0
-            curl --fail --silent http://127.0.0.1:4173/ >/dev/null 2>&1 && APP_OK=1 || true
-            grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log 2>/dev/null && RELAY_OK=1 || true
-            if [ "$APP_OK" = 1 ] && [ "$RELAY_OK" = 1 ]; then break; fi
-            sleep .25
-          done
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/real-relay/relay.stdout.log 2> artifacts/real-relay/relay.stderr.log & echo $! > artifacts/real-relay/relay.pid
+          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/real-relay/app.stdout.log 2> artifacts/real-relay/app.stderr.log & echo $! > artifacts/real-relay/app.pid
+          for i in $(seq 1 60); do curl --fail --silent http://127.0.0.1:4173/ >/dev/null 2>&1 && grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log && break; sleep .25; done
           curl --fail --silent http://127.0.0.1:4173/ >/dev/null
           grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log
-
-      - name: Run form-placement regression and real-relay E2E
-        run: npx playwright test tests/e2e/current-real-relay*.spec.js --workers=1
-
-      - name: Commit verified core edit and remove one-shot workflow
-        shell: bash
+      - name: Verify form placement and core real-relay path
+        run: npx playwright test tests/e2e/current-real-relay-form-stability.spec.js tests/e2e/current-real-relay.spec.js --workers=1
+      - name: Commit verified core edit
         run: |
           set -euo pipefail
           git config user.name github-actions[bot]
@@ -124,23 +88,7 @@ jobs:
           git diff --cached --check
           git commit -m 'Keep form-family placement stable across rarity changes'
           git push origin HEAD:ci/real-relay-e2e
-
-      - name: Preserve process evidence
+      - name: Stop processes
         if: always()
-        shell: bash
         run: |
-          set +e
-          ps -ef > artifacts/real-relay/processes.txt 2>/dev/null || true
-          for f in artifacts/real-relay/*.pid; do
-            [ -f "$f" ] || continue
-            kill "$(cat "$f")" 2>/dev/null || true
-          done
-
-      - name: Upload evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: cp32-form-order-${{ github.run_id }}
-          path: artifacts/
-          if-no-files-found: warn
-          include-hidden-files: true
+          for f in artifacts/real-relay/*.pid; do [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true; done
