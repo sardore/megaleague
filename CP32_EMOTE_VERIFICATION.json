@@ -1,0 +1,25 @@
+{
+  "commit_under_test": "24d855d908bdf3e8f27c1a3187ff522191ba4ebf",
+  "expected_index_sha256": "31cf6bd51351456a98a40130f8cc806f947da4b92c2e9d47946e3739f184384e",
+  "deployed_index_sha256": "31cf6bd51351456a98a40130f8cc806f947da4b92c2e9d47946e3739f184384e",
+  "local_exact_relay_exit_code": 0,
+  "deployment_identity_exit_code": 0,
+  "live_pages_render_exit_code": 0,
+  "all_ok": true,
+  "local_log_tail": [
+    "",
+    "Running 2 tests using 1 worker",
+    "",
+    "[1/2] tests/e2e/current-real-relay-emote.spec.js:65:1 › online lobby emotes deliver both directions once over the canonical control route",
+    "[2/2] tests/e2e/current-real-relay-emote.spec.js:99:1 › emote missed while receiver is backgrounded arrives by retry after authoritative restore without duplicate display",
+    "  2 passed (40.9s)"
+  ],
+  "live_log_tail": [
+    "",
+    "Running 2 tests using 1 worker",
+    "",
+    "[1/2] tests/e2e/current-real-relay-emote.spec.js:65:1 › online lobby emotes deliver both directions once over the canonical control route",
+    "[2/2] tests/e2e/current-real-relay-emote.spec.js:99:1 › emote missed while receiver is backgrounded arrives by retry after authoritative restore without duplicate display",
+    "  2 passed (44.9s)"
+  ]
+}
