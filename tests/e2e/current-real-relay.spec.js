@@ -71,6 +71,52 @@ async function waitBattleTransportReady(page, timeout = 45000) {
   }, { timeout, message: 'battle runtime must finish restore before interaction' }).toBe(true);
 }
 
+async function assertRestoreFixedPoint(page, label, settleMs = 1400) {
+  const before = await page.evaluate(() => {
+    const d = window.OnlineRuntime?.debug?.() || null;
+    return {
+      at: Date.now(),
+      state: d?.state || null,
+      ready: d?.transport?.ready === true,
+      activeBindingId: d?.transport?.activeBindingId || null,
+      activeBindingState: d?.transport?.activeBindingState || null,
+      candidateBindingId: d?.transport?.candidateBindingId || null,
+    };
+  });
+  expect(before.state, `${label}: runtime must already be in battle`).toBe('IN_BATTLE');
+  expect(before.ready, `${label}: transport must already be ready`).toBe(true);
+  expect(before.activeBindingState, `${label}: active binding must already be READY`).toBe('READY');
+  expect(before.candidateBindingId, `${label}: no restore candidate may remain`).toBeNull();
+
+  await page.waitForTimeout(settleMs);
+
+  const after = await page.evaluate(since => {
+    const d = window.OnlineRuntime?.debug?.() || null;
+    const trace = Array.isArray(d?.transport?.recoveryTrace) ? d.transport.recoveryTrace : [];
+    const newRestoreWork = trace.filter(entry => Number(entry?.at || 0) >= since && (
+      String(entry?.stage || '') === 'restore-request' ||
+      String(entry?.stage || '') === 'authoritative-resync-requested' ||
+      String(entry?.stage || '') === 'reconnect-scheduled' ||
+      String(entry?.stage || '').includes('->RESTORING')
+    ));
+    return {
+      state: d?.state || null,
+      ready: d?.transport?.ready === true,
+      activeBindingId: d?.transport?.activeBindingId || null,
+      activeBindingState: d?.transport?.activeBindingState || null,
+      candidateBindingId: d?.transport?.candidateBindingId || null,
+      newRestoreWork,
+    };
+  }, before.at);
+
+  expect(after.state, `${label}: runtime must stay in battle after settling`).toBe('IN_BATTLE');
+  expect(after.ready, `${label}: transport must stay ready after settling`).toBe(true);
+  expect(after.activeBindingState, `${label}: active binding must stay READY`).toBe('READY');
+  expect(after.candidateBindingId, `${label}: restore candidate must not reappear`).toBeNull();
+  expect(after.activeBindingId, `${label}: healthy local binding must not be replaced by peer reconnect feedback`).toBe(before.activeBindingId);
+  expect(after.newRestoreWork, `${label}: settled runtime must not start another restore/resume cycle`).toEqual([]);
+}
+
 async function visibleLegalActionCount(page) {
   return page.locator(LEGAL_ACTION).count();
 }
@@ -87,8 +133,6 @@ async function touchFirstVisibleLegalAction(page) {
   const first = page.locator(LEGAL_ACTION).first();
   await expect(first).toBeVisible({ timeout: 30000 });
   await expect(first).toBeEnabled();
-  // Locator.tap() retains real touch semantics while auto-waiting/re-resolving if the
-  // battle renderer replaces a button node between frames.
   await first.tap();
   await resolveInteraction(page);
 }
@@ -137,6 +181,11 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
 
     await startBattle(host.page, guest.page);
     await Promise.all([waitBattleTransportReady(host.page), waitBattleTransportReady(guest.page)]);
+    await Promise.all([
+      assertRestoreFixedPoint(host.page, 'host after battle start'),
+      assertRestoreFixedPoint(guest.page, 'guest after battle start'),
+    ]);
+
     const h0 = await runtimeSummary(host.page);
     const g0 = await runtimeSummary(guest.page);
     expect(h0.runtime?.matchId).toBeTruthy();
@@ -154,6 +203,10 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
     await actor.page.bringToFront();
 
     await Promise.all([waitBattleTransportReady(host.page), waitBattleTransportReady(guest.page)]);
+    await Promise.all([
+      assertRestoreFixedPoint(host.page, 'host after battle reconnect'),
+      assertRestoreFixedPoint(guest.page, 'guest after battle reconnect'),
+    ]);
 
     await assertNoBlackScreen(host.page);
     await assertNoBlackScreen(guest.page);
