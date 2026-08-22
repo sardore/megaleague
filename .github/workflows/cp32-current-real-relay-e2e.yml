@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'tests/e2e/current-real-relay.spec.js'
+      - 'tests/e2e/current-real-relay*.spec.js'
       - '.github/workflows/cp32-current-real-relay-e2e.yml'
       - 'tests/helpers/**'
       - 'package.json'
@@ -125,8 +125,8 @@ jobs:
           console.log('LOCAL_RELAY_WEBSOCKET_OPEN_PASS');
           NODE
 
-      - name: Two independent browsers against exact relay source
-        run: npx playwright test tests/e2e/current-real-relay.spec.js --workers=1
+      - name: Real mobile browser regressions against exact relay source
+        run: npx playwright test tests/e2e/current-real-relay*.spec.js --workers=1
 
       - name: Preserve process logs and evidence
         if: always()
