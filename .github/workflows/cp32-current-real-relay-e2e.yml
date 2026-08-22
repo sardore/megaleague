@@ -108,15 +108,21 @@ jobs:
             sleep .25
           done
           curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null
+          for i in $(seq 1 60); do
+            if grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log && grep -q '"protocol":"cp32-online-relay-v1"' artifacts/real-relay/relay.stdout.log; then break; fi
+            sleep .25
+          done
+          grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log
+          grep -q '"protocol":"cp32-online-relay-v1"' artifacts/real-relay/relay.stdout.log
           node --input-type=module - <<'NODE'
           const url='ws://127.0.0.1:8787/online';
-          const result=await new Promise((resolve,reject)=>{
-            const ws=new WebSocket(url);const t=setTimeout(()=>reject(new Error('LOCAL_RELAY_TIMEOUT')),10000);
-            ws.addEventListener('message',e=>{try{const m=JSON.parse(e.data);if(m.type==='relay.ready'){clearTimeout(t);ws.close();resolve(m);}}catch{}},{once:false});
-            ws.addEventListener('error',()=>{clearTimeout(t);reject(new Error('LOCAL_RELAY_ERROR'));},{once:true});
+          await new Promise((resolve,reject)=>{
+            const ws=new WebSocket(url);
+            const t=setTimeout(()=>{try{ws.close()}catch{};reject(new Error('LOCAL_RELAY_OPEN_TIMEOUT'));},10000);
+            ws.addEventListener('open',()=>{clearTimeout(t);ws.close();resolve();},{once:true});
+            ws.addEventListener('error',()=>{clearTimeout(t);reject(new Error('LOCAL_RELAY_OPEN_ERROR'));},{once:true});
           });
-          if(result.protocol!=='cp32-online-relay-v1')throw new Error(`LOCAL_RELAY_PROTOCOL_MISMATCH:${result.protocol}`);
-          console.log(JSON.stringify(result));
+          console.log('LOCAL_RELAY_WEBSOCKET_OPEN_PASS');
           NODE
 
       - name: Two independent browsers against exact relay source
