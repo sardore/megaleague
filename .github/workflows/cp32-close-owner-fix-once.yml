@@ -23,4 +23,77 @@ jobs:
       CP32_CURRENT_APP_URL: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
       CP32_REAL_RELAY_ARTIFACTS: artifacts/real-relay
       CLOSE_OLD_1: ICAgICAgJCgiI2Nsb3NlTW9kYWwiKS5vbmNsaWNrID0gKCkgPT4gewogICAgICAgIGhpZGVDYXJkVG9vbHRpcCgpOwogICAgICAgICQoIiNtb2RhbCIpLmNsYXNzTGlzdC5yZW1vdmUoIm9wZW4iKTsKICAgICAgICB3aW5kb3cuX19tZWdhU3luY09ubGluZUNoYXRVST8uKCk7CiAgICAgICAgaWYgKGdhbWUgJiYgIWdhbWUud2lubmVyKSB7CiAgICAgICAgICByZW5kZXIoKTsKICAgICAgICAgIGlmICghcHJvY2Vzc1BlbmRpbmdUcmFpdENob2ljZSgpKSBzY2hlZHVsZUFJKCk7CiAgICAgICAgfQogICAgICB9Ow==
-      CLOSE_NEW_1: ICAgICAgJCgiI2Nsb3NlTW9kYWwiKS5vbmNsaWNrID0gKCkgPT4gewogICAgICAgIGhpZGVDYXJkVG9vbHRpcCgpOwogICAgICAgIGlmICh3aW5kb3cuT25saW5lUnVudGltZT8udWk/LmNsb3NlT3duZWRNb2RhbD8uKCJnbG9iYWwtbW9kYWwtY2xvc2UiKSkgewogICAgICAgICAgd2luZG93Ll9fbWVnYVN5bmNPbmxpbmVDaGF0VUk/LigpOwogICAgICAgICAgcmV0dXJuOwogICAgICAgIH0KICAgICAgICAkKCIjbW9kYWwiKS5jbGFzc0xpc3QucmVtb3ZlKCJvcGVuIik7CiAgICAgICAgd2luZG93Ll9fbWVnYVN5bmNPbmxpbmVDaGF0VUk/LigpOwogICAgICAgIGlmIChnYW1lICYmICFnYW1lLndpbm5lcikgewogICAgICAgICAgcmVuZGVyKCk7CiAgICAgICAgICBpZiAoIXByb2Nlc3NQZW5kaW5nVHJhaXRD...TRUNCATED...
+      CLOSE_NEW_1: ICAgICAgJCgiI2Nsb3NlTW9kYWwiKS5vbmNsaWNrID0gKCkgPT4gewogICAgICAgIGhpZGVDYXJkVG9vbHRpcCgpOwogICAgICAgIGlmICh3aW5kb3cuT25saW5lUnVudGltZT8udWk/LmNsb3NlT3duZWRNb2RhbD8uKCJnbG9iYWwtbW9kYWwtY2xvc2UiKSkgewogICAgICAgICAgd2luZG93Ll9fbWVnYVN5bmNPbmxpbmVDaGF0VUk/LigpOwogICAgICAgICAgcmV0dXJuOwogICAgICAgIH0KICAgICAgICAkKCIjbW9kYWwiKS5jbGFzc0xpc3QucmVtb3ZlKCJvcGVuIik7CiAgICAgICAgd2luZG93Ll9fbWVnYVN5bmNPbmxpbmVDaGF0VUk/LigpOwogICAgICAgIGlmIChnYW1lICYmICFnYW1lLndpbm5lcikgewogICAgICAgICAgcmVuZGVyKCk7CiAgICAgICAgICBpZiAoIXByb2Nlc3NQZW5kaW5nVHJhaXRDaG9pY2UoKSkgc2NoZWR1bGVBSSgpOwogICAgICAgIH0KICAgICAgfTs=
+      CLOSE_OLD_2: ICAgIGNvbnN0IGVudHJ5SW50ZW50U25hcHNob3QgPSAoKSA9PiBPYmplY3QuZnJlZXplKHsuLi5lbnRyeUludGVudFN0YXRlfSk7CiAgICBjb25zdCBVSUNvbnRyb2xsZXJSdW50aW1lID0gT2JqZWN0LmZyZWV6ZSh7CiAgICAgIGhhbmRsZU1haW5PbmxpbmVFbnRyeShldmVudCkgew==
+      CLOSE_NEW_2: ICAgIGNvbnN0IGVudHJ5SW50ZW50U25hcHNob3QgPSAoKSA9PiBPYmplY3QuZnJlZXplKHsuLi5lbnRyeUludGVudFN0YXRlfSk7CiAgICBjb25zdCByZXR1cm5PbmxpbmVSdW50aW1lVG9TZXR1cCA9IChyZWFzb249InJlc3VsdC10by1zZXR1cCIpID0+IHsKICAgICAgY29uc3Qgc2Vzc2lvbj1hY3RpdmVTZXNzaW9uOwogICAgICBpZihzZXNzaW9uKXsKICAgICAgICBzZXNzaW9uLnJvdXRlc1JlYWR5PWZhbHNlOwogICAgICAgIGlmKHNlc3Npb24ubWFjaGluZS5zdGF0ZT09PSJJTl9CQVRUTEUiKXNlc3Npb24ubWFjaGluZS50cmFuc2l0aW9uKCJFTkRJTkciLHJlYXNvbik7CiAgICAgICAgc2Vzc2lvbi5zY29wZT8ucmVjb3JkPy4oInJldHVybi10by1zZXR1cC1iZWdpbiIse3JlYXNvbn0pOwogICAgICAgIENsZWFudXBDb29yZGluYXRvci5jbG9zZShyZWFzb24se25vdGlmeTp0cnVlLGtlZXBVaTp0cnVlLHJlbGVhc2VBY3RpdmU6dHJ1ZSxjbGVhckNoYXQ6ZmFsc2V9KTsKICAgICAgfQogICAgICBQcm9qZWN0aW9uVHJhbnNhY3Rpb24uY29tbWl0RGV0YWNoZWRTZXR1cChyZWFzb24pOwogICAgICByZXR1cm4gdHJ1ZTsKICAgIH07CiAgICBjb25zdCBVSUNvbnRyb2xsZXJSdW50aW1lID0gT2JqZWN0LmZyZWV6ZSh7CiAgICAgIGNsb3NlT3duZWRNb2RhbChyZWFzb249Imdsb2JhbC1tb2RhbC1jbG9zZSIpIHsKICAgICAgICBpZighYWN0aXZlU2Vzc2lvbilyZXR1cm4gZmFsc2U7CiAgICAgICAgcmV0dXJuIHJldHVybk9ubGluZVJ1bnRpbWVUb1NldHVwKHJlYXNvbik7CiAgICAgIH0sCiAgICAgIGhhbmRsZU1haW5PbmxpbmVFbnRyeShldmVudCkgew==
+      CLOSE_OLD_3: ICAgICAgcmV0dXJuVG9TZXR1cChyZWFzb249InJlc3VsdC10by1zZXR1cCIpIHtjb25zdCBzPWFjdGl2ZVNlc3Npb247aWYocyl7cy5yb3V0ZXNSZWFkeT1mYWxzZTtpZihzLm1hY2hpbmUuc3RhdGU9PT0iSU5fQkFUVExFIilzLm1hY2hpbmUudHJhbnNpdGlvbigiRU5ESU5HIixyZWFzb24pO3Muc2NvcGU/LnJlY29yZD8uKCJyZXN1bHQtdG8tc2V0dXAtYmVnaW4iLHtyZWFzb259KTtDbGVhbnVwQ29vcmRpbmF0b3IuY2xvc2UocmVhc29uLHtub3RpZnk6dHJ1ZSxrZWVwVWk6dHJ1ZSxyZWxlYXNlQWN0aXZlOnRydWUsY2xlYXJDaGF0OmZhbHNlfSk7fWNvbnN0IHByb2plY3RlZD1Qcm9qZWN0aW9uVHJhbnNhY3Rpb24uY29tbWl0RGV0YWNoZWRTZXR1cChyZWFzb24pO3JldHVybiB0cnVlO30s
+      CLOSE_NEW_3: ICAgICAgcmV0dXJuVG9TZXR1cChyZWFzb249InJlc3VsdC10by1zZXR1cCIpIHtyZXR1cm4gcmV0dXJuT25saW5lUnVudGltZVRvU2V0dXAocmVhc29uKTt9LA==
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ci/real-relay-e2e
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Apply canonical OnlineRuntime modal ownership fix
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/real-relay
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64,hashlib,os
+          p=Path('index.html'); data=p.read_bytes(); before=hashlib.sha256(data).hexdigest(); text=data.decode()
+          if before!='5910e01ac481019f5b3ba896748e2e278b47ae2a827ddcf275891a2e2913c6fd': raise SystemExit(f'CLOSE_SOURCE_SHA:{before}')
+          for i in range(1,4):
+            old=base64.b64decode(os.environ[f'CLOSE_OLD_{i}']).decode(); new=base64.b64decode(os.environ[f'CLOSE_NEW_{i}']).decode()
+            if text.count(old)!=1 or text.count(new)!=0: raise SystemExit(f'CLOSE_PREIMAGE_{i}:old={text.count(old)} new={text.count(new)}')
+            text=text.replace(old,new,1)
+          p.write_text(text,encoding='utf-8',newline='')
+          after=p.read_bytes(); Path('artifacts/real-relay/close-owner-sha.txt').write_text(f'before={before}\nafter={hashlib.sha256(after).hexdigest()}\nsize={len(after)}\n')
+          print(Path('artifacts/real-relay/close-owner-sha.txt').read_text())
+          PY
+      - name: Syntax check current app
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess,tempfile
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',Path('index.html').read_text(),flags=re.I|re.S)
+          if len(scripts)!=12: raise SystemExit(f'SCRIPT_COUNT:{len(scripts)}')
+          for i,s in enumerate(scripts):
+            f=Path(tempfile.gettempdir())/f'close-{i}.js'; f.write_text(s); r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+            if r.returncode: print(r.stderr); raise SystemExit(f'SYNTAX:{i}')
+          print('INLINE_SCRIPT_SYNTAX_PASS:12')
+          PY
+      - name: Install E2E
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Start exact relay and app
+        run: |
+          git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
+          git -C relay-src checkout --detach "$CP32_RELAY_SOURCE_SHA"
+          test "$(git -C relay-src rev-parse HEAD)" = "$CP32_RELAY_SOURCE_SHA"
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/real-relay/relay.stdout.log 2> artifacts/real-relay/relay.stderr.log & echo $! > artifacts/real-relay/relay.pid
+          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/real-relay/app.stdout.log 2> artifacts/real-relay/app.stderr.log & echo $! > artifacts/real-relay/app.pid
+          for i in $(seq 1 60); do curl --fail --silent http://127.0.0.1:4173/ >/dev/null 2>&1 && grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log && break; sleep .25; done
+          curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log
+      - name: Verify close owner plus preserved form and online path
+        run: npx playwright test tests/e2e/current-real-relay-close.spec.js tests/e2e/current-real-relay-form-stability.spec.js tests/e2e/current-real-relay.spec.js --workers=1
+      - name: Commit verified core edit
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/cp32-close-owner-fix-once.yml
+          git add index.html
+          git diff --cached --check
+          git commit -m 'Route online modal close through runtime lifecycle owner'
+          git push origin HEAD:ci/real-relay-e2e
+      - name: Stop processes
+        if: always()
+        run: |
+          for f in artifacts/real-relay/*.pid; do [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true; done
