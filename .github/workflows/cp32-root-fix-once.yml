@@ -21,6 +21,8 @@ jobs:
       CP32_CURRENT_APP_URL: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
       CP32_LOCAL_RELAY: ws://127.0.0.1:8787/online
       CP32_REAL_RELAY_ARTIFACTS: artifacts/real-relay
+      ROOT_OLD_B64: ICAgICAgICAgIGNhc2UgInNlc3Npb24ucGVlci1yZWNvbm5lY3RlZCI6IHsKICAgICAgICAgICAgaWYgKHAycCkgeyBwMnAuY29ubmVjdGVkID0gdHJ1ZTsgcDJwLmNvbm5lY3Rpb25JbnRlcnJ1cHRlZCA9IGZhbHNlOyB9CiAgICAgICAgICAgIHJldHVybiBMaWZlY3ljbGVDb29yZGluYXRvci5yZXF1ZXN0QXV0aG9yaXRhdGl2ZVJlc3luYygicmVtb3RlLXBlZXItcmVjb25uZWN0ZWQiKTsKICAgICAgICAgIH0=
+      ROOT_NEW_B64: ICAgICAgICAgIGNhc2UgInNlc3Npb24ucGVlci1yZWNvbm5lY3RlZCI6IHsKICAgICAgICAgICAgaWYgKHAycCkgeyBwMnAuY29ubmVjdGVkID0gdHJ1ZTsgcDJwLmNvbm5lY3Rpb25JbnRlcnJ1cHRlZCA9IGZhbHNlOyB9CiAgICAgICAgICAgIGNvbnN0IGxvY2FsQmluZGluZ1JlYWR5ID0gISFiaW5kaW5nICYmICFiaW5kaW5nLnJldGlyZWQgJiYgYmluZGluZy5zdGF0ZSA9PT0gIlJFQURZIiAmJiBiaW5kaW5nLnNvY2tldD8ucmVhZHlTdGF0ZSA9PT0gV2ViU29ja2V0Lk9QRU47CiAgICAgICAgICAgIGNvbnN0IHJlbW90ZVJlc3RvcmVQZW5kaW5nID0gc2Vzc2lvbi5tYWNoaW5lLnN0YXRlID09PSAiUkVDT05ORUNUSU5HIiB8fCAhIXNlc3Npb24uc2NvcGU/LnRyYW5zYWN0aW9ucz8uZ2V0Py4oInJlc3RvcmUiKTsKICAgICAgICAgICAgc2Vzc2lvbi50cmFuc3BvcnQ/LnRyYWNlPy4oInJlbW90ZS1wZWVyLXJlY29ubmVjdGVkIiwgYmluZGluZywgeyBsb2NhbEJpbmRpbmdSZWFkeSwgcmVtb3RlUmVzdG9yZVBlbmRpbmcsIHNlc3Npb25TdGF0ZTogc2Vzc2lvbi5tYWNoaW5lLnN0YXRlLCByZXN1bWVTdGF0ZTogc2Vzc2lvbi5yZXN1bWVTdGF0ZSB9KTsKICAgICAgICAgICAgaWYgKGxvY2FsQmluZGluZ1JlYWR5KSB7CiAgICAgICAgICAgICAgaWYgKHJlbW90ZVJlc3RvcmVQZW5kaW5nKSBSZXN0b3JlVHJhbnNhY3Rpb24udHJhbnNwb3J0UmVhZHkoc2Vzc2lvbiwgYmluZGluZywgeyBwaGFzZTogc2Vzc2lvbi5yZXN1bWVTdGF0ZSB8fCAocDJwPy5iYXR0bGVTdGFydGVkID8gIklOX0JBVFRMRSIgOiAiTE9CQlkiKSwgcmVhc29uOiAicmVtb3RlLXBlZXItcmVjb25uZWN0ZWQiIH0pOwogICAgICAgICAgICAgIHJldHVybiB0cnVlOwogICAgICAgICAgICB9CiAgICAgICAgICAgIHJldHVybiBMaWZlY3ljbGVDb29yZGluYXRvci5yZXF1ZXN0QXV0aG9yaXRhdGl2ZVJlc3luYygicmVtb3RlLXBlZXItcmVjb25uZWN0ZWQiKTsKICAgICAgICAgIH0=
     steps:
       - uses: actions/checkout@v6
         with:
@@ -40,27 +42,13 @@ jobs:
           mkdir -p artifacts/real-relay
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib
-
+          import base64, hashlib, os
           p=Path('index.html')
           data=p.read_bytes()
           before_sha=hashlib.sha256(data).hexdigest()
           text=data.decode('utf-8')
-          old='''          case "session.peer-reconnected": {
-            if (p2p) { p2p.connected = true; p2p.connectionInterrupted = false; }
-            return LifecycleCoordinator.requestAuthoritativeResync("remote-peer-reconnected");
-          }'''
-          new='''          case "session.peer-reconnected": {
-            if (p2p) { p2p.connected = true; p2p.connectionInterrupted = false; }
-            const localBindingReady = !!binding && !binding.retired && binding.state === "READY" && binding.socket?.readyState === WebSocket.OPEN;
-            const remoteRestorePending = session.machine.state === "RECONNECTING" || !!session.scope?.transactions?.get?.("restore");
-            session.transport?.trace?.("remote-peer-reconnected", binding, { localBindingReady, remoteRestorePending, sessionState: session.machine.state, resumeState: session.resumeState });
-            if (localBindingReady) {
-              if (remoteRestorePending) RestoreTransaction.transportReady(session, binding, { phase: session.resumeState || (p2p?.battleStarted ? "IN_BATTLE" : "LOBBY"), reason: "remote-peer-reconnected" });
-              return true;
-            }
-            return LifecycleCoordinator.requestAuthoritativeResync("remote-peer-reconnected");
-          }'''
+          old=base64.b64decode(os.environ['ROOT_OLD_B64']).decode('utf-8')
+          new=base64.b64decode(os.environ['ROOT_NEW_B64']).decode('utf-8')
           old_count=text.count(old)
           new_count=text.count(new)
           if old_count == 1 and new_count == 0:
