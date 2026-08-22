@@ -1,0 +1,38 @@
+name: CP32 UI Probe Once
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cp32-ui-probe-once.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: true
+      - name: Extract online communication source contexts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          text=Path('index.html').read_text(encoding='utf-8')
+          needles=['emote','emoji','reaction','감정','채팅','chat','onlineChat','online-room-chat','data-emote','data-emoji']
+          out=[]
+          for needle in needles:
+            matches=list(re.finditer(re.escape(needle),text,re.I))
+            out.append(f'===== {needle} count={len(matches)} =====')
+            for i,m in enumerate(matches[:30]):
+              a=max(0,m.start()-700); b=min(len(text),m.end()+1400)
+              out.append(f'--- {needle} #{i+1} offset={m.start()} ---')
+              out.append(text[a:b].replace('\x00',''))
+          Path('CP32_UI_PROBE.txt').write_text('\n'.join(out))
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/cp32-ui-probe-once.yml
+          git add CP32_UI_PROBE.txt
+          git commit -m 'Record online UI implementation probe'
+          git push origin HEAD:main
