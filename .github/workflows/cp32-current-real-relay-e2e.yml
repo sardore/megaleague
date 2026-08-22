@@ -2,6 +2,15 @@ name: CP32 Current Real Relay E2E
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ci/real-relay-e2e]
+    paths:
+      - 'index.html'
+      - 'tests/e2e/current-real-relay*.spec.js'
+      - '.github/workflows/cp32-current-real-relay-e2e.yml'
+      - 'tests/helpers/**'
+      - 'package.json'
+      - 'package-lock.json'
   pull_request:
     branches: [main]
     paths:
@@ -27,6 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ci/real-relay-e2e
           fetch-depth: 1
 
       - uses: actions/setup-node@v5
@@ -47,7 +57,7 @@ jobs:
           mkdir -p artifacts/real-relay
           sha256sum index.html | tee artifacts/real-relay/index.sha256
           wc -c index.html | tee artifacts/real-relay/index.size
-          printf '%s\n' "$GITHUB_SHA" > artifacts/real-relay/megaleague-commit.txt
+          git rev-parse HEAD | tee artifacts/real-relay/megaleague-commit.txt
 
       - name: Check out exact relay source
         shell: bash
@@ -69,8 +79,8 @@ jobs:
           import re, subprocess, tempfile
           html=Path('index.html').read_text(encoding='utf-8')
           scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, flags=re.I|re.S)
-          if not scripts:
-              raise SystemExit('NO_INLINE_SCRIPTS')
+          if len(scripts) != 12:
+              raise SystemExit(f'INLINE_SCRIPT_COUNT:{len(scripts)}')
           out=[]
           for i,s in enumerate(scripts):
               p=Path(tempfile.gettempdir())/f'cp32-current-inline-{i}.js'
@@ -145,6 +155,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: cp32-current-real-relay-${{ github.run_id }}
-          path: artifacts/
+          path: |
+            artifacts/
+            test-results/
           if-no-files-found: error
           include-hidden-files: true
