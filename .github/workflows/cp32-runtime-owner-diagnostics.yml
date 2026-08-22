@@ -1,0 +1,79 @@
+name: CP32 Runtime Owner Diagnostics
+
+on:
+  push:
+    branches: [ci/real-relay-e2e]
+    paths:
+      - '.github/workflows/cp32-runtime-owner-diagnostics.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cp32-runtime-owner-diagnostics.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ci/real-relay-e2e
+          fetch-depth: 1
+      - name: Extract runtime ownership boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/runtime-owner
+          sha256sum index.html | tee artifacts/runtime-owner/index.sha256
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('index.html').read_text(encoding='utf-8')
+          needles=[
+            'const RestoreTransaction',
+            'RestoreTransaction =',
+            'const LifecycleCoordinator',
+            'LifecycleCoordinator =',
+            'room-full',
+            'RETRY_WAIT',
+            'reconnect-scheduled',
+            'session.peer-reconnected',
+            'requestAuthoritativeResync',
+            'candidateBindingId',
+            'activeBindingId',
+            'CleanupCoordinator',
+            'closeModal',
+            'data-online-form',
+            'onlineRoomDeck',
+            'data-form-toggle',
+            'renderOnlineRoom',
+            'OnlineRuntime',
+            'showScreen("setup")',
+            "showScreen('setup')",
+            'classList.remove("open")',
+            "classList.remove('open')",
+          ]
+          out=[]
+          for needle in needles:
+            positions=[]; start=0
+            while True:
+              i=text.find(needle,start)
+              if i<0: break
+              positions.append(i); start=i+len(needle)
+            out.append(f'\n===== {needle} count={len(positions)} =====\n')
+            for n,i in enumerate(positions[:16],1):
+              line=text.count('\n',0,i)+1
+              lo=max(0,i-3500); hi=min(len(text),i+6500)
+              out.append(f'\n--- occurrence {n} line {line} @ {i} ---\n{text[lo:hi]}\n')
+          Path('artifacts/runtime-owner/source-context.txt').write_text(''.join(out),encoding='utf-8')
+          print(''.join(out))
+          PY
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-runtime-owner-${{ github.run_id }}
+          path: artifacts/runtime-owner/
+          if-no-files-found: error

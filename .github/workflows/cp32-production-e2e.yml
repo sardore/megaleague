@@ -1,86 +1,133 @@
 name: CP32 Production Origin E2E
+
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/e2e/current-real-relay*.spec.js'
+      - 'tests/helpers/**'
+      - '.github/workflows/cp32-production-e2e.yml'
+      - 'package.json'
+      - 'package-lock.json'
+
 permissions:
   contents: read
+
+concurrency:
+  group: cp32-production-origin-e2e
+  cancel-in-progress: false
+
 jobs:
   production:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      CP32_TARGET_MODE: production
-      CP32_PRODUCTION_URL: https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      CP32_PRODUCTION_ORIGIN: https://sardore.github.io/megaleague/
+      CP32_CURRENT_APP_URL: https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      CP32_LOCAL_RELAY: wss://cp32-online-relay.onrender.com/online
       CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
+      CP32_REAL_RELAY_ARTIFACTS: artifacts/production-realworld
     steps:
       - uses: actions/checkout@v6
-      - name: Initialize validation evidence filesystem
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/preflight artifacts/results
-          python3 - <<'PYEVIDENCEINIT'
-          import json, os
-          from pathlib import Path
-          p=Path('artifacts/preflight/artifact-lifecycle-init.json')
-          p.write_text(json.dumps({
-            'status':'INITIALIZED',
-            'workflow':os.environ.get('GITHUB_WORKFLOW'),
-            'job':os.environ.get('GITHUB_JOB'),
-            'runId':os.environ.get('GITHUB_RUN_ID'),
-            'sha':os.environ.get('GITHUB_SHA'),
-            'directories':['artifacts/preflight','artifacts/results']
-          },indent=2)+'\n')
-          PYEVIDENCEINIT
+        with:
+          fetch-depth: 1
+
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
           package-manager-cache: false
-      - run: npm install --ignore-scripts --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
-      - run: npm run validate:static
-      - name: Production and relay preflight
-        env:
-          CP32_PREFLIGHT_MODE: production
-          CP32_PREFLIGHT_OUTPUT: artifacts/preflight/production-preflight.json
-        run: node tests/helpers/relay-preflight.js
-      - name: Exact deployed identity and actual player path
-        run: npx playwright test tests/e2e/production-player-path.spec.js --workers=1
-      - name: Validate required evidence on successful run
+
+      - name: Initialize evidence
         shell: bash
         run: |
           set -euo pipefail
-          required=(
-            artifacts/preflight/artifact-lifecycle-init.json
-            artifacts/preflight/production-preflight.json
-            artifacts/results/static-validation.json
-            artifacts/results/playwright-results.json
-          )
-          missing=0
-          for f in "${required[@]}"; do
-            if [[ ! -e "$f" ]]; then echo "REQUIRED_EVIDENCE_MISSING:$f" >&2; missing=1; fi
+          mkdir -p artifacts/preflight artifacts/production-realworld
+          sha256sum index.html | tee artifacts/preflight/expected-index.sha256
+          wc -c index.html | tee artifacts/preflight/expected-index.size
+          git rev-parse HEAD | tee artifacts/preflight/main-commit.txt
+
+      - name: Install validation dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Static validation of promoted checkout
+        run: npm run validate:static
+
+      - name: Wait until GitHub Pages serves this exact promoted index
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(sha256sum index.html | awk '{print $1}')"
+          deployed=''
+          : > artifacts/preflight/pages-probes.log
+          for i in $(seq 1 120); do
+            probe="${CP32_PRODUCTION_ORIGIN}?__cp32_deploy_probe=${GITHUB_SHA}-${i}"
+            if curl --fail --silent --show-error --location --max-time 20 \
+              -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
+              "$probe" -o /tmp/cp32-pages-index.html; then
+              deployed="$(sha256sum /tmp/cp32-pages-index.html | awk '{print $1}')"
+              printf '%s expected=%s deployed=%s\n' "$(date -u +%FT%TZ)" "$expected" "$deployed" | tee -a artifacts/preflight/pages-probes.log
+              if [ "$deployed" = "$expected" ]; then
+                cp /tmp/cp32-pages-index.html artifacts/preflight/deployed-index.html
+                break
+              fi
+            else
+              printf '%s probe-failed\n' "$(date -u +%FT%TZ)" | tee -a artifacts/preflight/pages-probes.log
+            fi
+            sleep 5
           done
-          [[ $missing -eq 0 ]] || exit 31
-      - name: Finalize evidence lifecycle
+          printf 'expected=%s\ndeployed=%s\n' "$expected" "$deployed" | tee artifacts/preflight/deployed-identity.txt
+          test "$deployed" = "$expected"
+
+      - name: Production relay websocket preflight
+        run: |
+          node --input-type=module - <<'NODE'
+          const url=process.env.CP32_RELAY_ENDPOINT;
+          await new Promise((resolve,reject)=>{
+            const ws=new WebSocket(url);
+            const t=setTimeout(()=>{try{ws.close()}catch{};reject(new Error('PRODUCTION_RELAY_OPEN_TIMEOUT'));},20000);
+            ws.addEventListener('open',()=>{clearTimeout(t);ws.close();resolve();},{once:true});
+            ws.addEventListener('error',()=>{clearTimeout(t);reject(new Error('PRODUCTION_RELAY_OPEN_ERROR'));},{once:true});
+          });
+          console.log('PRODUCTION_RELAY_WEBSOCKET_OPEN_PASS');
+          NODE
+
+      - name: Full real mobile regressions against deployed Pages plus Render relay
+        run: npx playwright test tests/e2e/current-real-relay*.spec.js --workers=1
+
+      - name: Record deployment verification
         if: always()
         shell: bash
         env:
           CP32_JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
-          mkdir -p artifacts/preflight artifacts/results
-          python3 - <<'PYEVIDENCEFINAL'
+          python3 - <<'PY'
           import json, os
           from pathlib import Path
-          root=Path('artifacts'); init=root/'preflight/artifact-lifecycle-init.json'
+          root=Path('artifacts')
           files=[str(p) for p in root.rglob('*') if p.is_file()]
-          rec={'status':'FINALIZED','jobStatus':os.environ.get('CP32_JOB_STATUS'),'initObserved':init.exists(),'fileCount':len(files),'runId':os.environ.get('GITHUB_RUN_ID')}
-          (root/'preflight/artifact-lifecycle-final.json').write_text(json.dumps(rec,indent=2)+'\n')
-          PYEVIDENCEFINAL
-      - if: always()
+          (root/'preflight/production-final.json').write_text(json.dumps({
+            'status':os.environ.get('CP32_JOB_STATUS'),
+            'runId':os.environ.get('GITHUB_RUN_ID'),
+            'commit':os.environ.get('GITHUB_SHA'),
+            'fileCount':len(files),
+            'target':os.environ.get('CP32_CURRENT_APP_URL'),
+            'relay':os.environ.get('CP32_RELAY_ENDPOINT'),
+          },indent=2)+'\n')
+          PY
+
+      - name: Upload production evidence
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: cp32-production-evidence-${{ github.run_id }}
-          path: artifacts/
+          path: |
+            artifacts/
+            test-results/
           if-no-files-found: error
           include-hidden-files: true

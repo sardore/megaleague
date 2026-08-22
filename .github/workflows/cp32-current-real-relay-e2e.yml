@@ -1,0 +1,161 @@
+name: CP32 Current Real Relay E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ci/real-relay-e2e, main]
+    paths:
+      - 'index.html'
+      - 'tests/e2e/current-real-relay*.spec.js'
+      - '.github/workflows/cp32-current-real-relay-e2e.yml'
+      - 'tests/helpers/**'
+      - 'package.json'
+      - 'package-lock.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tests/e2e/current-real-relay*.spec.js'
+      - '.github/workflows/cp32-current-real-relay-e2e.yml'
+      - 'tests/helpers/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  real-relay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CP32_RELAY_SOURCE_SHA: e6b97f0e63298d0766fc179bcfe76e80c2df44eb
+      CP32_CURRENT_APP_URL: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
+      CP32_LOCAL_RELAY: ws://127.0.0.1:8787/online
+      CP32_REAL_RELAY_ARTIFACTS: artifacts/real-relay
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install validation dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Initialize evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/real-relay
+          sha256sum index.html | tee artifacts/real-relay/index.sha256
+          wc -c index.html | tee artifacts/real-relay/index.size
+          git rev-parse HEAD | tee artifacts/real-relay/megaleague-commit.txt
+
+      - name: Check out exact relay source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
+          git -C relay-src checkout --detach "$CP32_RELAY_SOURCE_SHA"
+          ACTUAL="$(git -C relay-src rev-parse HEAD)"
+          printf '%s\n' "$ACTUAL" | tee artifacts/real-relay/relay-commit.txt
+          test "$ACTUAL" = "$CP32_RELAY_SOURCE_SHA"
+
+      - name: Syntax check current application scripts and relay
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check relay-src/server.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, flags=re.I|re.S)
+          if len(scripts) != 12:
+              raise SystemExit(f'INLINE_SCRIPT_COUNT:{len(scripts)}')
+          out=[]
+          for i,s in enumerate(scripts):
+              p=Path(tempfile.gettempdir())/f'cp32-current-inline-{i}.js'
+              p.write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(p)],capture_output=True,text=True)
+              out.append({'index':i,'ok':r.returncode==0,'stderr':r.stderr[-2000:]})
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(f'INLINE_SCRIPT_SYNTAX_FAIL:{i}')
+          import json
+          Path('artifacts/real-relay/inline-script-syntax.json').write_text(json.dumps(out,indent=2)+'\n')
+          print(f'INLINE_SCRIPT_SYNTAX_PASS:{len(scripts)}')
+          PY
+
+      - name: Start exact relay source
+        shell: bash
+        run: |
+          set -euo pipefail
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/real-relay/relay.stdout.log 2> artifacts/real-relay/relay.stderr.log &
+          echo $! > artifacts/real-relay/relay.pid
+
+      - name: Serve current checkout index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/real-relay/app.stdout.log 2> artifacts/real-relay/app.stderr.log &
+          echo $! > artifacts/real-relay/app.pid
+
+      - name: Real app and relay preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null; then break; fi
+            sleep .25
+          done
+          curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null
+          for i in $(seq 1 60); do
+            if grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log && grep -q '"protocol":"cp32-online-relay-v1"' artifacts/real-relay/relay.stdout.log; then break; fi
+            sleep .25
+          done
+          grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log
+          grep -q '"protocol":"cp32-online-relay-v1"' artifacts/real-relay/relay.stdout.log
+          node --input-type=module - <<'NODE'
+          const url='ws://127.0.0.1:8787/online';
+          await new Promise((resolve,reject)=>{
+            const ws=new WebSocket(url);
+            const t=setTimeout(()=>{try{ws.close()}catch{};reject(new Error('LOCAL_RELAY_OPEN_TIMEOUT'));},10000);
+            ws.addEventListener('open',()=>{clearTimeout(t);ws.close();resolve();},{once:true});
+            ws.addEventListener('error',()=>{clearTimeout(t);reject(new Error('LOCAL_RELAY_OPEN_ERROR'));},{once:true});
+          });
+          console.log('LOCAL_RELAY_WEBSOCKET_OPEN_PASS');
+          NODE
+
+      - name: Real mobile browser regressions against exact relay source
+        run: npx playwright test tests/e2e/current-real-relay*.spec.js --workers=1
+
+      - name: Preserve process logs and evidence
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          ps -ef > artifacts/real-relay/processes.txt
+          for f in artifacts/real-relay/*.pid; do
+            [ -f "$f" ] || continue
+            pid="$(cat "$f")"
+            kill "$pid" 2>/dev/null || true
+          done
+
+      - name: Upload real-relay evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-current-real-relay-${{ github.run_id }}
+          path: |
+            artifacts/
+            test-results/
+          if-no-files-found: error
+          include-hidden-files: true
