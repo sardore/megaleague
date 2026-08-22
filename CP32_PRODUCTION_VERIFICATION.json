@@ -1,0 +1,29 @@
+{
+  "commit_under_test": "3f232d4d4961a52f68f9661a48c2cc25081e4556",
+  "index_sha256_expected": "31cf6bd51351456a98a40130f8cc806f947da4b92c2e9d47946e3739f184384e",
+  "index_sha256_deployed": "31cf6bd51351456a98a40130f8cc806f947da4b92c2e9d47946e3739f184384e",
+  "deploy_identity_ok": true,
+  "relay_preflight_ok": true,
+  "test_exit_code": 0,
+  "suite_ok": true,
+  "production_url": "https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline",
+  "relay": "wss://cp32-online-relay.onrender.com/online",
+  "log_tail": [
+    "",
+    "Running 12 tests using 1 worker",
+    "",
+    "[1/12] tests/e2e/current-real-relay-close.spec.js:55:1 › paired online lobby close returns to setup without a black screen",
+    "[2/12] tests/e2e/current-real-relay-form-stability.spec.js:52:1 › form change keeps one stable composition placement even when rarity rises",
+    "[3/12] tests/e2e/current-real-relay-realworld.spec.js:147:1 › 3/4 stale lobby recovers when each final selection is made while the peer is backgrounded",
+    "[4/12] tests/e2e/current-real-relay-realworld.spec.js:166:1 › peer missing a foreground committed battle action converges after background restore",
+    "[5/12] tests/e2e/current-real-relay-realworld.spec.js:180:1 › both lobby peers can freeze together then stagger resume without stale deck state",
+    "[6/12] tests/e2e/current-real-relay-realworld.spec.js:199:1 › battle survives repeated transport-only disconnects with no lifecycle freeze",
+    "[7/12] tests/e2e/current-real-relay-realworld.spec.js:216:1 › close teardown allows the same clients to pair again and start a fresh room",
+    "[8/12] tests/e2e/current-real-relay-realworld.spec.js:230:1 › automatic matchmaking pairs two real mobile clients into the canonical lobby",
+    "[9/12] tests/e2e/current-real-relay-stress.spec.js:128:1 › form grade changes never reorder the family placement slot",
+    "[10/12] tests/e2e/current-real-relay-stress.spec.js:148:1 › long battle reaches a fixed point after repeated alternating background cycles",
+    "[11/12] tests/e2e/current-real-relay-stress.spec.js:199:1 › scheduled-action identity survives repeated background restore without duplication",
+    "[12/12] tests/e2e/current-real-relay.spec.js:151:1 › current index + actual relay source: lobby resume, start, battle reconnect converge",
+    "  12 passed (3.1m)"
+  ]
+}
