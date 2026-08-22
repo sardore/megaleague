@@ -44,6 +44,16 @@ jobs:
             'candidateBindingId',
             'activeBindingId',
             'CleanupCoordinator',
+            'closeModal',
+            'data-online-form',
+            'onlineRoomDeck',
+            'data-form-toggle',
+            'renderOnlineRoom',
+            'OnlineRuntime',
+            'showScreen("setup")',
+            "showScreen('setup')",
+            'classList.remove("open")',
+            "classList.remove('open')",
           ]
           out=[]
           for needle in needles:
@@ -53,9 +63,10 @@ jobs:
               if i<0: break
               positions.append(i); start=i+len(needle)
             out.append(f'\n===== {needle} count={len(positions)} =====\n')
-            for n,i in enumerate(positions[:12],1):
+            for n,i in enumerate(positions[:16],1):
+              line=text.count('\n',0,i)+1
               lo=max(0,i-3500); hi=min(len(text),i+6500)
-              out.append(f'\n--- occurrence {n} @ {i} ---\n{text[lo:hi]}\n')
+              out.append(f'\n--- occurrence {n} line {line} @ {i} ---\n{text[lo:hi]}\n')
           Path('artifacts/runtime-owner/source-context.txt').write_text(''.join(out),encoding='utf-8')
           print(''.join(out))
           PY
