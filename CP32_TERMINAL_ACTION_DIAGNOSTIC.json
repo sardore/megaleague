@@ -1,0 +1,1718 @@
+{
+  "rows": [
+    {
+      "i": 0,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 1,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 2,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 3,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 4,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 5,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 6,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 7,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 8,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 9,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 10,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 11,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 12,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 13,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 14,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 15,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 16,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 17,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 18,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 19,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 20,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 21,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 22,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 23,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 24,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 25,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 26,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 27,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 28,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 29,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 30,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 31,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 32,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 33,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 34,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 35,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 36,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 37,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 38,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    },
+    {
+      "i": 39,
+      "actor": "h",
+      "before": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "options": [
+        {
+          "index": 0,
+          "text": "에너지 모으기",
+          "html": "에너지 모으기",
+          "class": null
+        }
+      ],
+      "chosen": 0,
+      "chosenText": "에너지 모으기",
+      "after": {
+        "winner": null,
+        "turn": null,
+        "serial": 0,
+        "P": {
+          "hp": 840,
+          "alive": 4
+        },
+        "A": {
+          "hp": 840,
+          "alive": 4
+        }
+      },
+      "deltaP": 0,
+      "deltaA": 0
+    }
+  ],
+  "finalHost": {
+    "winner": null,
+    "turn": null,
+    "serial": 0,
+    "P": {
+      "hp": 840,
+      "alive": 4
+    },
+    "A": {
+      "hp": 840,
+      "alive": 4
+    }
+  },
+  "finalGuest": {
+    "winner": null,
+    "turn": null,
+    "serial": 0,
+    "P": {
+      "hp": 840,
+      "alive": 4
+    },
+    "A": {
+      "hp": 840,
+      "alive": 4
+    }
+  },
+  "test_exit_code": 0,
+  "test_log_tail": [
+    "",
+    "Running 1 test using 1 worker",
+    "",
+    "[1/1] tests/e2e/__terminal-action-diag.spec.js:12:1 › record 40 real UI action choices and HP progression",
+    "  1 passed (44.6s)"
+  ]
+}
