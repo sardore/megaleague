@@ -1,0 +1,139 @@
+name: CP32 Close Root Fix Once
+
+on:
+  push:
+    branches: [ci/real-relay-e2e]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      CP32_RELAY_SOURCE_SHA: e6b97f0e63298d0766fc179bcfe76e80c2df44eb
+      CP32_CURRENT_APP_URL: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
+      CP32_LOCAL_RELAY: ws://127.0.0.1:8787/online
+      CP32_REAL_RELAY_ARTIFACTS: artifacts/real-relay
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ci/real-relay-e2e
+          fetch-depth: 1
+          persist-credentials: true
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Apply canonical lobby ownership edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/real-relay
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+          p=Path('index.html')
+          data=p.read_bytes()
+          before=hashlib.sha256(data).hexdigest()
+          if before != '544b216fdc6bc45c59582981c0de4962b8db0d00cb84634e2e060651eb319da0':
+              raise SystemExit(f'CLOSE_FIX_SOURCE_SHA_MISMATCH:{before}')
+          s=data.decode('utf-8')
+          old='''      const projectLobbyBase=reason=>{hideCardTooltip();NavigationApplication.projectSurface("setup",`online-lobby-base:${reason||"projection"}`);document.documentElement.dataset.onlineActiveSurface="LOBBY";document.body.classList.add("online-lobby-open");return true;};'''
+          new='''      const projectLobbyBase=reason=>{hideCardTooltip();NavigationApplication.projectSurface("setup",`online-lobby-base:${reason||"projection"}`);markModal("LOBBY");document.documentElement.dataset.onlineActiveSurface="LOBBY";document.body.classList.add("online-lobby-open");return true;};'''
+          if s.count(old) != 1:
+              raise SystemExit(f'CLOSE_FIX_PREIMAGE_COUNT:{s.count(old)}')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8',newline='')
+          after=hashlib.sha256(p.read_bytes()).hexdigest()
+          Path('artifacts/real-relay/close-root-fix-sha.txt').write_text(f'before={before}\nafter={after}\n')
+          print('CLOSE_ROOT_FIX_APPLIED', after)
+          PY
+
+      - name: Check all inline scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.I|re.S)
+          if len(scripts) != 12: raise SystemExit(f'INLINE_SCRIPT_COUNT:{len(scripts)}')
+          for i,s in enumerate(scripts):
+              f=Path(tempfile.gettempdir())/f'cp32-close-fix-{i}.js'
+              f.write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(f'INLINE_SCRIPT_SYNTAX_FAIL:{i}')
+          print('INLINE_SCRIPT_SYNTAX_PASS:12')
+          PY
+
+      - name: Install E2E dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Check out exact relay source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
+          git -C relay-src checkout --detach "$CP32_RELAY_SOURCE_SHA"
+          test "$(git -C relay-src rev-parse HEAD)" = "$CP32_RELAY_SOURCE_SHA"
+          node --check relay-src/server.js
+
+      - name: Start exact relay and patched app
+        shell: bash
+        run: |
+          set -euo pipefail
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/real-relay/relay.stdout.log 2> artifacts/real-relay/relay.stderr.log &
+          echo $! > artifacts/real-relay/relay.pid
+          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/real-relay/app.stdout.log 2> artifacts/real-relay/app.stderr.log &
+          echo $! > artifacts/real-relay/app.pid
+          for i in $(seq 1 60); do
+            APP_OK=0; RELAY_OK=0
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null 2>&1 && APP_OK=1 || true
+            grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log 2>/dev/null && RELAY_OK=1 || true
+            if [ "$APP_OK" = 1 ] && [ "$RELAY_OK" = 1 ]; then break; fi
+            sleep .25
+          done
+          curl --fail --silent http://127.0.0.1:4173/ >/dev/null
+          grep -q '"status":"ready"' artifacts/real-relay/relay.stdout.log
+
+      - name: Run close and reconnect regressions
+        run: npx playwright test tests/e2e/current-real-relay*.spec.js --workers=1
+
+      - name: Commit verified core source edit and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/cp32-close-root-fix-once.yml
+          git add index.html
+          git diff --cached --check
+          git commit -m 'Make lobby modal ownership a projection invariant'
+          git push origin HEAD:ci/real-relay-e2e
+
+      - name: Preserve evidence
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          sha256sum index.html > artifacts/real-relay/patched-index.sha256 2>/dev/null || true
+          ps -ef > artifacts/real-relay/processes.txt 2>/dev/null || true
+          for f in artifacts/real-relay/*.pid; do [ -f "$f" ] || continue; kill "$(cat "$f")" 2>/dev/null || true; done
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cp32-close-root-fix-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: warn
+          include-hidden-files: true
