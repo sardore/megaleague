@@ -1,0 +1,85 @@
+name: CP32 Emote Verify Once
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cp32-emote-verify-once.yml']
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      RELAY_SHA: e6b97f0e63298d0766fc179bcfe76e80c2df44eb
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Run exact-relay and live emote scenarios
+        shell: bash
+        run: |
+          set -uo pipefail
+          mkdir -p artifacts/emote-verify
+          git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
+          git -C relay-src checkout --detach "$RELAY_SHA"
+          local_rc=0
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js >/tmp/relay.log 2>/tmp/relay.err & relay_pid=$!
+          python3 -m http.server 4173 --bind 127.0.0.1 >/tmp/app.log 2>/tmp/app.err & app_pid=$!
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:4173/ >/dev/null && grep -q '"status":"ready"' /tmp/relay.log && break; sleep .25; done
+          CP32_CURRENT_APP_URL='http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline' CP32_LOCAL_RELAY='ws://127.0.0.1:8787/online' CP32_REAL_RELAY_ARTIFACTS='artifacts/emote-verify/local' \
+            npx playwright test tests/e2e/current-real-relay-emote.spec.js --workers=1 --reporter=line 2>&1 | tee /tmp/emote-local.log
+          local_rc=${PIPESTATUS[0]}
+          kill "$relay_pid" "$app_pid" 2>/dev/null || true
+
+          expected="$(sha256sum index.html | awk '{print $1}')"; deployed=''
+          for i in $(seq 1 90); do
+            curl -fsSL -H 'Cache-Control: no-cache' "https://sardore.github.io/megaleague/?__cp32_emote=${GITHUB_SHA}-${i}" -o /tmp/deployed.html || true
+            [ -f /tmp/deployed.html ] && deployed="$(sha256sum /tmp/deployed.html | awk '{print $1}')"
+            [ "$deployed" = "$expected" ] && break
+            sleep 4
+          done
+          deploy_rc=0; [ "$deployed" = "$expected" ] || deploy_rc=41
+          live_rc=0
+          if [ "$deploy_rc" -eq 0 ]; then
+            CP32_CURRENT_APP_URL='https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline' CP32_LOCAL_RELAY='wss://cp32-online-relay.onrender.com/online' CP32_REAL_RELAY_ARTIFACTS='artifacts/emote-verify/live' \
+              npx playwright test tests/e2e/current-real-relay-emote.spec.js --workers=1 --reporter=line 2>&1 | tee /tmp/emote-live.log
+            live_rc=${PIPESTATUS[0]}
+          else
+            echo 'live suite skipped: deployed hash mismatch' | tee /tmp/emote-live.log
+            live_rc=42
+          fi
+          python3 - "$expected" "$deployed" "$local_rc" "$deploy_rc" "$live_rc" <<'PY'
+          import json,sys,os
+          from pathlib import Path
+          expected,deployed,local_rc,deploy_rc,live_rc=sys.argv[1:]
+          def tail(p):
+            q=Path(p); return q.read_text(errors='replace').splitlines()[-160:] if q.exists() else []
+          data={
+            'commit_under_test':os.environ.get('GITHUB_SHA'),
+            'expected_index_sha256':expected,
+            'deployed_index_sha256':deployed,
+            'local_exact_relay_exit_code':int(local_rc),
+            'deployment_identity_exit_code':int(deploy_rc),
+            'live_pages_render_exit_code':int(live_rc),
+            'all_ok':int(local_rc)==0 and int(deploy_rc)==0 and int(live_rc)==0,
+            'local_log_tail':tail('/tmp/emote-local.log'),
+            'live_log_tail':tail('/tmp/emote-live.log'),
+          }
+          Path('CP32_EMOTE_VERIFICATION.json').write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/cp32-emote-verify-once.yml
+          git add CP32_EMOTE_VERIFICATION.json
+          git commit -m 'Record online emote verification'
+          git push origin HEAD:main
+          [ "$local_rc" -eq 0 ] && [ "$deploy_rc" -eq 0 ] && [ "$live_rc" -eq 0 ]
