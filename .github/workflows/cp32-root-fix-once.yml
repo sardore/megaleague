@@ -1,0 +1,95 @@
+name: CP32 Root Fix Once
+
+on:
+  push:
+    branches: [ci/real-relay-e2e]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-in-place:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ci/real-relay-e2e
+          fetch-depth: 1
+          persist-credentials: true
+      - name: Replace peer reconnect feedback path in place
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          p=Path('index.html')
+          data=p.read_bytes()
+          before_sha=hashlib.sha256(data).hexdigest()
+          text=data.decode('utf-8')
+          old='''          case "session.peer-reconnected": {
+            if (p2p) { p2p.connected = true; p2p.connectionInterrupted = false; }
+            return LifecycleCoordinator.requestAuthoritativeResync("remote-peer-reconnected");
+          }'''
+          new='''          case "session.peer-reconnected": {
+            if (p2p) { p2p.connected = true; p2p.connectionInterrupted = false; }
+            const localBindingReady = !!binding && !binding.retired && binding.state === "READY" && binding.socket?.readyState === WebSocket.OPEN;
+            const remoteRestorePending = session.machine.state === "RECONNECTING" || !!session.scope?.transactions?.get?.("restore");
+            session.transport?.trace?.("remote-peer-reconnected", binding, { localBindingReady, remoteRestorePending, sessionState: session.machine.state, resumeState: session.resumeState });
+            if (localBindingReady) {
+              if (remoteRestorePending) RestoreTransaction.transportReady(session, binding, { phase: session.resumeState || (p2p?.battleStarted ? "IN_BATTLE" : "LOBBY"), reason: "remote-peer-reconnected" });
+              return true;
+            }
+            return LifecycleCoordinator.requestAuthoritativeResync("remote-peer-reconnected");
+          }'''
+          old_count=text.count(old)
+          new_count=text.count(new)
+          if old_count == 0 and new_count == 1:
+              print('ROOT_FIX_ALREADY_APPLIED')
+              raise SystemExit(0)
+          if old_count != 1 or new_count != 0:
+              raise SystemExit(f'ROOT_FIX_PREIMAGE_MISMATCH old={old_count} new={new_count} sha={before_sha}')
+          if before_sha != 'e32105dd317923587ba7eae589ad920a5e70b9c4ed9cbc94ca10cbf882d8a3dd':
+              raise SystemExit(f'ROOT_FIX_SOURCE_SHA_MISMATCH:{before_sha}')
+          text=text.replace(old,new,1)
+          p.write_text(text,encoding='utf-8',newline='')
+          after=p.read_bytes()
+          print('ROOT_FIX_APPLIED')
+          print('BEFORE_SHA',before_sha)
+          print('AFTER_SHA',hashlib.sha256(after).hexdigest())
+          print('SIZE',len(after))
+          PY
+      - name: Check all inline scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          html=Path('index.html').read_text(encoding='utf-8')
+          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>',html,flags=re.I|re.S)
+          if not scripts: raise SystemExit('NO_INLINE_SCRIPTS')
+          for i,s in enumerate(scripts):
+              f=Path(tempfile.gettempdir())/f'cp32-root-fix-{i}.js'
+              f.write_text(s,encoding='utf-8')
+              r=subprocess.run(['node','--check',str(f)],capture_output=True,text=True)
+              if r.returncode:
+                  print(r.stderr)
+                  raise SystemExit(f'INLINE_SCRIPT_SYNTAX_FAIL:{i}')
+          print('INLINE_SCRIPT_SYNTAX_PASS',len(scripts))
+          PY
+      - name: Commit root fix if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- index.html; then
+            echo ROOT_FIX_NO_CHANGE
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m 'Fix peer reconnect restore feedback loop'
+          git push origin HEAD:ci/real-relay-e2e
