@@ -1,0 +1,37 @@
+name: CP32 Action Transaction Probe Once
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cp32-action-transaction-probe-once.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('index.html').read_text(encoding='utf-8')
+          needles=['actionTransactionExecuteStage','executeCoreBase','executeTimeStage','EnergyCanonicalizationEngine','canExecute','PENDING_ONLINE_ACTION','pendingActionId','REMOTE_ACTOR_TURN']
+          out=[]
+          for needle in needles:
+            pos=0;xs=[]
+            while True:
+              i=text.find(needle,pos)
+              if i<0: break
+              xs.append(i);pos=i+len(needle)
+            out.append(f'===== {needle} count={len(xs)} =====')
+            for n,i in enumerate(xs[:20],1):
+              a=max(0,i-6500);b=min(len(text),i+15000)
+              out.append(f'--- {needle} #{n} offset={i} ---\n{text[a:b]}')
+          Path('CP32_ACTION_TRANSACTION_PROBE.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+          rm -f .github/workflows/cp32-action-transaction-probe-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CP32_ACTION_TRANSACTION_PROBE.txt .github/workflows/cp32-action-transaction-probe-once.yml
+          git commit -m 'Record action transaction source probe'
+          git push origin HEAD:main
