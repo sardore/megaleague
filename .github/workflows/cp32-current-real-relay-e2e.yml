@@ -3,7 +3,7 @@ name: CP32 Current Real Relay E2E
 on:
   workflow_dispatch:
   push:
-    branches: [ci/real-relay-e2e]
+    branches: [ci/real-relay-e2e, main]
     paths:
       - 'index.html'
       - 'tests/e2e/current-real-relay*.spec.js'
@@ -36,7 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ci/real-relay-e2e
           fetch-depth: 1
 
       - uses: actions/setup-node@v5
