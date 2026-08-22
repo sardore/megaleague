@@ -42,6 +42,20 @@ async function setLifecycle(client, state) {
   await client.cdp.send('Page.setWebLifecycleState', { state });
 }
 
+async function waitInteractiveTarget(page, selector, timeout = 30000) {
+  await expect.poll(async () => page.evaluate(sel => {
+    const target = document.querySelector(sel);
+    if (!target || target.disabled) return false;
+    const style = getComputedStyle(target);
+    const rect = target.getBoundingClientRect();
+    if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none' || rect.width <= 0 || rect.height <= 0) return false;
+    const x = Math.max(0, Math.min(innerWidth - 1, rect.left + rect.width / 2));
+    const y = Math.max(0, Math.min(innerHeight - 1, rect.top + rect.height / 2));
+    const hit = document.elementFromPoint(x, y);
+    return hit === target || !!target.contains(hit);
+  }, selector), { timeout, message: `${selector} must be the real topmost touch target` }).toBe(true);
+}
+
 async function waitCommitted(page, timeout = 30000) {
   await expect.poll(async () => {
     const d = await page.evaluate(() => window.OnlineRuntime?.debug?.() || null);
@@ -67,6 +81,14 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
   try {
     await Promise.all([host.page.goto(APP, { waitUntil: 'domcontentloaded' }), guest.page.goto(APP, { waitUntil: 'domcontentloaded' })]);
     expect(new URL(APP).searchParams.get('relay')).toBe(RELAY);
+
+    // The current build has a startup presentation that can visually cover the setup UI
+    // while #onlineBtn is already layout-visible. Wait for the real hit-test surface instead
+    // of bypassing it with a coordinate tap through the presentation layer.
+    await Promise.all([
+      waitInteractiveTarget(host.page, '#onlineBtn'),
+      waitInteractiveTarget(guest.page, '#onlineBtn'),
+    ]);
 
     const roomCode = await pairByRoomCode(host.page, guest.page);
     await Promise.all([waitCommitted(host.page), waitCommitted(guest.page)]);
