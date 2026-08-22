@@ -2,7 +2,7 @@ import { test, expect, chromium } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pairByRoomCode, waitRemoteCount, startBattle, runtimeSummary, resolveInteraction } from '../helpers/player-path.js';
+import { pairByRoomCode, selectFour, waitRemoteCount, startBattle, runtimeSummary, resolveInteraction } from '../helpers/player-path.js';
 
 const APP = process.env.CP32_CURRENT_APP_URL || 'http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline';
 const OUT = process.env.CP32_REAL_RELAY_ARTIFACTS || 'artifacts/real-relay';
@@ -92,12 +92,11 @@ async function actWithoutShorteningBattle(page) {
   await resolveInteraction(page);
 }
 
-async function selectSpecific(page, ids) {
-  for (let i = 0; i < ids.length; i++) {
-    const card = page.locator(`#onlineRoomDeck [data-card-id="${ids[i]}"]`).first();
-    await touch(card);
-    await expect.poll(() => page.locator('#onlineRoomDeck .online-room-card.selected').count(), { timeout:10000 }).toBe(i + 1);
-  }
+async function selectAvailableFour(page) {
+  await selectFour(page);
+  const ids = await page.locator('#onlineRoomDeck .online-room-card.selected').evaluateAll(cards => cards.map(card => card.dataset.cardId || card.closest('[data-card-id]')?.dataset.cardId || null).filter(Boolean));
+  expect(ids, 'selected online deck must expose four concrete card identities').toHaveLength(4);
+  return ids;
 }
 
 async function formSlot(page, surface, group) {
@@ -116,7 +115,10 @@ async function formSlot(page, surface, group) {
 async function toggleFormAndAssertStable(page, surface, group) {
   const before = await formSlot(page, surface, group);
   const selector = surface === 'online' ? `#onlineRoomDeck [data-online-form="${group}"]` : `#deckCards [data-form-toggle="${group}"]`;
-  await touch(page.locator(selector).first());
+  const button = page.locator(selector).first();
+  await expect(button).toBeVisible({ timeout:30000 });
+  await expect(button).toBeEnabled();
+  await button.tap();
   await expect.poll(async () => (await formSlot(page, surface, group)).id, { timeout:10000 }).not.toBe(before.id);
   const after = await formSlot(page, surface, group);
   expect(after.index, `${surface}:${group} form family must own one stable placement slot`).toBe(before.index);
@@ -155,9 +157,9 @@ test('long battle reaches a fixed point after repeated alternating background cy
     const onlineForm = await toggleFormAndAssertStable(host.page, 'online', 'brkeno');
     expect(onlineForm.after.rarity).toBeGreaterThan(onlineForm.before.rarity);
 
-    await selectSpecific(host.page, ['awakenedIruma','wayli','master','sweetna']);
+    const hostDeck = await selectAvailableFour(host.page);
     await waitRemoteCount(guest.page, 4);
-    await selectSpecific(guest.page, ['huve','dragonfish','ruby','flameflower']);
+    const guestDeck = await selectAvailableFour(guest.page);
     await waitRemoteCount(host.page, 4);
     await startBattle(host.page, guest.page);
     await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
@@ -187,7 +189,7 @@ test('long battle reaches a fixed point after repeated alternating background cy
     expect(g.runtime?.matchId).toBe(h.runtime?.matchId);
     expect(host.errors).toEqual([]);
     expect(guest.errors).toEqual([]);
-    write('stress-long-battle.json', { ok:true, actions, host:h, guest:g });
+    write('stress-long-battle.json', { ok:true, actions, hostDeck, guestDeck, host:h, guest:g });
   } catch (error) {
     write('stress-long-battle.json', { ok:false, error:String(error), host:await runtimeSummary(host.page).catch(()=>null), guest:await runtimeSummary(guest.page).catch(()=>null), hostErrors:host.errors, guestErrors:guest.errors });
     throw error;
@@ -202,27 +204,27 @@ test('scheduled-action identity survives repeated background restore without dup
     await Promise.all([host.page.goto(APP,{waitUntil:'domcontentloaded'}), guest.page.goto(APP,{waitUntil:'domcontentloaded'})]);
     await pairByRoomCode(host.page, guest.page);
     await Promise.all([waitCommitted(host.page), waitCommitted(guest.page)]);
-    await selectSpecific(host.page, ['awakenedIruma','wayli','master','sweetna']);
+    const hostDeck = await selectAvailableFour(host.page);
     await waitRemoteCount(guest.page, 4);
-    await selectSpecific(guest.page, ['huve','dragonfish','ruby','flameflower']);
+    const guestDeck = await selectAvailableFour(guest.page);
     await waitRemoteCount(host.page, 4);
     await startBattle(host.page, guest.page);
     await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
 
-    const scheduledId = await host.page.evaluate(() => {
+    const scheduled = await host.page.evaluate(() => {
       const units = [...(game?.teams?.P?.field || []), ...(game?.teams?.P?.bench || [])].filter(Boolean);
-      const unit = units.find(u => u.card === 'awakenedIruma');
-      if (!unit) throw new Error('AWAKENED_IRUMA_NOT_IN_HOST_TEAM');
-      const scheduled = registerScheduledAction(game, unit, { kind:'bloom', evaded:{}, remaining:1 });
-      if (!scheduled?.scheduledActionId) throw new Error('SCHEDULE_ID_NOT_ASSIGNED');
+      const unit = units[0];
+      if (!unit) throw new Error('HOST_TEAM_HAS_NO_UNIT_FOR_SCHEDULE_TEST');
+      const action = registerScheduledAction(game, unit, { kind:'bloom', evaded:{}, remaining:1 });
+      if (!action?.scheduledActionId) throw new Error('SCHEDULE_ID_NOT_ASSIGNED');
       sendAuthoritativeOnlineState([], null, true);
-      return scheduled.scheduledActionId;
+      return { id:action.scheduledActionId, card:unit.card || null };
     });
 
     await expect.poll(async () => guest.page.evaluate(id => {
       const units = [...(game?.teams?.A?.field || []), ...(game?.teams?.A?.bench || []), ...(game?.teams?.P?.field || []), ...(game?.teams?.P?.bench || [])].filter(Boolean);
       return units.some(u => u.scheduledAction?.scheduledActionId === id);
-    }, scheduledId), { timeout:30000 }).toBe(true);
+    }, scheduled.id), { timeout:30000 }).toBe(true);
 
     for (let cycle = 0; cycle < 4; cycle++) {
       await setLifecycle(guest, 'frozen');
@@ -237,11 +239,12 @@ test('scheduled-action identity survives repeated background restore without dup
         const all = [...(game?.teams?.P?.field || []), ...(game?.teams?.P?.bench || []), ...(game?.teams?.A?.field || []), ...(game?.teams?.A?.bench || [])].filter(Boolean);
         const owners = all.filter(u => u.scheduledAction?.scheduledActionId === id);
         return { owners:owners.length, consumed:(game?.consumedScheduledActionIds || []).filter(x => x === id || String(x).startsWith(`${id}:`)).length };
-      }, scheduledId);
+      }, scheduled.id);
       expect(state.owners, `scheduled action must have one owner after restore cycle ${cycle}`).toBe(1);
       expect(state.consumed, `scheduled action must not be spuriously consumed during background cycle ${cycle}`).toBe(0);
     }
     expect(host.errors).toEqual([]);
     expect(guest.errors).toEqual([]);
+    write('stress-scheduled-action.json', { ok:true, hostDeck, guestDeck, scheduled });
   } finally { await Promise.allSettled([host.close(), guest.close()]); }
 });
