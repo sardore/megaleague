@@ -2,11 +2,12 @@ import { test, expect, chromium } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pairByRoomCode, selectFour, waitRemoteCount, startBattle, runtimeSummary, touchFirstLegalAction } from '../helpers/player-path.js';
+import { pairByRoomCode, selectFour, waitRemoteCount, startBattle, runtimeSummary, resolveInteraction } from '../helpers/player-path.js';
 
 const APP = process.env.CP32_CURRENT_APP_URL || 'http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline';
 const RELAY = process.env.CP32_LOCAL_RELAY || 'ws://127.0.0.1:8787/online';
 const OUT = process.env.CP32_REAL_RELAY_ARTIFACTS || 'artifacts/real-relay';
+const LEGAL_ACTION = '#actionButtons button:not([disabled]):visible, #actionButtons .skillbtn:not([disabled]):visible';
 
 function write(name, value) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -63,6 +64,35 @@ async function waitCommitted(page, timeout = 30000) {
   }, { timeout }).toBe(true);
 }
 
+async function waitBattleTransportReady(page, timeout = 45000) {
+  await expect.poll(async () => {
+    const d = await page.evaluate(() => window.OnlineRuntime?.debug?.() || null);
+    return !!d?.committed && d?.state === 'IN_BATTLE' && d?.transport?.ready === true;
+  }, { timeout, message: 'battle runtime must finish restore before interaction' }).toBe(true);
+}
+
+async function visibleLegalActionCount(page) {
+  return page.locator(LEGAL_ACTION).count();
+}
+
+async function chooseCurrentActor(host, guest, timeout = 45000) {
+  await expect.poll(async () => {
+    const [h, g] = await Promise.all([visibleLegalActionCount(host.page), visibleLegalActionCount(guest.page)]);
+    return Number(h > 0) + Number(g > 0);
+  }, { timeout, message: 'exactly one peer must own a visible legal action surface' }).toBe(1);
+  return (await visibleLegalActionCount(host.page)) > 0 ? host : guest;
+}
+
+async function touchFirstVisibleLegalAction(page) {
+  const first = page.locator(LEGAL_ACTION).first();
+  await expect(first).toBeVisible({ timeout: 30000 });
+  await expect(first).toBeEnabled();
+  // Locator.tap() retains real touch semantics while auto-waiting/re-resolving if the
+  // battle renderer replaces a button node between frames.
+  await first.tap();
+  await resolveInteraction(page);
+}
+
 async function assertNoBlackScreen(page) {
   const visible = await page.evaluate(() => {
     const active = [...document.querySelectorAll('.screen.active')].filter(el => {
@@ -82,9 +112,6 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
     await Promise.all([host.page.goto(APP, { waitUntil: 'domcontentloaded' }), guest.page.goto(APP, { waitUntil: 'domcontentloaded' })]);
     expect(new URL(APP).searchParams.get('relay')).toBe(RELAY);
 
-    // The current build has a startup presentation that can visually cover the setup UI
-    // while #onlineBtn is already layout-visible. Wait for the real hit-test surface instead
-    // of bypassing it with a coordinate tap through the presentation layer.
     await Promise.all([
       waitInteractiveTarget(host.page, '#onlineBtn'),
       waitInteractiveTarget(guest.page, '#onlineBtn'),
@@ -109,14 +136,15 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
     await waitRemoteCount(host.page, 4);
 
     await startBattle(host.page, guest.page);
+    await Promise.all([waitBattleTransportReady(host.page), waitBattleTransportReady(guest.page)]);
     const h0 = await runtimeSummary(host.page);
     const g0 = await runtimeSummary(guest.page);
     expect(h0.runtime?.matchId).toBeTruthy();
     expect(g0.runtime?.matchId).toBe(h0.runtime?.matchId);
 
-    const actor = h0.actions > 0 ? host : guest;
+    const actor = await chooseCurrentActor(host, guest);
     const peer = actor === host ? guest : host;
-    await touchFirstLegalAction(actor.page);
+    await touchFirstVisibleLegalAction(actor.page);
 
     await setLifecycle(actor, 'frozen');
     await actor.context.setOffline(true);
@@ -125,10 +153,7 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
     await setLifecycle(actor, 'active');
     await actor.page.bringToFront();
 
-    await expect.poll(async () => {
-      const s = await runtimeSummary(actor.page);
-      return !!s.runtime?.committed && !!s.runtime?.matchId;
-    }, { timeout: 45000 }).toBe(true);
+    await Promise.all([waitBattleTransportReady(host.page), waitBattleTransportReady(guest.page)]);
 
     await assertNoBlackScreen(host.page);
     await assertNoBlackScreen(guest.page);
@@ -143,6 +168,7 @@ test('current index + actual relay source: lobby resume, start, battle reconnect
       ok: true,
       roomCode,
       relay: RELAY,
+      actor: actor.name,
       host: finalHost,
       guest: finalGuest,
       hostSockets: host.sockets,
