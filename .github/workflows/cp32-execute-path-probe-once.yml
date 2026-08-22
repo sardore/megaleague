@@ -1,0 +1,37 @@
+name: CP32 Execute Path Probe Once
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cp32-execute-path-probe-once.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('index.html').read_text(encoding='utf-8')
+          needles=['function executeSupportLayer','beginOnlinePendingCommand','function sendOnlinePendingCommand','actionRequest','registerOnlineConnectionRoute("actionRequest"','registerOnlineConnectionRoute("actionCommit"','function execute(','const execute =','execute = compose','executeSupportLayer(']
+          out=[]
+          for needle in needles:
+            pos=0; found=[]
+            while True:
+              i=text.find(needle,pos)
+              if i<0: break
+              found.append(i);pos=i+len(needle)
+            out.append(f'===== {needle} count={len(found)} =====')
+            for n,i in enumerate(found[:12],1):
+              a=max(0,i-5000);b=min(len(text),i+12000)
+              out.append(f'--- {needle} #{n} offset={i} ---\n{text[a:b]}')
+          Path('CP32_EXECUTE_PATH_PROBE.txt').write_text('\n'.join(out),encoding='utf-8')
+          PY
+          rm -f .github/workflows/cp32-execute-path-probe-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CP32_EXECUTE_PATH_PROBE.txt .github/workflows/cp32-execute-path-probe-once.yml
+          git commit -m 'Record online execute path source probe'
+          git push origin HEAD:main
