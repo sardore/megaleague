@@ -1,0 +1,146 @@
+name: CP32 Terminal Lifecycle One Shot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cp32-terminal-lifecycle-one-shot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  terminal-lifecycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      CP32_RELAY_SOURCE_SHA: e6b97f0e63298d0766fc179bcfe76e80c2df44eb
+      LOCAL_APP: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
+      LIVE_APP: https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      LIVE_RELAY: wss://cp32-online-relay.onrender.com/online
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - name: Install validation dependencies
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run exact-relay terminal lifecycle tests
+        shell: bash
+        run: |
+          set +e
+          mkdir -p artifacts/terminal-local artifacts/terminal-live
+          git clone --no-checkout https://github.com/sardore/cp32-online-relay.git relay-src
+          git -C relay-src checkout --detach "$CP32_RELAY_SOURCE_SHA"
+          CP32_RELAY_HOST=127.0.0.1 CP32_RELAY_PORT=8787 node relay-src/server.js > artifacts/terminal-local/relay.stdout.log 2> artifacts/terminal-local/relay.stderr.log &
+          RELAY_PID=$!
+          python3 -m http.server 4173 --bind 127.0.0.1 > artifacts/terminal-local/app.stdout.log 2> artifacts/terminal-local/app.stderr.log &
+          APP_PID=$!
+          for i in $(seq 1 80); do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null 2>&1 && grep -q '"status":"ready"' artifacts/terminal-local/relay.stdout.log && break
+            sleep .25
+          done
+          CP32_CURRENT_APP_URL="$LOCAL_APP" CP32_REAL_RELAY_ARTIFACTS=artifacts/terminal-local \
+            npx playwright test tests/e2e/current-real-relay-terminal-lifecycle.spec.js --workers=1 --reporter=line > artifacts/terminal-local/test.log 2>&1
+          echo $? > artifacts/terminal-local/exit-code.txt
+          kill "$APP_PID" "$RELAY_PID" 2>/dev/null || true
+          exit 0
+
+      - name: Verify deployed app identity and live relay
+        shell: bash
+        run: |
+          set +e
+          EXPECTED="$(sha256sum index.html | awk '{print $1}')"
+          printf '%s\n' "$EXPECTED" > artifacts/terminal-live/expected-index-sha256.txt
+          DEPLOYED=""
+          for i in $(seq 1 120); do
+            curl -L --fail --silent --show-error 'https://sardore.github.io/megaleague/?cp32_terminal_probe=1' -o /tmp/deployed-index.html
+            if [ $? -eq 0 ]; then
+              DEPLOYED="$(sha256sum /tmp/deployed-index.html | awk '{print $1}')"
+              [ "$DEPLOYED" = "$EXPECTED" ] && break
+            fi
+            sleep 5
+          done
+          printf '%s\n' "$DEPLOYED" > artifacts/terminal-live/deployed-index-sha256.txt
+          [ "$DEPLOYED" = "$EXPECTED" ]
+          echo $? > artifacts/terminal-live/deploy-identity-exit-code.txt
+          node --input-type=module - <<'NODE' > artifacts/terminal-live/relay-preflight.log 2>&1
+          const url=process.env.LIVE_RELAY;
+          let last='';
+          for(let i=0;i<12;i++){
+            try{
+              await new Promise((resolve,reject)=>{
+                const ws=new WebSocket(url);
+                const t=setTimeout(()=>{try{ws.close()}catch{};reject(new Error('timeout'));},15000);
+                ws.addEventListener('open',()=>{clearTimeout(t);ws.close();resolve();},{once:true});
+                ws.addEventListener('error',()=>{clearTimeout(t);reject(new Error('error'));},{once:true});
+              });
+              console.log('LIVE_RELAY_WEBSOCKET_OPEN_PASS');
+              process.exit(0);
+            }catch(e){last=String(e);await new Promise(r=>setTimeout(r,5000));}
+          }
+          console.error(last);
+          process.exit(1);
+          NODE
+          echo $? > artifacts/terminal-live/relay-preflight-exit-code.txt
+          exit 0
+
+      - name: Run terminal lifecycle against live GitHub Pages and Render relay
+        shell: bash
+        run: |
+          set +e
+          DEPLOY_EXIT="$(cat artifacts/terminal-live/deploy-identity-exit-code.txt 2>/dev/null || echo 99)"
+          RELAY_EXIT="$(cat artifacts/terminal-live/relay-preflight-exit-code.txt 2>/dev/null || echo 99)"
+          if [ "$DEPLOY_EXIT" = "0" ] && [ "$RELAY_EXIT" = "0" ]; then
+            CP32_CURRENT_APP_URL="$LIVE_APP" CP32_REAL_RELAY_ARTIFACTS=artifacts/terminal-live \
+              npx playwright test tests/e2e/current-real-relay-terminal-lifecycle.spec.js --workers=1 --reporter=line > artifacts/terminal-live/test.log 2>&1
+            echo $? > artifacts/terminal-live/exit-code.txt
+          else
+            echo 98 > artifacts/terminal-live/exit-code.txt
+            printf 'LIVE_TEST_SKIPPED deploy=%s relay=%s\n' "$DEPLOY_EXIT" "$RELAY_EXIT" > artifacts/terminal-live/test.log
+          fi
+          exit 0
+
+      - name: Record result and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess, os
+          root=pathlib.Path('.')
+          read=lambda p,default='': pathlib.Path(p).read_text(errors='replace').strip() if pathlib.Path(p).exists() else default
+          tail=lambda p,n=80: pathlib.Path(p).read_text(errors='replace').splitlines()[-n:] if pathlib.Path(p).exists() else []
+          expected=read('artifacts/terminal-live/expected-index-sha256.txt')
+          deployed=read('artifacts/terminal-live/deployed-index-sha256.txt')
+          local_exit=int(read('artifacts/terminal-local/exit-code.txt','99'))
+          deploy_exit=int(read('artifacts/terminal-live/deploy-identity-exit-code.txt','99'))
+          relay_exit=int(read('artifacts/terminal-live/relay-preflight-exit-code.txt','99'))
+          live_exit=int(read('artifacts/terminal-live/exit-code.txt','99'))
+          result={
+            'commit_under_test':os.environ.get('GITHUB_SHA'),
+            'expected_index_sha256':expected,
+            'deployed_index_sha256':deployed,
+            'deployment_identity_ok':deploy_exit==0 and expected==deployed,
+            'relay_preflight_ok':relay_exit==0,
+            'local_exact_relay_exit_code':local_exit,
+            'live_pages_render_exit_code':live_exit,
+            'all_ok':local_exit==0 and deploy_exit==0 and relay_exit==0 and live_exit==0,
+            'local_log_tail':tail('artifacts/terminal-local/test.log'),
+            'live_log_tail':tail('artifacts/terminal-live/test.log'),
+          }
+          pathlib.Path('CP32_TERMINAL_LIFECYCLE_VERIFICATION.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+          PY
+          rm -f .github/workflows/cp32-terminal-lifecycle-one-shot.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add CP32_TERMINAL_LIFECYCLE_VERIFICATION.json .github/workflows/cp32-terminal-lifecycle-one-shot.yml
+          git commit -m 'Record terminal lifecycle verification'
+          git push origin HEAD:main
