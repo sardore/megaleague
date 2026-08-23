@@ -1,0 +1,120 @@
+name: CP32 One-shot Post-merge Verification
+
+on:
+  push:
+    branches:
+      - test/randomized-battle-background-chaos-r1
+    paths:
+      - .github/workflows/cp32-postmerge-verify-once.yml
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    env:
+      MAIN_SHA: 5a27f0c44cd3ede6d42168c3285dd9016efe4037
+      TARGET_BRANCH: test/randomized-battle-background-chaos-r1
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: test/randomized-battle-background-chaos-r1
+          fetch-depth: 1
+      - name: Locate main push gates and dispatch Android lifecycle gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28')
+          get_run() {
+            local workflow="$1" event="$2"
+            curl -fsSL "${auth[@]}" "$api/actions/workflows/$workflow/runs?branch=main&event=$event&per_page=30" |
+              python3 -c 'import json,sys,os; d=json.load(sys.stdin); sha=os.environ["MAIN_SHA"]; xs=[x for x in d.get("workflow_runs",[]) if x.get("head_sha")==sha]; print(xs[0]["id"] if xs else "")'
+          }
+          exact=''
+          production=''
+          for i in $(seq 1 60); do
+            exact="$(get_run cp32-current-real-relay-e2e.yml push)"
+            production="$(get_run cp32-production-e2e.yml push)"
+            if [[ -n "$exact" && -n "$production" ]]; then break; fi
+            sleep 5
+          done
+          [[ -n "$exact" ]] || { echo MAIN_EXACT_RELAY_RUN_NOT_FOUND >&2; exit 21; }
+          [[ -n "$production" ]] || { echo PRODUCTION_RUN_NOT_FOUND >&2; exit 22; }
+          echo "EXACT_RUN_ID=$exact" >> "$GITHUB_ENV"
+          echo "PRODUCTION_RUN_ID=$production" >> "$GITHUB_ENV"
+
+          before="$(curl -fsSL "${auth[@]}" "$api/actions/workflows/cp32-android-background-e2e.yml/runs?event=workflow_dispatch&per_page=20" | python3 -c 'import json,sys; xs=json.load(sys.stdin).get("workflow_runs",[]); print(max([x["id"] for x in xs], default=0))')"
+          curl -fsSL -X POST "${auth[@]}" "$api/actions/workflows/cp32-android-background-e2e.yml/dispatches" -d '{"ref":"main"}'
+          android=''
+          for i in $(seq 1 60); do
+            android="$(curl -fsSL "${auth[@]}" "$api/actions/workflows/cp32-android-background-e2e.yml/runs?event=workflow_dispatch&per_page=20" | python3 -c 'import json,sys,os; d=json.load(sys.stdin); sha=os.environ["MAIN_SHA"]; before=int(sys.argv[1]); xs=[x for x in d.get("workflow_runs",[]) if x.get("head_sha")==sha and int(x.get("id",0))>before]; print(xs[0]["id"] if xs else "")' "$before")"
+            if [[ -n "$android" ]]; then break; fi
+            sleep 5
+          done
+          [[ -n "$android" ]] || { echo ANDROID_RUN_NOT_FOUND_AFTER_DISPATCH >&2; exit 23; }
+          echo "ANDROID_RUN_ID=$android" >> "$GITHUB_ENV"
+          printf 'exact=%s\nproduction=%s\nandroid=%s\n' "$exact" "$production" "$android"
+      - name: Wait for all verification gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28')
+          wait_run() {
+            local id="$1" label="$2" max="$3"
+            local status conclusion
+            for i in $(seq 1 "$max"); do
+              read -r status conclusion < <(curl -fsSL "${auth[@]}" "$api/actions/runs/$id" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("status") or "", d.get("conclusion") or "-")')
+              echo "$label run=$id status=$status conclusion=$conclusion"
+              if [[ "$status" == completed ]]; then
+                [[ "$conclusion" == success ]] || return 1
+                return 0
+              fi
+              sleep 15
+            done
+            echo "$label timeout" >&2
+            return 2
+          }
+          exact_ok=false; production_ok=false; android_ok=false
+          wait_run "$EXACT_RUN_ID" exact 160 && exact_ok=true || true
+          wait_run "$PRODUCTION_RUN_ID" production 240 && production_ok=true || true
+          wait_run "$ANDROID_RUN_ID" android 520 && android_ok=true || true
+          echo "EXACT_OK=$exact_ok" >> "$GITHUB_ENV"
+          echo "PRODUCTION_OK=$production_ok" >> "$GITHUB_ENV"
+          echo "ANDROID_OK=$android_ok" >> "$GITHUB_ENV"
+      - name: Persist final run evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          auth=(-H "Authorization: Bearer ${GH_TOKEN}" -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28')
+          python3 - <<'PY'
+          import json, os, urllib.request
+          token=os.environ['GH_TOKEN']; repo=os.environ['GITHUB_REPOSITORY']
+          def fetch(run_id):
+            req=urllib.request.Request(f'https://api.github.com/repos/{repo}/actions/runs/{run_id}',headers={'Authorization':f'Bearer {token}','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+            with urllib.request.urlopen(req) as r: d=json.load(r)
+            return {k:d.get(k) for k in ('id','name','run_number','event','head_sha','status','conclusion','html_url','created_at','updated_at')}
+          ids={k:os.environ.get(k,'') for k in ('EXACT_RUN_ID','PRODUCTION_RUN_ID','ANDROID_RUN_ID')}
+          report={'mainSha':os.environ['MAIN_SHA'],'runs':{k:fetch(v) if v else None for k,v in ids.items()}}
+          open('.cp32-postmerge-verification.json','w').write(json.dumps(report,indent=2)+'\n')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .cp32-postmerge-verification.json
+          git commit -m 'Record post-merge verification result' || true
+          git push origin HEAD:"$TARGET_BRANCH"
+          python3 - <<'PY'
+          import json
+          d=json.load(open('.cp32-postmerge-verification.json'))
+          for key,row in d['runs'].items():
+            print(key,row)
+          failed=[k for k,v in d['runs'].items() if not v or v.get('conclusion')!='success']
+          if failed: raise SystemExit('POSTMERGE_GATES_FAILED:'+','.join(failed))
+          PY
