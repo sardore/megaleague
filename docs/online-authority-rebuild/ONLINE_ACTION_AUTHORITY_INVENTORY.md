@@ -32,6 +32,8 @@ Exact-relay run #57 passed 17/18 regressions, including the complete natural fir
 
 Exact-relay run #58 again passed 17/18 and stopped only when the guest's defeated active unit made gather unavailable and the UI correctly exposed mandatory deployment buttons. This was a **HARNESS FAILURE**, confirmed by the screenshot and converged state at turn/revision 20 with no errors. The conservative guest driver now selects gather when offered, otherwise an actual rendered non-skill deployment/switch action. It never selects a damaging skill and still requires one canonical transaction, revision advance and peer convergence after the touch interaction.
 
+After #59 and merged-main exact-relay #60 both passed 18/18, the first deployed Pages + Render run passed 17/18 and failed only in the shared interaction driver. The driver retained a target locator, separately waited for `boundingBox()`, then issued a coordinate touch; live authoritative projection replaced that target DOM during the gap and the coordinate lookup timed out. This was a **HARNESS FAILURE**, not a canonical-state or transport failure. Modal and target interactions now use Playwright's touch `locator.tap()` so the locator is re-resolved atomically against the current rendered projection. Production game code and its authority path are unchanged.
+
 ## Baseline owners and capabilities
 
 | Owner/function | Reads | Writes | May reject | May retry | May mutate game | May mutate DOM | Cleanup owner | Consolidation decision |
