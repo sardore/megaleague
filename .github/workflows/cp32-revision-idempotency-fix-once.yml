@@ -6,6 +6,9 @@ on:
       - diagnose/android-lifecycle-32624812975
     paths:
       - .github/workflows/cp32-revision-idempotency-fix-once.yml
+  pull_request:
+    paths:
+      - .github/workflows/cp32-revision-idempotency-fix-once.yml
 
 permissions:
   contents: write
@@ -36,7 +39,7 @@ jobs:
         // canonical state must reuse its committed revision, even when it comes through the
         // ordinary publication path rather than a force/recovery path. Compare against the
         // last immutable PVP canonical packet while ignoring transport revision metadata.
-        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state===\"string\"
+        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state==="string"
           ? p2p.__reliableStatePacket.state
           : null;
         const currentCanonicalState=bossOnline?null:serializeOnlineGame();
