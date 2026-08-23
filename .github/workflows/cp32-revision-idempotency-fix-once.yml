@@ -1,0 +1,71 @@
+name: CP32 One-shot Authoritative Revision Idempotency Patch
+
+on:
+  push:
+    branches:
+      - diagnose/android-lifecycle-32624812975
+    paths:
+      - .github/workflows/cp32-revision-idempotency-fix-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-authoritative-revision:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: diagnose/android-lifecycle-32624812975
+          fetch-depth: 1
+      - name: Make authoritative publication revision-idempotent
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = '''        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));
+        onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;
+        game.networkRevision = onlineAuthoritativeRevision;
+        const revision = onlineAuthoritativeRevision;
+        // Transport availability cannot veto an already committed host mutation. Advance the
+        // canonical revision first; onlineSafeSend may fail and the same immutable revision is
+        // then retained by the single reliable-state retry owner below.'''
+          new = '''        // Publication order is not canonical mutation order. A resend of the same
+        // canonical state must reuse its committed revision, even when it comes through the
+        // ordinary publication path rather than a force/recovery path. Compare against the
+        // last immutable PVP canonical packet while ignoring transport revision metadata.
+        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state===\"string\"
+          ? p2p.__reliableStatePacket.state
+          : null;
+        const currentCanonicalState=bossOnline?null:serializeOnlineGame();
+        const canonicalChanged=bossOnline
+          ? !force
+          : previousCanonicalState===null
+            ? !force
+            : !onlineSnapshotEquivalentForInput(previousCanonicalState,currentCanonicalState);
+        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));
+        onlineAuthoritativeRevision=canonicalChanged?currentRevision+1:currentRevision;
+        game.networkRevision = onlineAuthoritativeRevision;
+        const revision = onlineAuthoritativeRevision;
+        // Transport availability cannot veto an already committed host mutation. When the
+        // canonical state actually changed, advance the revision before delivery; otherwise
+        // retain the existing revision so retries/resends cannot manufacture canonical history.'''
+          count = s.count(old)
+          if count != 1:
+              raise SystemExit(f'AUTHORITATIVE_REVISION_PATCH_TARGET_COUNT:{count}')
+          s = s.replace(old, new, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+          git diff --check
+          grep -q 'Publication order is not canonical mutation order' index.html
+          grep -q 'onlineAuthoritativeRevision=canonicalChanged?currentRevision+1:currentRevision' index.html
+      - name: Commit runtime fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Reuse authoritative revision for unchanged resends'
+          git push origin HEAD:diagnose/android-lifecycle-32624812975
