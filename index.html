@@ -20807,13 +20807,26 @@ function executeFoxWithPlan(actions,mode,plan){
         const normalizedResolution = actionResolution?.actionId && ["accepted","rejected","unknown"].includes(String(actionResolution.status || ""))
           ? { actionId:String(actionResolution.actionId), status:String(actionResolution.status), reason:String(actionResolution.reason || "") }
           : null;
+        // Publication order is not canonical mutation order. A resend of the same
+        // canonical state must reuse its committed revision, even when it comes through the
+        // ordinary publication path rather than a force/recovery path. Compare against the
+        // last immutable PVP canonical packet while ignoring transport revision metadata.
+        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state==="string"
+          ? p2p.__reliableStatePacket.state
+          : null;
+        const currentCanonicalState=bossOnline?null:serializeOnlineGame();
+        const canonicalChanged=bossOnline
+          ? !force
+          : previousCanonicalState===null
+            ? !force
+            : !onlineSnapshotEquivalentForInput(previousCanonicalState,currentCanonicalState);
         const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));
-        onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;
+        onlineAuthoritativeRevision=canonicalChanged?currentRevision+1:currentRevision;
         game.networkRevision = onlineAuthoritativeRevision;
         const revision = onlineAuthoritativeRevision;
-        // Transport availability cannot veto an already committed host mutation. Advance the
-        // canonical revision first; onlineSafeSend may fail and the same immutable revision is
-        // then retained by the single reliable-state retry owner below.
+        // Transport availability cannot veto an already committed host mutation. When the
+        // canonical state actually changed, advance the revision before delivery; otherwise
+        // retain the existing revision so retries/resends cannot manufacture canonical history.
         const sent = onlineSafeSend({
           type:"authoritativeState", protocol:ONLINE_TURN_SYNC_VERSION, mode:bossOnline?"BOSS_COOP":"PVP",
           matchId:onlineCurrentMatchId(), revision,
