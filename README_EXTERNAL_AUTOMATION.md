@@ -26,8 +26,9 @@ The assembly sandbox could not resolve the public npm registry. Therefore `packa
 
 GitHub write/workflow access was unavailable in the assembly session, so all three external run counts are 0. This package is pipeline-ready, not player-path-proven.
 
-## One-phone bootstrap packaging contract
-This validation payload is installed by `CP32 Bootstrap Install`. The game HTML is never patched by the installer.
+## Checked-in workflow contract
+
+The validation workflows are maintained directly in this repository. The completed one-time R9 bootstrap installer was removed so it cannot restore obsolete Android or Playwright peer paths. The workflows never patch the game HTML.
 
 Production online URL (exact):
 `https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline`

@@ -2,4 +2,10 @@ export const ANDROID_PACKAGE=process.env.CP32_ANDROID_PACKAGE||'com.android.chro
 export const ANDROID_ACTIVITY=process.env.CP32_ANDROID_ACTIVITY||'com.google.android.apps.chrome.Main';
 export const ADB=process.env.ADB||'adb';
 export const VIEWPORT={width:412,height:915};
-export const CASES={short:Number(process.env.CP32_ANDROID_SHORT_CASES||5),long:Number(process.env.CP32_ANDROID_LONG_CASES||3),offline:Number(process.env.CP32_ANDROID_OFFLINE_CASES||2)};
+export const PRIMARY_SERIAL=process.env.CP32_ANDROID_PRIMARY_SERIAL||process.env.ANDROID_SERIAL||'emulator-5554';
+export const SECONDARY_SERIAL=process.env.CP32_ANDROID_SECONDARY_SERIAL||'emulator-5556';
+export const PRIMARY_CDP_PORT=Number(process.env.CP32_ANDROID_PRIMARY_CDP_PORT||9222);
+export const SECONDARY_CDP_PORT=Number(process.env.CP32_ANDROID_SECONDARY_CDP_PORT||9223);
+export const CHAOS_SEED=Number(process.env.CP32_ANDROID_CHAOS_SEED||32624812975)>>>0;
+export const CHAOS_CYCLES=Math.max(24,Number(process.env.CP32_ANDROID_CHAOS_CYCLES||36));
+export const BATTLE_DECK=Object.freeze(String(process.env.CP32_ANDROID_BATTLE_DECK||'mole,boar,galewing,shuvi').split(',').map(value=>value.trim()).filter(Boolean));

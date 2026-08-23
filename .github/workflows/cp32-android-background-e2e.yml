@@ -12,14 +12,15 @@ permissions:
   contents: read
 jobs:
   android:
-    runs-on: macos-14
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
       CP32_TARGET_MODE: candidate
       CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
       CP32_CANDIDATE_ORIGIN: https://127.0.0.1:8443
       CP32_ANDROID_CANDIDATE_URL: https://10.0.2.2:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
-      CP32_PEER_CANDIDATE_URL: https://127.0.0.1:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      CP32_ANDROID_CHAOS_SEED: '32624812975'
+      CP32_ANDROID_CHAOS_CYCLES: '36'
     steps:
       - uses: actions/checkout@v6
       - name: Initialize validation evidence filesystem
@@ -40,12 +41,32 @@ jobs:
             'directories':['artifacts/preflight','artifacts/results','artifacts/android']
           },indent=2)+'\n')
           PYEVIDENCEINIT
+      - name: Enable and verify Android KVM acceleration
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -c /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          python3 - <<'PYKVM'
+          import json, os, platform
+          from pathlib import Path
+          Path('artifacts/preflight/android-virtualization-host.json').write_text(json.dumps({
+            'machine': platform.machine(),
+            'kvmCharacterDevice': Path('/dev/kvm').is_char_device(),
+            'kvmReadable': os.access('/dev/kvm', os.R_OK),
+            'kvmWritable': os.access('/dev/kvm', os.W_OK),
+            'runner': os.environ.get('RUNNER_NAME'),
+          }, indent=2)+'\n')
+          PYKVM
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
           package-manager-cache: false
       - run: npm install --ignore-scripts --no-audit --no-fund
-      - run: npx playwright install chromium
       - run: npm run validate:static
       - name: Generate scoped local TLS identity and trust contract
         shell: bash
@@ -71,9 +92,9 @@ jobs:
         with:
           api-level: 35
           target: google_apis
-          arch: arm64-v8a
+          arch: x86_64
           profile: pixel_6
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-metrics
           disable-animations: true
           script: node tests/android/android-background-player-path.js
       - name: Verify emulator-owned Android evidence capture
@@ -82,7 +103,10 @@ jobs:
         run: |
           set -euo pipefail
           test -f artifacts/android/android-result.json
-          test -f artifacts/android/logcat.txt
+          test -f artifacts/android/logcat-host.txt
+          test -f artifacts/android/logcat-guest.txt
+          test -f artifacts/android/chaos-seed.json
+          test -f artifacts/android/arrival-order-chronology.json
           test -f artifacts/preflight/android-logcat-capture.json
       - name: Validate required evidence on successful run
         shell: bash
@@ -100,7 +124,10 @@ jobs:
             artifacts/preflight/candidate-server.pid
             artifacts/results/static-validation.json
             artifacts/android/android-result.json
-            artifacts/android/logcat.txt
+            artifacts/android/logcat-host.txt
+            artifacts/android/logcat-guest.txt
+            artifacts/android/chaos-seed.json
+            artifacts/android/arrival-order-chronology.json
             artifacts/preflight/android-logcat-capture.json
           )
           missing=0
@@ -112,8 +139,15 @@ jobs:
           import json
           from pathlib import Path
           rec=json.loads(Path('artifacts/preflight/android-logcat-capture.json').read_text())
-          if rec.get('exitCode') != 0: raise SystemExit('ANDROID_LOGCAT_CAPTURE_FAILED')
-          if Path('artifacts/android/logcat.txt').stat().st_size == 0: raise SystemExit('ANDROID_LOGCAT_EMPTY')
+          captures=rec.get('captures') or []
+          if len(captures) != 2: raise SystemExit('DUAL_ANDROID_LOGCAT_CAPTURE_COUNT_INVALID')
+          if any(row.get('exitCode') != 0 for row in captures): raise SystemExit('DUAL_ANDROID_LOGCAT_CAPTURE_FAILED')
+          for side in ('host','guest'):
+            if Path(f'artifacts/android/logcat-{side}.txt').stat().st_size == 0: raise SystemExit(f'ANDROID_LOGCAT_EMPTY:{side}')
+          result=json.loads(Path('artifacts/android/android-result.json').read_text())
+          if result.get('ok') is not True: raise SystemExit('DUAL_ANDROID_RUNTIME_RESULT_NOT_PASS')
+          seed=json.loads(Path('artifacts/android/chaos-seed.json').read_text())
+          if seed.get('seed') != 32624812975 or seed.get('cycles',0) < 24: raise SystemExit('DUAL_ANDROID_SEED_CONTRACT_INVALID')
           PYLOGCAT
       - name: Finalize evidence lifecycle
         if: always()
