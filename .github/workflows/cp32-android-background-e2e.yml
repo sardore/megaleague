@@ -79,7 +79,24 @@ jobs:
           echo "CP32_LOCAL_CERT_SPKI=$SPKI" >> "$GITHUB_ENV"
           printf '{"policy":"LOCAL_CERT_PLUS_SPKI_ONLY","trustCert":"artifacts/preflight/cert.pem","spkiSha256Base64":"%s","globalTlsDisable":false}\n' "$SPKI" > artifacts/preflight/local-tls-contract.json
       - name: Start candidate HTTPS server
-        run: node tests/helpers/candidate-https-server.js > artifacts/preflight/candidate-server.stdout.log 2> artifacts/preflight/candidate-server.stderr.log & echo $! > artifacts/preflight/candidate-server.pid
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/helpers/candidate-https-server.js > artifacts/preflight/candidate-server.stdout.log 2> artifacts/preflight/candidate-server.stderr.log &
+          SERVER_PID=$!
+          echo "$SERVER_PID" > artifacts/preflight/candidate-server.pid
+          for attempt in $(seq 1 200); do
+            if [[ -s artifacts/preflight/candidate-server-ready.json ]] && curl --silent --show-error --fail --cacert artifacts/preflight/cert.pem https://127.0.0.1:8443/healthz > artifacts/preflight/candidate-server-health.json; then
+              exit 0
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat artifacts/preflight/candidate-server.stderr.log >&2
+              exit 41
+            fi
+            sleep 0.05
+          done
+          echo CANDIDATE_SERVER_LISTEN_ADMISSION_TIMEOUT >&2
+          exit 42
       - name: Local TLS trust regression
         run: CP32_TLS_REGRESSION_OUTPUT=artifacts/preflight/tls-trust-regression.json node tools/tls-trust-regression.js
       - name: Candidate and relay preflight
@@ -88,6 +105,7 @@ jobs:
           CP32_PREFLIGHT_OUTPUT: artifacts/preflight/android-preflight.json
         run: node tests/helpers/relay-preflight.js
       - name: Android actual lifecycle
+        id: android_lifecycle
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -98,7 +116,7 @@ jobs:
           disable-animations: true
           script: node tests/android/android-background-player-path.js
       - name: Verify emulator-owned Android evidence capture
-        if: always()
+        if: always() && steps.android_lifecycle.outcome != 'skipped'
         shell: bash
         run: |
           set -euo pipefail
@@ -122,6 +140,8 @@ jobs:
             artifacts/preflight/candidate-server.stdout.log
             artifacts/preflight/candidate-server.stderr.log
             artifacts/preflight/candidate-server.pid
+            artifacts/preflight/candidate-server-ready.json
+            artifacts/preflight/candidate-server-health.json
             artifacts/results/static-validation.json
             artifacts/android/android-result.json
             artifacts/android/logcat-host.txt
