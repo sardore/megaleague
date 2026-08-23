@@ -62,8 +62,56 @@ function patchedKnownChromeBlocker(nodes){
 const blockerReplacement=patchedKnownChromeBlocker.toString().replace('patchedKnownChromeBlocker','knownChromeBlocker')+'\n\n';
 const blockerPatched=readinessPatched.slice(0,blockerStart)+blockerReplacement+readinessPatched.slice(blockerEnd);
 
-const start=blockerPatched.indexOf('async function selectedDeck(client)');
-const end=blockerPatched.indexOf('async function state(client,{full=false}={}){');
+const frameStart=blockerPatched.indexOf('async function androidWebContentFrame(client){');
+const frameEnd=blockerPatched.indexOf("async function tapGeometry(client,geometry,label='target'){");
+if(frameStart<0||frameEnd<0||frameEnd<=frameStart)throw new Error(`ANDROID_RUNTIME_FRAME_PATCH_ANCHOR_MISSING:${JSON.stringify({frameStart,frameEnd})}`);
+
+async function patchedAndroidWebContentFrame(client){
+  let last=[];
+  return waitUntil(async()=>{
+    const hierarchy=androidUiHierarchy(client);last=hierarchy.nodes;
+    const blocker=knownChromeBlocker(last);
+    if(blocker){
+      const x=Math.round((blocker.left+blocker.right)/2),y=Math.round((blocker.top+blocker.bottom)/2);
+      const detail={client:client.name,resourceId:blocker['resource-id'],text:blocker.text||blocker['content-desc']||'',x,y,bounds:[blocker.left,blocker.top,blocker.right,blocker.bottom]};
+      timeline('chrome-surface-blocker-dismissed',detail);record(`last-chrome-blocker-${client.name}.json`,detail);
+      adb(client,'shell','input','tap',String(x),String(y));
+      return false;
+    }
+    const webviews=last.filter(node=>node.class==='android.webkit.WebView'&&node.package===ANDROID_PACKAGE&&node.width>0&&node.height>0).sort((a,b)=>b.width*b.height-a.width*a.height);
+    const display=physicalDisplay(client);
+    if(webviews.length){
+      const view=webviews[0];
+      if(view.left<0||view.top<0||view.right>display.width||view.bottom>display.height)return false;
+      const verified={left:view.left,top:view.top,right:view.right,bottom:view.bottom,width:view.width,height:view.height,display,resourceId:view['resource-id']||null,verifiedAt:now()};
+      client.verifiedContentFrame=verified;
+      return verified;
+    }
+    const cached=client.verifiedContentFrame;
+    if(!cached||now()-Number(cached.verifiedAt||0)>120000)return false;
+    if(cached.display?.width!==display.width||cached.display?.height!==display.height)return false;
+    let focus='';
+    try{focus=adb(client,'shell','dumpsys','window','windows');}catch{return false;}
+    const focusLines=String(focus).split(/\r?\n/).filter(line=>/mCurrentFocus|mFocusedApp/.test(line));
+    if(!focusLines.some(line=>line.includes(ANDROID_PACKAGE)))return false;
+    let page=null;
+    try{page=await evaluate(client,`(()=>({origin:location.origin,visibility:document.visibilityState,ready:document.readyState,hasGame:typeof game!=='undefined',hasRuntime:!!window.OnlineRuntime?.debug,hasInput:!!window.InputLockManager,hasPanel:!!window.ActionPanelConvergenceOwner}))()`);}catch{return false;}
+    if(page?.origin!==APP_ORIGIN||page?.visibility!=='visible'||!page?.hasGame||!page?.hasRuntime||!page?.hasInput||!page?.hasPanel)return false;
+    const fallback={...cached,display,cacheFallback:true,usedAt:now()};
+    timeline('android-web-content-frame-cache-fallback',{client:client.name,verifiedAt:cached.verifiedAt,ageMs:now()-Number(cached.verifiedAt||0),display,page,focus:focusLines.slice(-4)});
+    record(`last-web-content-frame-fallback-${client.name}.json`,{fallback,page,focus:focusLines.slice(-8)});
+    return fallback;
+  },{timeout:20000,interval:250,label:`${client.name}_ANDROID_WEB_CONTENT_FRAME`}).catch(error=>{
+    const summary=last.map(node=>({class:node.class,package:node.package,resourceId:node['resource-id'],text:node.text,bounds:[node.left,node.top,node.right,node.bottom]}));
+    throw new Error(`${client.name}_ANDROID_WEB_CONTENT_FRAME_FAILED:last=${JSON.stringify(summary)}:cause=${String(error)}`);
+  });
+}
+
+const frameReplacement=patchedAndroidWebContentFrame.toString().replace('patchedAndroidWebContentFrame','androidWebContentFrame')+'\n\n';
+const framePatched=blockerPatched.slice(0,frameStart)+frameReplacement+blockerPatched.slice(frameEnd);
+
+const start=framePatched.indexOf('async function selectedDeck(client)');
+const end=framePatched.indexOf('async function state(client,{full=false}={}){');
 if(start<0||end<0||end<=start)throw new Error(`ANDROID_RUNTIME_DECK_PATCH_ANCHOR_MISSING:${JSON.stringify({start,end})}`);
 
 async function patchedSelectedDeck(client){
@@ -98,7 +146,7 @@ const replacement=[
   patchedSelectDeck.toString().replace('patchedSelectDeck','selectDeck'),
 ].join('\n\n')+'\n\n';
 
-const transformed=blockerPatched.slice(0,start)+replacement+blockerPatched.slice(end);
+const transformed=framePatched.slice(0,start)+replacement+framePatched.slice(end);
 fs.writeFileSync(generatedPath,transformed);
 process.once('exit',()=>{try{fs.unlinkSync(generatedPath);}catch{}});
 await import(`${pathToFileURL(generatedPath).href}?runtimeDeck=${Date.now()}`);
