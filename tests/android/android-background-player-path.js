@@ -11,7 +11,9 @@ import {requireLocalCandidateSpki} from '../helpers/local-candidate-tls.js';
 const execFileAsync=promisify(execFile);
 const OUTPUT='artifacts/android';
 const PREFLIGHT='artifacts/preflight';
-const APP_URL=process.env.CP32_ANDROID_CANDIDATE_URL||'https://10.0.2.2:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline';
+const APP_URL=process.env.CP32_ANDROID_CANDIDATE_URL||'https://127.0.0.1:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline';
+const APP_ORIGIN=new URL(APP_URL).origin;
+const APP_PORT=new URL(APP_URL).port||'443';
 const BUILD_ID='CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST';
 const SECONDARY_AVD='cp32-secondary';
 const CLIENTS=Object.freeze([
@@ -129,7 +131,7 @@ async function cdpConnect(client){
   return waitUntil(async()=>{
     try{
       const tabs=await(await fetch(`http://127.0.0.1:${client.cdpPort}/json`)).json();
-      const tab=tabs.find(item=>item.type==='page'&&String(item.url||'').startsWith('https://10.0.2.2:8443'))||tabs.find(item=>item.type==='page');
+      const tab=tabs.find(item=>item.type==='page'&&String(item.url||'').startsWith(APP_ORIGIN))||tabs.find(item=>item.type==='page');
       if(!tab)return false;
       const ws=new WebSocket(tab.webSocketDebuggerUrl);
       await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject;});
@@ -179,6 +181,9 @@ async function prepareChrome(client){
   try{adb(client,'shell','pm','grant',ANDROID_PACKAGE,'android.permission.POST_NOTIFICATIONS');}
   catch(error){notificationPermission=`UNAVAILABLE:${String(error?.stderr||error?.message||error)}`;}
   timeline('chrome-notification-permission',{client:client.name,result:notificationPermission});
+  try{adb(client,'reverse','--remove',`tcp:${APP_PORT}`);}catch(error){timeline('candidate-reverse-remove-miss',{client:client.name,error:String(error?.stderr||error?.message||error)});}
+  const reverse=adb(client,'reverse',`tcp:${APP_PORT}`,`tcp:${APP_PORT}`).trim();
+  timeline('candidate-reverse-bound',{client:client.name,devicePort:APP_PORT,hostPort:APP_PORT,result:reverse});
   const spki=requireLocalCandidateSpki();
   const commandLine=`chrome --ignore-certificate-errors-spki-list=${spki} --disable-fre --no-default-browser-check --disable-first-run-ui --remote-debugging-port=0`;
   const commandLinePath=path.join(PREFLIGHT,`chrome-command-line-${client.name}.txt`);
@@ -186,11 +191,15 @@ async function prepareChrome(client){
   adb(client,'push',commandLinePath,'/data/local/tmp/chrome-command-line');
   adb(client,'shell','am','start','-W','-a','android.intent.action.VIEW','-d',APP_URL,ANDROID_PACKAGE);
   client.cdp=await cdpConnect(client);
-  await waitUntil(()=>evaluate(client,"document.readyState==='complete'||document.readyState==='interactive'"),{timeout:60000,label:`${client.name}_PAGE_READY`});
+  const ready=await waitUntil(()=>evaluate(client,`(()=>{
+    const build=document.querySelector('#cp32BuildIdentity')?.dataset.buildId||null;
+    const initialized=(document.readyState==='complete'||document.readyState==='interactive')&&build===${JSON.stringify(BUILD_ID)}&&typeof game!=='undefined'&&!!window.OnlineRuntime?.debug&&!!window.InputLockManager&&!!window.ActionPanelConvergenceOwner;
+    return initialized?{build,runtimeVersion:window.OnlineRuntime.debug()?.version||null}:false;
+  })()`),{timeout:60000,label:`${client.name}_CANDIDATE_RUNTIME_READY`});
   await installPageTimeline(client);
-  const build=await evaluate(client,"document.querySelector('#cp32BuildIdentity')?.dataset.buildId||null");
+  const build=ready.build;
   if(build!==BUILD_ID)throw new Error(`${client.name}_BUILD_IDENTITY_MISMATCH:${build}`);
-  timeline('chrome-ready',{client:client.name,build});
+  timeline('chrome-ready',{client:client.name,build,runtimeVersion:ready.runtimeVersion});
 }
 
 async function elementGeometry(client,selector,index=0,{scroll=true}={}){
@@ -626,7 +635,7 @@ async function failureEvidence(error){
 }
 
 function cleanup(){
-  for(const client of CLIENTS){try{setOffline(client,false);}catch{}try{adb(client,'shell','am','start','-n',`${ANDROID_PACKAGE}/${ANDROID_ACTIVITY}`);}catch{}try{client.cdp?.ws?.close();}catch{}try{adb(client,'forward','--remove',`tcp:${client.cdpPort}`);}catch{}}
+  for(const client of CLIENTS){try{setOffline(client,false);}catch{}try{adb(client,'shell','am','start','-n',`${ANDROID_PACKAGE}/${ANDROID_ACTIVITY}`);}catch{}try{client.cdp?.ws?.close();}catch{}try{adb(client,'forward','--remove',`tcp:${client.cdpPort}`);}catch{}try{adb(client,'reverse','--remove',`tcp:${APP_PORT}`);}catch{}}
   stopVideos();
   if(active.secondary){try{adb(CLIENTS[1],'emu','kill');}catch{}try{active.secondary.kill('SIGTERM');}catch{}}
   if(active.secondaryLogFd!=null)try{fs.closeSync(active.secondaryLogFd);}catch{}
