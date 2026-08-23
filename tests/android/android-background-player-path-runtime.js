@@ -85,7 +85,7 @@ async function patchedAndroidWebContentFrame(client){
       visualViewport:vv?{width:Number(vv.width||0),height:Number(vv.height||0),offsetLeft:Number(vv.offsetLeft||0),offsetTop:Number(vv.offsetTop||0),scale:Number(vv.scale||1)}:null,
     };
   })()`);
-  const pageUsable=page=>!!page&&page.origin===APP_ORIGIN&&page.visibility==='visible'&&(page.ready==='complete'||page.ready==='interactive')&&page.hasGame&&page.hasRuntime&&page.hasInput&&page.hasPanel;
+  const pageUsable=page=>!!page&&page.origin===APP_ORIGIN&&page.visibility==='visible'&&(page.ready==='complete'||page.ready==='interactive')&&page.hasGame&&page.hasRuntime&&page.hasInput&&page.hasPanel&&page.innerWidth>0&&page.innerHeight>0;
   const close=(a,b,tolerance=1)=>Math.abs(Number(a||0)-Number(b||0))<=tolerance;
   const viewportStable=(before,after)=>{
     if(!before||!after)return false;
@@ -97,6 +97,23 @@ async function patchedAndroidWebContentFrame(client){
     if(a&&b&&(!close(a.width,b.width)||!close(a.height,b.height)||!close(a.offsetLeft,b.offsetLeft)||!close(a.offsetTop,b.offsetTop)||!close(a.scale,b.scale,0.01)))return false;
     return true;
   };
+  const deriveFromChromeSurface=(nodes,currentDisplay,page)=>{
+    if(!pageUsable(page))return null;
+    const surfaces=nodes.filter(node=>node.package===ANDROID_PACKAGE&&node.class==='android.widget.FrameLayout'&&node.width>=currentDisplay.width*0.9&&node.height>=currentDisplay.height*0.5&&node.left>=0&&node.right<=currentDisplay.width&&node.top>=0&&node.bottom<=currentDisplay.height);
+    const insetSurfaces=surfaces.filter(node=>node.top>0||node.bottom<currentDisplay.height);
+    const candidates=(insetSurfaces.length?insetSurfaces:surfaces).sort((a,b)=>b.width*b.height-a.width*a.height);
+    const surface=candidates[0];
+    if(!surface)return null;
+    const scale=surface.width/Number(page.innerWidth||1);
+    const expectedHeight=Math.round(Number(page.innerHeight||0)*scale);
+    const inferredTop=surface.bottom-expectedHeight;
+    if(!Number.isFinite(scale)||scale<=0||expectedHeight<=0||inferredTop<surface.top||inferredTop>=surface.bottom)return null;
+    const toolbarIds=/(?:home_button|location_bar|toolbar_buttons|tab_switcher_button|menu_button)$/;
+    const toolbarBottom=nodes.filter(node=>node.package===ANDROID_PACKAGE&&toolbarIds.test(String(node['resource-id']||''))&&node.width>0&&node.height>0).reduce((value,node)=>Math.max(value,node.bottom),0);
+    if(toolbarBottom&&Math.abs(toolbarBottom-inferredTop)>96)return null;
+    const derived={left:surface.left,top:inferredTop,right:surface.right,bottom:surface.bottom,width:surface.width,height:expectedHeight,display:currentDisplay,resourceId:'derived:chrome-surface-cdp-viewport',verifiedAt:now(),pageMetrics:page,calibrationSource:'chrome-surface-cdp',surface:{left:surface.left,top:surface.top,right:surface.right,bottom:surface.bottom,width:surface.width,height:surface.height},toolbarBottom:toolbarBottom||null};
+    return derived;
+  };
 
   const display=physicalDisplay(client);
   const cached=client.verifiedContentFrame;
@@ -105,7 +122,7 @@ async function patchedAndroidWebContentFrame(client){
     try{page=await readPageMetrics();}catch{}
     if(pageUsable(page)&&viewportStable(cached.pageMetrics,page)){
       const reused={...cached,display,pageMetrics:page,cacheFallback:true,usedAt:now()};
-      timeline('android-web-content-frame-cache-hit',{client:client.name,verifiedAt:cached.verifiedAt,ageMs:now()-Number(cached.verifiedAt||0),display,page});
+      timeline('android-web-content-frame-cache-hit',{client:client.name,verifiedAt:cached.verifiedAt,ageMs:now()-Number(cached.verifiedAt||0),display,page,calibrationSource:cached.calibrationSource||null});
       record(`last-web-content-frame-fallback-${client.name}.json`,{fallback:reused,page});
       return reused;
     }
@@ -123,15 +140,24 @@ async function patchedAndroidWebContentFrame(client){
       adb(client,'shell','input','tap',String(x),String(y));
       return false;
     }
-    const webviews=last.filter(node=>node.class==='android.webkit.WebView'&&node.package===ANDROID_PACKAGE&&node.width>0&&node.height>0).sort((a,b)=>b.width*b.height-a.width*a.height);
     const currentDisplay=physicalDisplay(client);
-    if(!webviews.length)return false;
-    const view=webviews[0];
-    if(view.left<0||view.top<0||view.right>currentDisplay.width||view.bottom>currentDisplay.height)return false;
     let page=null;
     try{page=await readPageMetrics();}catch{return false;}
     if(!pageUsable(page))return false;
-    const verified={left:view.left,top:view.top,right:view.right,bottom:view.bottom,width:view.width,height:view.height,display:currentDisplay,resourceId:view['resource-id']||null,verifiedAt:now(),pageMetrics:page};
+    const webviews=last.filter(node=>node.class==='android.webkit.WebView'&&node.package===ANDROID_PACKAGE&&node.width>0&&node.height>0).sort((a,b)=>b.width*b.height-a.width*a.height);
+    let verified=null;
+    if(webviews.length){
+      const view=webviews[0];
+      if(view.left>=0&&view.top>=0&&view.right<=currentDisplay.width&&view.bottom<=currentDisplay.height){
+        verified={left:view.left,top:view.top,right:view.right,bottom:view.bottom,width:view.width,height:view.height,display:currentDisplay,resourceId:view['resource-id']||null,verifiedAt:now(),pageMetrics:page,calibrationSource:'uiautomator-webview'};
+      }
+    }
+    if(!verified)verified=deriveFromChromeSurface(last,currentDisplay,page);
+    if(!verified)return false;
+    const scaleX=verified.width/Number(page.innerWidth||1),scaleY=verified.height/Number(page.innerHeight||1);
+    const relativeScaleError=Math.abs(scaleX-scaleY)/Math.max(scaleX,scaleY,1e-9);
+    if(relativeScaleError>0.08)return false;
+    verified.scaleCheck={x:scaleX,y:scaleY,relativeError:relativeScaleError};
     client.verifiedContentFrame=verified;
     timeline('android-web-content-frame-calibrated',{client:client.name,verified});
     record(`last-web-content-frame-calibrated-${client.name}.json`,verified);
