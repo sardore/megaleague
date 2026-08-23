@@ -34,6 +34,37 @@ async function patchedPrepareChrome(client){
     return initialized?{runtimeMarker,runtimeVersion:window.OnlineRuntime.debug()?.version||null}:false;
   })()`),{timeout:60000,label:`${client.name}_CANDIDATE_RUNTIME_READY`});
   await installPageTimeline(client);
+  await evaluate(client,`(()=>{
+    if(window.__cp32AndroidInputTraceInstalled)return{installed:true,count:(window.__cp32AndroidInputTimeline||[]).length};
+    window.__cp32AndroidInputTraceInstalled=true;
+    window.__cp32AndroidInputTimeline=[];
+    const describe=node=>{
+      if(!node||node.nodeType!==1)return null;
+      const action=node.closest?.('#actionButtons button')||null;
+      return{
+        tag:String(node.tagName||'').toLowerCase(),id:node.id||null,className:String(node.className||'').slice(0,240),
+        text:String(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,240),
+        actionText:action?String(action.textContent||'').replace(/\\s+/g,' ').trim().slice(0,240):null,
+        actionDisabled:action?!!action.disabled:null,
+      };
+    };
+    const capture=event=>{
+      const point=event.touches?.[0]||event.changedTouches?.[0]||event;
+      const row={
+        at:Date.now(),perf:performance.now(),type:event.type,isTrusted:event.isTrusted===true,
+        clientX:Number(point?.clientX??NaN),clientY:Number(point?.clientY??NaN),
+        pageX:Number(point?.pageX??NaN),pageY:Number(point?.pageY??NaN),
+        pointerType:event.pointerType||null,button:Number.isFinite(event.button)?event.button:null,
+        target:describe(event.target),activeElement:describe(document.activeElement),visibility:document.visibilityState,
+        path:(event.composedPath?.()||[]).slice(0,8).map(describe).filter(Boolean),
+      };
+      window.__cp32AndroidInputTimeline.push(row);
+      if(window.__cp32AndroidInputTimeline.length>2000)window.__cp32AndroidInputTimeline.splice(0,window.__cp32AndroidInputTimeline.length-2000);
+    };
+    for(const type of ['pointerdown','pointerup','touchstart','touchend','mousedown','mouseup','click'])document.addEventListener(type,capture,true);
+    return{installed:true,count:0};
+  })()`);
+  timeline('android-input-trace-installed',{client:client.name});
   timeline('chrome-ready',{client:client.name,runtimeMarker:ready.runtimeMarker,runtimeVersion:ready.runtimeVersion});
 }
 
@@ -189,14 +220,35 @@ async function patchedTapGeometry(client,geometry,label='target'){
   const viewportWidth=Number(metrics.visualViewport?.width||metrics.innerWidth||1),viewportHeight=Number(metrics.visualViewport?.height||metrics.innerHeight||1);
   const viewportOffsetLeft=Number(metrics.visualViewport?.offsetLeft||0),viewportOffsetTop=Number(metrics.visualViewport?.offsetTop||0);
   const scaleX=contentFrame.width/viewportWidth,scaleY=contentFrame.height/viewportHeight;
-  const centerX=Number(geometry.x)+Number(geometry.w)/2-viewportOffsetLeft;
-  const centerY=Number(geometry.y)+Number(geometry.h)/2-viewportOffsetTop;
+  const layoutCenterX=Number(geometry.x)+Number(geometry.w)/2,layoutCenterY=Number(geometry.y)+Number(geometry.h)/2;
+  const centerX=layoutCenterX-viewportOffsetLeft,centerY=layoutCenterY-viewportOffsetTop;
   const x=Math.max(contentFrame.left+1,Math.min(contentFrame.right-2,Math.round(contentFrame.left+centerX*scaleX)));
   const y=Math.max(contentFrame.top+1,Math.min(contentFrame.bottom-2,Math.round(contentFrame.top+centerY*scaleY)));
-  const rec={client:client.name,label,text:geometry.text,x,y,display,contentFrame,scale:{x:scaleX,y:scaleY},viewport:{width:viewportWidth,height:viewportHeight,offsetLeft:viewportOffsetLeft,offsetTop:viewportOffsetTop,source:metrics.visualViewport?'visualViewport':'layoutViewport'},metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h}};
+  const inputBefore=await evaluate(client,`(()=>{
+    const describe=node=>{if(!node||node.nodeType!==1)return null;const action=node.closest?.('#actionButtons button')||null;return{tag:String(node.tagName||'').toLowerCase(),id:node.id||null,className:String(node.className||'').slice(0,240),text:String(node.textContent||'').replace(/\\s+/g,' ').trim().slice(0,240),actionText:action?String(action.textContent||'').replace(/\\s+/g,' ').trim().slice(0,240):null,actionDisabled:action?!!action.disabled:null};};
+    const trace=window.__cp32AndroidInputTimeline||[];
+    return{length:trace.length,visualHit:describe(document.elementFromPoint(${JSON.stringify(centerX)},${JSON.stringify(centerY)})),layoutHit:describe(document.elementFromPoint(${JSON.stringify(layoutCenterX)},${JSON.stringify(layoutCenterY)})),activeElement:describe(document.activeElement),visibility:document.visibilityState};
+  })()`);
+  const cdpBefore=Array.isArray(client.cdp?.events)?client.cdp.events.length:0;
+  const rec={client:client.name,label,text:geometry.text,x,y,display,contentFrame,scale:{x:scaleX,y:scaleY},viewport:{width:viewportWidth,height:viewportHeight,offsetLeft:viewportOffsetLeft,offsetTop:viewportOffsetTop,source:metrics.visualViewport?'visualViewport':'layoutViewport'},metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h},inputBefore};
   timeline('adb-touch',rec);record(`last-touch-${client.name}.json`,rec);
   adb(client,'shell','input','tap',String(x),String(y));
-  await sleep(180);
+  const isActionTap=label.includes('#actionButtons')||String(active.stage||'').includes('actual-touch');
+  await sleep(isActionTap?900:180);
+  const inputAfter=await evaluate(client,`(()=>{const trace=window.__cp32AndroidInputTimeline||[];return{length:trace.length,events:trace.slice(${Number(inputBefore?.length||0)}).slice(-40)};})()`).catch(error=>({error:String(error),length:null,events:[]}));
+  const trustedEvents=(inputAfter.events||[]).filter(event=>event?.isTrusted===true);
+  const actionTrustedEvents=trustedEvents.filter(event=>event?.target?.actionText);
+  const cdpAfter=Array.isArray(client.cdp?.events)?client.cdp.events.slice(cdpBefore):[];
+  const actionRequests=cdpAfter.filter(event=>{try{return JSON.stringify(event).includes('actionRequest');}catch{return false;}}).slice(-20);
+  const delivery={client:client.name,label,stage:active.stage,at:now(),physical:{x,y},css:{layoutCenterX,layoutCenterY,visualCenterX:centerX,visualCenterY:centerY},inputBefore,inputAfter,trustedEventCount:trustedEvents.length,actionTrustedEventCount:actionTrustedEvents.length,actionRequestsObserved:actionRequests.length,actionRequestEvidence:actionRequests};
+  timeline('android-touch-delivery',delivery);record(`last-touch-input-delivery-${client.name}.json`,delivery);
+  if(isActionTap&&trustedEvents.length===0)throw new Error(`${client.name}_ANDROID_ADB_TOUCH_NOT_DELIVERED:${label}:${JSON.stringify(delivery)}`);
+  if(isActionTap&&actionTrustedEvents.length===0)throw new Error(`${client.name}_ANDROID_ADB_TOUCH_TARGET_MISMATCH:${label}:${JSON.stringify(delivery)}`);
+  if(isActionTap&&client.role==='guest'&&String(active.stage||'').includes('actual-touch')&&actionRequests.length===0){
+    const post=await evaluate(client,`(()=>({canonical:typeof game!=='undefined'?{revision:Number(game.networkRevision||0),turnSerial:Number(game.turnSerial||0),pendingAction:game.pendingAction?.actionId||null,pendingTransaction:game.pendingTransaction||null}:null,admission:window.OnlineActionAdmissionOwner?.debug?.()||null,eligibility:window.InputLockManager?.evaluate?.(game)||null}))()`);
+    delivery.post=post;record(`last-touch-input-delivery-${client.name}.json`,delivery);
+    throw new Error(`${client.name}_ANDROID_TRUSTED_ACTION_NO_REQUEST:${label}:${JSON.stringify(delivery)}`);
+  }
   return rec;
 }
 
