@@ -172,6 +172,16 @@ async function tapAggressiveAction(page) {
   return chosenLabel;
 }
 
+async function tapGatherAction(page) {
+  const gather = page.locator(LEGAL_ACTION).filter({ hasText: /에너지\s*모으기/ }).first();
+  await expect(gather, 'the non-authority peer must expose the real gather action').toBeVisible({ timeout: 30000 });
+  await expect(gather).toBeEnabled();
+  const label = ((await gather.textContent()) || '').replace(/\s+/g, ' ').trim();
+  await gather.tap();
+  await resolveInteraction(page);
+  return label;
+}
+
 async function waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest,timeout=60000){
   expect(beforeGuest.matchId).toBe(beforeHost.matchId);
   expect(beforeGuest.revision).toBe(beforeHost.revision);
@@ -239,7 +249,9 @@ async function playToTerminal(host, guest, options = {}) {
       await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
     } else {
       const [beforeHost,beforeGuest]=await Promise.all([battleState(host.page),battleState(guest.page)]);
-      row.clickedLabel=await tapAggressiveAction(next.actor.page);
+      row.clickedLabel=backgroundFinishingReceiver&&next.actor!==host
+        ? await tapGatherAction(next.actor.page)
+        : await tapAggressiveAction(next.actor.page);
       const committed=await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest);
       row.revisionAfter=committed.h.revision;row.hpBefore=beforeHost.P.hp+beforeHost.A.hp;row.hpAfter=committed.h.P.hp+committed.h.A.hp;
     }
