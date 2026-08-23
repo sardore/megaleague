@@ -20543,7 +20543,7 @@ function executeFoxWithPlan(actions,mode,plan){
             team:t, slot:Number(s), action:{...(action || {}),actionId},
           });
         };
-        const execute = function(next,g,t,s,action,opt={}) {
+        const admit = function(next,g,t,s,action,opt={}) {
           const live = !opt?.sim && g && (g === game || opt?.r48Live === true);
           if (!live) return window.CanonicalActionTransactionOwner.execute.call(this,next,g,t,s,action,opt);
           const online = g === game && (g?.mode === "online" || g?.bossRaid?.online);
@@ -20715,7 +20715,7 @@ function executeFoxWithPlan(actions,mode,plan){
           return view();
         };
         const resetBattle = () => {closeSession();return true;};
-        return Object.freeze({execute,submitManualSummon,receive,settle,startProbe,suspendSession,resumeSession,closeSession,resetBattle,clearPending,hasPending,pendingActionId,resolutionFor,view,debug:view});
+        return Object.freeze({execute:admit,submitManualSummon,receive,settle,startProbe,suspendSession,resumeSession,closeSession,resetBattle,clearPending,hasPending,pendingActionId,resolutionFor,view,debug:view});
       })();
 
       function executeSupportLayer(next,g,t,s,a,opt={}){

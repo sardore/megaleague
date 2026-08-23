@@ -48,6 +48,8 @@ export async function waitCanonicalActionCommit({host,guest,beforeHost,beforeGue
   try{
     await expect.poll(async()=>{
       const [h,g]=await Promise.all([canonicalBattleState(host),canonicalBattleState(guest)]);last={h,g};
+      const admissionFailure=h.recoveredErrors.find(row=>row.site==='online-action-admission.receive');
+      if(admissionFailure)throw new Error(`HOST_ACTION_ADMISSION_EXCEPTION:${admissionFailure.name}:${admissionFailure.message}`);
       const converged=h.matchId===g.matchId&&h.turnSerial===g.turnSerial&&h.revision===g.revision&&h.actorTeam===g.actorTeam&&h.actorSlot===g.actorSlot&&h.P.hp===g.P.hp&&h.A.hp===g.A.hp&&h.P.energy===g.P.energy&&h.A.energy===g.A.energy;
       const changed=h.turnSerial!==beforeHost.turnSerial||h.eventSequence!==beforeHost.eventSequence||h.P.hp!==beforeHost.P.hp||h.A.hp!==beforeHost.A.hp||h.P.energy!==beforeHost.P.energy||h.A.energy!==beforeHost.A.energy;
       const hostCommit=h.audit.filter(row=>row.type==='ACTION_TRANSACTION_COMMITTED'&&Number(row.turnSerialBefore)===beforeHost.turnSerial);
