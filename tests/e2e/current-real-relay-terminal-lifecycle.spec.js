@@ -7,6 +7,8 @@ import { pairByRoomCode, selectFour, waitRemoteCount, startBattle, resolveIntera
 const APP = process.env.CP32_CURRENT_APP_URL || 'http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline';
 const OUT = process.env.CP32_REAL_RELAY_ARTIFACTS || 'artifacts/real-relay';
 const LEGAL_ACTION = '#actionButtons button:not([disabled]):visible, #actionButtons .skillbtn:not([disabled]):visible';
+const TERMINAL_DECK = Object.freeze(['mole', 'boar', 'fang', 'frog']);
+let lastTerminalHistory = [];
 
 function write(name, value) {
   fs.mkdirSync(OUT, { recursive: true });
@@ -53,12 +55,32 @@ async function selectAvailableFour(page) {
   return ids;
 }
 
-async function setupBattle(host, guest) {
+async function selectExactFour(page, ids = TERMINAL_DECK) {
+  const wanted = new Set(ids);
+  const selectedIds = async () => page.locator('#onlineRoomDeck .online-room-card.selected').evaluateAll(cards => cards.map(card => card.dataset.cardId || null).filter(Boolean));
+  for (const id of await selectedIds()) {
+    if (wanted.has(id)) continue;
+    await page.locator(`#onlineRoomDeck .online-room-card[data-card-id="${id}"]`).tap();
+  }
+  for (const id of ids) {
+    if ((await selectedIds()).includes(id)) continue;
+    const card = page.locator(`#onlineRoomDeck .online-room-card[data-card-id="${id}"]`);
+    await card.scrollIntoViewIfNeeded();
+    await expect(card).toBeVisible();
+    await card.tap();
+    await expect.poll(async () => (await selectedIds()).includes(id)).toBe(true);
+  }
+  await expect.poll(async () => selectedIds()).toEqual([...ids]);
+  return selectedIds();
+}
+
+async function setupBattle(host, guest, options = {}) {
   const roomCode = await pairByRoomCode(host.page, guest.page);
   await Promise.all([waitCommitted(host.page), waitCommitted(guest.page)]);
-  const hostDeck = await selectAvailableFour(host.page);
+  const selectDeck = options.deck ? page => selectExactFour(page, options.deck) : selectAvailableFour;
+  const hostDeck = await selectDeck(host.page);
   await waitRemoteCount(guest.page, 4);
-  const guestDeck = await selectAvailableFour(guest.page);
+  const guestDeck = await selectDeck(guest.page);
   await waitRemoteCount(host.page, 4);
   await startBattle(host.page, guest.page);
   await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
@@ -122,13 +144,25 @@ async function tapAggressiveAction(page) {
   const buttons = page.locator(LEGAL_ACTION);
   const count = await buttons.count();
   if (!count) throw new Error('NO_LEGAL_ACTION_BUTTON');
-  let chosen = null;
-  for (let i = count - 1; i >= 0; i--) {
+  let chosen = null, chosenScore = -1;
+  for (let i = 0; i < count; i++) {
     const button = buttons.nth(i);
-    const text = ((await button.textContent()) || '').replace(/\s+/g, ' ').trim();
-    if (!/에너지\s*모으기|후퇴|교체|대기/.test(text)) { chosen = button; break; }
+    const score = await button.evaluate(element => {
+      const skillId = element.dataset.skillId || '';
+      if (!skillId) return -1;
+      const pair = game?.order?.[game?.turn] || [];
+      const actor = pair.length ? unitAt(game, pair[0], pair[1]) : null;
+      const skill = actor ? card(actor)?.skills?.find(candidate => candidate.id === skillId) : null;
+      if (!skill) return 0;
+      const direct = (skill.effects || []).reduce((total, effect) => total + Math.max(0, Number(effect?.amount || effect?.baseDamage || 0)), 0);
+      return direct + ((skill.tags || []).includes('damage') ? 1 : 0);
+    });
+    if (score > chosenScore) { chosen = button; chosenScore = score; }
   }
-  chosen ||= buttons.last();
+  if (chosenScore <= 0) {
+    const gather = buttons.filter({ hasText: /에너지\s*모으기/ }).first();
+    chosen = await gather.count() ? gather : buttons.last();
+  }
   await chosen.scrollIntoViewIfNeeded();
   await expect(chosen).toBeVisible({ timeout: 30000 });
   await expect(chosen).toBeEnabled();
@@ -166,6 +200,7 @@ async function playToTerminal(host, guest, options = {}) {
   const maxActions = Number(options.maxActions || 220);
   const backgroundFinishingReceiver = options.backgroundFinishingReceiver === true;
   const history = [];
+  lastTerminalHistory = history;
   let terminalWhileReceiverOffline = false;
   for (let action = 0; action < maxActions; action++) {
     const next = await terminalOrActor(host, guest);
@@ -207,7 +242,8 @@ async function playToTerminal(host, guest, options = {}) {
       row.revisionAfter=committed.h.revision;row.hpBefore=beforeHost.P.hp+beforeHost.A.hp;row.hpAfter=committed.h.P.hp+committed.h.A.hp;
     }
   }
-  throw new Error(`TERMINAL_NOT_REACHED_AFTER_${maxActions}_UI_ACTIONS`);
+  const [hostState, guestState] = await Promise.all([battleState(host.page), battleState(guest.page)]);
+  throw new Error(`TERMINAL_NOT_REACHED_AFTER_${maxActions}_UI_ACTIONS:last=${JSON.stringify(history.slice(-20))};host=${JSON.stringify(hostState)};guest=${JSON.stringify(guestState)}`);
 }
 
 async function runtimeIdentity(page) {
@@ -258,7 +294,7 @@ test('full online match terminal teardown leaves a clean second-session start on
   const guest = await launchClient('terminal-guest');
   try {
     await Promise.all([host.page.goto(APP, { waitUntil:'domcontentloaded' }), guest.page.goto(APP, { waitUntil:'domcontentloaded' })]);
-    const firstSetup = await setupBattle(host, guest);
+    const firstSetup = await setupBattle(host, guest, { deck: TERMINAL_DECK });
     const firstIdentity = await Promise.all([runtimeIdentity(host.page), runtimeIdentity(guest.page)]);
     const first = await playToTerminal(host, guest, { maxActions: 220 });
     expect(first.actions).toBeGreaterThan(0);
@@ -268,7 +304,7 @@ test('full online match terminal teardown leaves a clean second-session start on
     expect(idleIdentity[0].state).toBe('IDLE');
     expect(idleIdentity[1].state).toBe('IDLE');
 
-    const secondSetup = await setupBattle(host, guest);
+    const secondSetup = await setupBattle(host, guest, { deck: TERMINAL_DECK });
     const secondIdentity = await Promise.all([runtimeIdentity(host.page), runtimeIdentity(guest.page)]);
     expect(secondIdentity[0].state).toBe('IN_BATTLE');
     expect(secondIdentity[1].state).toBe('IN_BATTLE');
@@ -308,6 +344,7 @@ test('full online match terminal teardown leaves a clean second-session start on
       guestBattle: await battleState(guest.page).catch(() => null),
       host: await runtimeSummary(host.page).catch(() => null),
       guest: await runtimeSummary(guest.page).catch(() => null),
+      lastHistory: lastTerminalHistory.slice(-40),
       hostErrors: host.errors,
       guestErrors: guest.errors,
     });
@@ -321,7 +358,7 @@ test('terminal result converges when the non-acting peer is frozen and offline a
   const guest = await launchClient('terminal-bg-guest');
   try {
     await Promise.all([host.page.goto(APP, { waitUntil:'domcontentloaded' }), guest.page.goto(APP, { waitUntil:'domcontentloaded' })]);
-    const setup = await setupBattle(host, guest);
+    const setup = await setupBattle(host, guest, { deck: TERMINAL_DECK });
     const result = await playToTerminal(host, guest, { maxActions: 240, backgroundFinishingReceiver:true });
     expect(result.terminalWhileReceiverOffline, 'the finishing action itself must occur while the peer is offline').toBe(true);
     expect(result.terminal.host.winner).toBe(result.terminal.guest.winner);
@@ -346,6 +383,7 @@ test('terminal result converges when the non-acting peer is frozen and offline a
       guestBattle: await battleState(guest.page).catch(() => null),
       host: await runtimeSummary(host.page).catch(() => null),
       guest: await runtimeSummary(guest.page).catch(() => null),
+      lastHistory: lastTerminalHistory.slice(-40),
       hostErrors: host.errors,
       guestErrors: guest.errors,
     });

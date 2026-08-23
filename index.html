@@ -28124,16 +28124,24 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         if(snapshotPacket?.payload?.state&&packet.latestAuthoritativeStateChecksum){const got=await this.stateSha256(snapshotPacket.payload.state);if(got!==packet.latestAuthoritativeStateChecksum){counters.restorePromotionFailureCount++;this.trace("restore-failed",binding,{reason:"digest-mismatch",expected:packet.latestAuthoritativeStateChecksum,actual:got});return this.isolate(binding,"restore-digest-mismatch");}this.trace("digest-matched",binding,{checksum:got});}
         const normalizeRestoreEnvelope=item=>{const routed=item?.type==="session.restore-snapshot"?item.packet:item;if(!routed)return null;if(routed.type==="relay.message"&&routed.protocol!==PROTOCOL)return{...routed,protocol:PROTOCOL};return routed;};
         const buffered=[...binding.restoreBuffer];if(snapshotPacket)buffered.push(snapshotPacket);const unique=new Map();for(const item of buffered){const routed=normalizeRestoreEnvelope(item);if(!routed)continue;const key=`${routed.type}:${Number(routed.relaySequence||0)}:${routed.payload?.type||""}`;const prior=unique.get(key);if(!prior||prior.protocol!==PROTOCOL||routed.protocol===PROTOCOL)unique.set(key,routed);}const ordered=[...unique.values()].sort((a,b)=>Number(a.relaySequence||0)-Number(b.relaySequence||0));
-        for(const routed of ordered){routePacket(routed,binding,true);}
-        binding.restoreBuffer=[];this.trace("event-tail-completed",binding,{replayed:ordered.length,latestRelaySequence:Number(packet.latestRelaySequence||0)});
-        this.lastReceivedRelaySequence=Math.max(this.lastReceivedRelaySequence,Number(packet.latestRelaySequence||0));
+        // A restored host is the canonical mutation owner. Its queued peer commands must not be
+        // admitted until the binding is promoted and authoritative publication is available.
+        // Guests may apply the host's immutable state tail before promotion so revision validation
+        // can complete; they never execute canonical peer commands from that tail.
+        const deferAuthorityCommands=this.session.role==="host";
+        if(!deferAuthorityCommands)for(const routed of ordered)routePacket(routed,binding,true);
         const localRevision=Math.max(Number(currentGame()?.networkRevision||0),Number(p2p?.lastAuthoritativeRevision||0),Number(LobbyEngine.debug().revision||0));if(Number(packet.latestAuthoritativeRevision||0)>localRevision){counters.restorePromotionFailureCount++;this.trace("restore-failed",binding,{reason:"revision-not-reached",expected:Number(packet.latestAuthoritativeRevision||0),actual:localRevision});return this.isolate(binding,"restore-revision-not-reached");}
         this.trace("canonical-revision-reached",binding,{revision:localRevision});
         binding.lastCompletedRestoreRequestId=binding.restoreRequestId;
         this.promote(binding,"restore-complete",packet);
         restoreCommittedSession(this.session,commit,{deferPromotion:true});
         const projected=RestoreTransaction.transportReady(this.session,binding,{canonicalRevision:localRevision,latestRelaySequence:Number(packet.latestRelaySequence||0)});
-        this.trace("ready-presentation-converged",binding,{coherent:projected!==false,awaitingAuthoritative:projected===false,canonicalRevision:localRevision,projectionEpoch:Number(this.session.scope?.projectionEpoch||0)});
+        if(deferAuthorityCommands&&this.session.routesReady)for(const routed of ordered)routePacket(routed,binding,true);
+        binding.restoreBuffer=[];
+        this.lastReceivedRelaySequence=Math.max(this.lastReceivedRelaySequence,Number(packet.latestRelaySequence||0));
+        const finalRevision=Math.max(Number(currentGame()?.networkRevision||0),Number(p2p?.lastAuthoritativeRevision||0),localRevision);
+        this.trace("event-tail-completed",binding,{replayed:ordered.length,deferredUntilAuthorityReady:deferAuthorityCommands,latestRelaySequence:Number(packet.latestRelaySequence||0),finalRevision});
+        this.trace("ready-presentation-converged",binding,{coherent:projected!==false,awaitingAuthoritative:projected===false,canonicalRevision:finalRevision,projectionEpoch:Number(this.session.scope?.projectionEpoch||0)});
         return projected!==false||this.session.scope?.transactions?.has?.("restore");
       }
       promote(binding,reason="ready",packet={}) {
