@@ -49,13 +49,11 @@ export async function resolveInteraction(page){
         }
       }
       if(!chosen)return;
-      const b=await chosen.boundingBox();if(!b)return;
-      await page.touchscreen.tap(b.x+b.width/2,b.y+b.height/2);await page.waitForTimeout(60);continue;
+      await chosen.tap();await page.waitForTimeout(60);continue;
     }
     const targets=page.locator('.battle-unit-card.targetable:visible,.summon-card.targetable:visible');
     if(await targets.count()){
-      const target=targets.first(),b=await target.boundingBox();if(!b)return;
-      await page.touchscreen.tap(b.x+b.width/2,b.y+b.height/2);await page.waitForTimeout(60);continue;
+      await targets.first().tap();await page.waitForTimeout(60);continue;
     }
     return;
   }
