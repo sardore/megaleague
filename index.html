@@ -15960,7 +15960,8 @@
           : [];
         if(game?.mode==="online"&&p2p?.role==="host"){
           broadcastOnlineState(onlineVisuals);
-          window.OnlineRuntime?.projection?.request?.("host-action-commit",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});
+          if(game.winner)window.OnlineRuntime?.markBattleEnded?.({source:"host-terminal-action-commit",canonicalRevision:Number(game.networkRevision||0)});
+          else window.OnlineRuntime?.projection?.request?.("host-action-commit",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});
         }else render();
         if (!processPendingTraitChoice()) scheduleAI();
       }
@@ -16497,8 +16498,7 @@
 
       function showEndCore() {
         if (window.__megaSpectatorR18?.interceptShowEnd?.()) return;
-        if(game?.mode==="online"&&window.OnlineRuntime?.debug?.().state==="IN_BATTLE")window.OnlineRuntime.markBattleEnded({project:false});
-        busy = false;
+        if(game?.mode!=="online"&&!game?.bossRaid?.online)busy = false;
         stopBgm();
         syncGrandFieldBackground(null);
         const local = game.mode === "online" ? onlineSide : "P";
@@ -16516,12 +16516,16 @@
         const fallback=()=>invokeBossModeHook("showEnd",showEndCore,this,args);
         if (typeof StateFactory==="undefined" || typeof BattleEventEngine==="undefined") return fallback();
         const g=typeof currentGame==="function"?currentGame():null;
-        clearLocalAutoTurnTimer("battle-end"); localBackgroundAutoTurnOwner=null; localBattleBackgrounded=false;
-        if(g){g.ended=true;g.phase="BATTLE_ENDED";StateFactory.updateActive(g);const networkProjection=g.mode==="spectator"||((g.mode==="online"||g?.bossRaid?.online)&&p2p?.role!=="host"),terminalEventPublished=Array.isArray(g.eventLog)&&g.eventLog.some(event=>event?.type==="BATTLE_ENDED");if(!networkProjection&&!terminalEventPublished)BattleEventEngine.emit(g,"BATTLE_ENDED",{teamId:g.winner,payload:{winner:g.winner}});}
-        if(g?.mode==="online"||g?.bossRaid?.online)OnlineRuntime.markBattleEnded();
+        const onlineBattle=g?.mode==="online"||g?.bossRaid?.online;
+        if(!onlineBattle){
+          clearLocalAutoTurnTimer("battle-end"); localBackgroundAutoTurnOwner=null; localBattleBackgrounded=false;
+          if(g){g.ended=true;g.phase="BATTLE_ENDED";StateFactory.updateActive(g);const terminalEventPublished=Array.isArray(g.eventLog)&&g.eventLog.some(event=>event?.type==="BATTLE_ENDED");if(!terminalEventPublished)BattleEventEngine.emit(g,"BATTLE_ENDED",{teamId:g.winner,payload:{winner:g.winner}});}
+        }
         const result=fallback();
-        if(typeof AnimationEngine!=="undefined")AnimationEngine.clearViewportFx();
-        if(g?.battleId){TimerManager.clearScope(g.battleId);InputLockManager.releaseBattle(g.battleId);}
+        if(!onlineBattle){
+          if(typeof AnimationEngine!=="undefined")AnimationEngine.clearViewportFx();
+          if(g?.battleId){TimerManager.clearScope(g.battleId);InputLockManager.releaseBattle(g.battleId);}
+        }
         return result;
       }
       function mvpContribution(u,g=null) {
@@ -19322,9 +19326,14 @@ function executeFoxWithPlan(actions,mode,plan){
         if(resultType==="surrender")log(game,winnerTeam===onlineSide?"상대가 전투에서 나갔습니다. 탈주승.":"전투에서 나갔습니다. 탈주 패배.","turn");
         else if(resultType==="disconnectForfeit")log(game,winnerTeam===onlineSide?"상대가 10초 안에 재접속하지 않았습니다. 탈주승.":"연결 종료로 탈주 패배.","turn");
         else if(resultType==="technicalError"){game.winner=null;log(game,"네트워크 장애로 경기가 무효 처리됐습니다.","turn");}
+        if(game.winner){
+          StateFactory.updateActive(game);
+          const terminalEventPublished=Array.isArray(game.eventLog)&&game.eventLog.some(event=>event?.type==="BATTLE_ENDED");
+          if(!terminalEventPublished)BattleEventEngine.emit(game,"BATTLE_ENDED",{teamId:game.winner,payload:{winner:game.winner,resultType}});
+        }
         cancelDisconnectGrace();p2p.battleStarted=false;
         if(p2p.conn?.open)p2pSend({type:"onlineResult",matchId:game.matchId,winnerTeam,resultType,finishedAt:game.finishedAt});
-        if(game.winner)showEnd();else{$("#actionHint").textContent="무효 경기";render();}
+        if(game.winner)window.OnlineRuntime?.markBattleEnded?.({source:`online-result:${resultType}`,canonicalRevision:Number(game.networkRevision||0)});else{$("#actionHint").textContent="무효 경기";render();}
       }
       function applyRemoteOnlineResult(msg){if(!game||game.matchId!==msg.matchId||game.resultFinalized)return;finalizeOnlineBattleResult(msg.resultType,msg.winnerTeam);}
       function ensureOnlineLeaveButton(){
@@ -20849,8 +20858,9 @@ function executeFoxWithPlan(actions,mode,plan){
         }catch{return false;}
       }
 
-      function commitAuthoritativeStateProjection(detail={}) {
+      function admitAuthoritativeStateCommit(detail={}) {
         const revision=Number(detail.revision||0),kind=String(detail.kind||"authoritativeState");
+        if(game?.winner)return window.OnlineRuntime?.markBattleEnded?.({source:`authoritative:${kind}`,canonicalRevision:revision})||false;
         const payload={phase:"IN_BATTLE",revision,kind,inputPreserved:detail.inputPreserved===true};
         const restored=window.OnlineRuntime?.restore?.authoritativeApplied?.(payload);
         if(restored)return restored;
@@ -20889,7 +20899,7 @@ function executeFoxWithPlan(actions,mode,plan){
           if(localDecisionOpen&&sameDecisionState){
             if(revision)p2p.lastAuthoritativeRevision=revision;
             onlineSafeSend({type:"stateAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:onlineCurrentMatchId(),revision,turnSerial:game.turnSerial,ackActionId:msg.ackActionId||null,inputPreserved:true});
-            commitAuthoritativeStateProjection({revision,kind:"authoritativeStateInputPreserved",inputPreserved:true});
+            admitAuthoritativeStateCommit({revision,kind:"authoritativeStateInputPreserved",inputPreserved:true});
             return true;
           }
           const replay=msg.visualPacketId&&p2p.lastVisualPacketId!==msg.visualPacketId?cloneOnlineVisualEvents(msg.visuals||[]):[];
@@ -20904,7 +20914,7 @@ function executeFoxWithPlan(actions,mode,plan){
             if(boundaryNeedsHeal)window.OnlineRuntime?.markBattleStarted?.({source:"boss-authoritative-state-recovery",canonicalRevision:revision||Number(game?.turnSerial||0)});
             if(replay.length){visualEvents=cloneOnlineVisualEvents(replay);window.OnlineRuntime?.sessionScope?.requestAnimationFrame?.(()=>{if(game?.bossRaid?.online)playVisuals();},"boss-authoritative-replay",{phase:"IN_BATTLE"});}
             onlineSafeSend({type:"stateAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:onlineCurrentMatchId(),revision,turnSerial:game.turnSerial,ackActionId:msg.ackActionId||null});
-            commitAuthoritativeStateProjection({revision,kind:"authoritativeStateSame"});
+            admitAuthoritativeStateCommit({revision,kind:"authoritativeStateSame"});
             return true;
           }
           const boundaryNeedsHeal=!p2p.battleStarted||window.OnlineRuntime?.identity?.().phase!=="IN_BATTLE";
@@ -20915,7 +20925,7 @@ function executeFoxWithPlan(actions,mode,plan){
           if(boundaryNeedsHeal)window.OnlineRuntime?.markBattleStarted?.({source:"boss-authoritative-state-recovery",canonicalRevision:revision||Number(game?.turnSerial||0)});
           busy=false;pendingSkill=null;
           document.getElementById("log").innerHTML="";
-          commitAuthoritativeStateProjection({revision,kind:"authoritativeState"});
+          admitAuthoritativeStateCommit({revision,kind:"authoritativeState"});
           if(replay.length){visualEvents=cloneOnlineVisualEvents(replay);window.OnlineRuntime?.sessionScope?.requestAnimationFrame?.(()=>{if(game?.bossRaid?.online)playVisuals();},"boss-authoritative-replay",{phase:"IN_BATTLE"});}
           if(game.pendingTraitChoices?.[0]?.kind==="bossReward")processPendingTraitChoice();
           else{document.getElementById("modal")?.classList.remove("open");scheduleAI();}
@@ -20934,7 +20944,7 @@ function executeFoxWithPlan(actions,mode,plan){
         if (localDecisionOpen && sameDecisionState) {
           if (revision) p2p.lastAuthoritativeRevision = revision;
           onlineSafeSend({type:"stateAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:"PVP",matchId:onlineCurrentMatchId(),revision,turnSerial:game.turnSerial,ackActionId:msg.ackActionId||null,inputPreserved:true});
-          commitAuthoritativeStateProjection({revision,kind:"authoritativeStateInputPreserved",inputPreserved:true});
+          admitAuthoritativeStateCommit({revision,kind:"authoritativeStateInputPreserved",inputPreserved:true});
           return true;
         }
         let sameState = false;
@@ -20944,7 +20954,7 @@ function executeFoxWithPlan(actions,mode,plan){
           if (revision) p2p.lastAuthoritativeRevision = revision;
           game.networkRevision = Math.max(Number(game.networkRevision||0), revision);
           onlineSafeSend({type:"stateAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:"PVP",matchId:onlineCurrentMatchId(),revision,turnSerial:game.turnSerial,ackActionId:msg.ackActionId||null});
-          commitAuthoritativeStateProjection({revision,kind:"authoritativeStateSame"});
+          admitAuthoritativeStateCommit({revision,kind:"authoritativeStateSame"});
           return true;
         }
         game = window.OnlineSnapshotEngine.restoreState(msg.state,{source:"authoritative-state",rules:p2p.rules || ONLINE_COMMON_RULES});
@@ -20956,7 +20966,7 @@ function executeFoxWithPlan(actions,mode,plan){
         if (msg.visualPacketId) p2p.lastVisualPacketId = msg.visualPacketId;
         busy = false; pendingSkill = null; lastLog = 0; visualEvents = [];
         document.getElementById("log").innerHTML = "";document.getElementById("modal").classList.remove("open");
-        commitAuthoritativeStateProjection({revision,kind:"authoritativeState"});
+        admitAuthoritativeStateCommit({revision,kind:"authoritativeState"});
         if (replay.length) {visualEvents = replay;window.OnlineRuntime?.sessionScope?.requestAnimationFrame?.(() => { if (game?.mode === "online") playVisuals(); },"pvp-authoritative-replay",{phase:"IN_BATTLE"});}
         startBgm();
         onlineSafeSend({type:"stateAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:"PVP",matchId:onlineCurrentMatchId(),revision,turnSerial:game.turnSerial,ackActionId:msg.ackActionId||null});
@@ -27358,6 +27368,11 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       g.pendingTransaction=null; g.pendingAction=null; g.pendingTargetSelection=null; g.pendingPayment=null;
       g.phase = g.winner ? "BATTLE_ENDED" : "WAITING_FOR_ACTION";
       BattleEventEngine.emit(g,"ACTION_TRANSACTION_COMMITTED",{teamId:tx.teamId,payload:{transactionId:tx.transactionId,actionId:tx.actionId,durationMs:now()-tx.startedAt}});
+      if(g.winner){
+        StateFactory.updateActive(g);
+        const terminalEventPublished=Array.isArray(g.eventLog)&&g.eventLog.some(event=>event?.type==="BATTLE_ENDED");
+        if(!terminalEventPublished)BattleEventEngine.emit(g,"BATTLE_ENDED",{teamId:g.winner,payload:{winner:g.winner,actionId:tx.actionId}});
+      }
       TransactionAuditChannel.emit({type:"ACTION_TRANSACTION_COMMITTED",battleId:g.battleId,teamId:tx.teamId,transactionId:tx.transactionId,actionId:tx.actionId,actionType:tx.action?.type||null,durationMs:now()-tx.startedAt,turnSerialBefore:tx.turnSerialAtStart,turnSerialAfter:Number(g.turnSerial||0),revisionBefore:tx.revisionAtStart,phaseAfter:g.phase||null});
     };
     const rollback = (g,tx,reason,error=null) => {
@@ -28965,7 +28980,22 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         }
         return false;
       },
-      markBattleEnded(detail={}) { const s=activeSession;if(s?.machine.state==="IN_BATTLE"){s.routesReady=false;s.machine.transition("ENDING","battle-ended");s.scope?.transitionPhase?.("TERMINAL","battle-ended");if(detail.project!==false)ProjectionTransaction.request("battle-ended",{phase:"TERMINAL"});} },
+      markBattleEnded(detail={}) {
+        const s=activeSession,g=currentGame(),state=s?.machine?.state;
+        if(!s||!g?.winner)return false;
+        if(state==="ENDING")return true;
+        if(!["IN_BATTLE","RECONNECTING"].includes(state))return false;
+        const reason=String(detail.source||"battle-ended");
+        s.routesReady=false;
+        RestoreTransaction.cancel(s,reason);
+        s.machine.transition("ENDING",reason,{project:false});
+        clearLocalAutoTurnTimer(reason);localBackgroundAutoTurnOwner=null;localBattleBackgrounded=false;
+        busy=false;pendingSkill=null;
+        if(typeof AnimationEngine!=="undefined")AnimationEngine.clearViewportFx();
+        if(g.battleId){TimerManager.clearScope(g.battleId);InputLockManager.releaseBattle(g.battleId);}
+        if(detail.project===false)return true;
+        return ProjectionTransaction.request(reason,{phase:"TERMINAL",canonicalRevision:Number(detail.canonicalRevision??g.networkRevision??0)});
+      },
       returnToSetup(reason="result-to-setup") {return returnOnlineRuntimeToSetup(reason);},
     });
     window.OnlineRuntime = api;

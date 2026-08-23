@@ -15,7 +15,7 @@
 | guest admitted revision | authoritative envelope admission | immutable view/projection/input | DOM, retry task, host command handler |
 | transport binding | `OnlineRuntime.TransportOwner` | protocol send/control paths | game engine and DOM |
 | reconnect state | `OnlineRuntime` state machine/restore transaction | input availability/projection | action engine, visibility UI handlers |
-| result | canonical terminal game commit | lifecycle/result projection | transport/retry/modal close |
+| result | canonical terminal game commit; `OnlineRuntime.markBattleEnded` owns the derived runtime transition | host publication, remote snapshot admission, immutable result projection | transport/retry/modal close, active-battle projection, result DOM handlers |
 | DOM action panel | `ActionPanelConvergenceOwner` under projection | user input only | combat/session/transport mutation during render |
 | shared modal ownership | active surface owner marker | close dispatcher | generic modal close assuming online teardown |
 | async lifetime | active `SessionScope` | owning session component | global fallback timers for session work |

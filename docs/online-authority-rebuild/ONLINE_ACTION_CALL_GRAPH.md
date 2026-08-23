@@ -33,6 +33,12 @@ No game mutation occurs on this path.
 
 `authoritative envelope -> match/mode/revision admission -> pending resolution -> immutable snapshot revive -> admitted revision -> one ProjectionTransaction -> input availability derivation`
 
+For a terminal snapshot the tail is instead: `admitted winner/revision -> OnlineRuntime.markBattleEnded -> cancel restore/IN_BATTLE resources -> ENDING -> one TERMINAL ProjectionTransaction -> result presentation`. Projection never creates the winner or changes lifecycle state.
+
+## Host terminal commit
+
+`canonical action commit -> winner/turnSerial committed -> authoritative revision and terminal snapshot retained/sent -> OnlineRuntime.markBattleEnded -> ENDING -> one TERMINAL ProjectionTransaction`
+
 ## Reconnect with pending command
 
 `binding restore -> stateRequest carrying pending action ID -> host cached resolution/current authoritative snapshot -> envelope admission -> pending settles as accepted/rejected/superseded -> retry resource cancelled -> projection`

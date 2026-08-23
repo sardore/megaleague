@@ -17,6 +17,7 @@ stateDiagram-v2
   LOBBY --> STARTING_BATTLE: start transaction
   STARTING_BATTLE --> IN_BATTLE: start commit/authoritative state
   IN_BATTLE --> ENDING: terminal commit or leave
+  RECONNECTING --> ENDING: admitted terminal snapshot
   ENDING --> CLOSED: cleanup complete
   CLOSED --> IDLE: detached setup projection
   LOBBY --> RECONNECTING: binding degradation
