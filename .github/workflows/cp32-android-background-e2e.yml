@@ -114,7 +114,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-metrics
           disable-animations: true
-          script: node tests/android/android-background-player-path.js
+          script: node tests/android/android-background-player-path-runtime.js
       - name: Verify emulator-owned Android evidence capture
         if: always() && steps.android_lifecycle.outcome != 'skipped'
         shell: bash
