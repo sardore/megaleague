@@ -6,6 +6,6 @@ export const PRIMARY_SERIAL=process.env.CP32_ANDROID_PRIMARY_SERIAL||process.env
 export const SECONDARY_SERIAL=process.env.CP32_ANDROID_SECONDARY_SERIAL||'emulator-5556';
 export const PRIMARY_CDP_PORT=Number(process.env.CP32_ANDROID_PRIMARY_CDP_PORT||9222);
 export const SECONDARY_CDP_PORT=Number(process.env.CP32_ANDROID_SECONDARY_CDP_PORT||9223);
-export const CHAOS_SEED=Number(process.env.CP32_ANDROID_CHAOS_SEED||32624812975)>>>0;
+export const CHAOS_SEED=Number(process.env.CP32_ANDROID_CHAOS_SEED||32624812975);
 export const CHAOS_CYCLES=Math.max(24,Number(process.env.CP32_ANDROID_CHAOS_CYCLES||36));
 export const BATTLE_DECK=Object.freeze(String(process.env.CP32_ANDROID_BATTLE_DECK||'mole,boar,galewing,shuvi').split(',').map(value=>value.trim()).filter(Boolean));

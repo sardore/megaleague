@@ -31,7 +31,6 @@ function runHost(file,args=[],options={}){return execFileSync(file,args,{encodin
 async function runHostAsync(file,args=[],options={}){return execFileAsync(file,args,{encoding:'utf8',timeout:120000,...options});}
 function adb(client,...args){return runHost(ADB,['-s',client.serial,...args]);}
 async function adbAsync(client,...args){return runHostAsync(ADB,['-s',client.serial,...args]);}
-function shellQuote(value){return `'${String(value).replaceAll("'","'\\''")}'`;}
 
 function timeline(kind,detail={}){
   const row={at:now(),iso:iso(),stage:active.stage,cycle:active.cycle,kind,...detail};
@@ -178,7 +177,9 @@ async function prepareChrome(client){
   try{adb(client,'shell','pm','clear',ANDROID_PACKAGE);}catch{}
   const spki=requireLocalCandidateSpki();
   const commandLine=`chrome --ignore-certificate-errors-spki-list=${spki} --disable-fre --no-default-browser-check --disable-first-run-ui --remote-debugging-port=0`;
-  adb(client,'shell','sh','-c',`printf '%s\\n' ${shellQuote(commandLine)} > /data/local/tmp/chrome-command-line`);
+  const commandLinePath=path.join(PREFLIGHT,`chrome-command-line-${client.name}.txt`);
+  fs.writeFileSync(commandLinePath,`${commandLine}\n`);
+  adb(client,'push',commandLinePath,'/data/local/tmp/chrome-command-line');
   adb(client,'shell','am','start','-W','-a','android.intent.action.VIEW','-d',APP_URL,ANDROID_PACKAGE);
   client.cdp=await cdpConnect(client);active.clients.set(client.name,client);
   await waitUntil(()=>evaluate(client,"document.readyState==='complete'||document.readyState==='interactive'"),{timeout:60000,label:`${client.name}_PAGE_READY`});
@@ -571,7 +572,7 @@ function cleanup(){
 }
 
 async function main(){
-  const cases=buildChaosCases();record('chaos-seed.json',{seed:CHAOS_SEED,cycles:CHAOS_CYCLES,cases,generatedAt:iso()});
+  const cases=buildChaosCases();record('chaos-seed.json',{seed:CHAOS_SEED,normalizedUint32Seed:CHAOS_SEED>>>0,cycles:CHAOS_CYCLES,cases,generatedAt:iso()});
   let failure=null;
   try{
     active.stage='primary-device';await waitForDevice(CLIENTS[0]);
