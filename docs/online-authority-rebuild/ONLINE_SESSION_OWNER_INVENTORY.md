@@ -1,5 +1,9 @@
 # Online session owner inventory
 
+## Lifecycle failure evidence
+
+Exact-relay Chromium evidence exposed a production cross-phase resource bug after the first consolidation pass: `showOnlineCoinToss` created its removal timer through the ambient `TimerManager` while the session scope was still in LOBBY. Automatic adoption correctly cancelled that LOBBY timer on the IN_BATTLE transition, but the presentation node itself had no cancellation cleanup and remained above the action panel indefinitely. The start presentation now explicitly owns a SESSION-scoped removal timer because its defined lifetime crosses LOBBY -> IN_BATTLE, and application release removes the node synchronously if the session ends first.
+
 | Fact/domain | Baseline owner(s) | Writers | Conflict/gap | Canonical owner after rebuild |
 |---|---|---|---|---|
 | session identity/generation/token | `OnlineRuntime` active session | runtime session factory/cleanup | none found | `OnlineRuntime` |

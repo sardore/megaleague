@@ -18313,7 +18313,9 @@ function executeFoxWithPlan(actions,mode,plan){
         overlay.className = "online-coin-overlay";
         overlay.innerHTML = `<div class="online-coin-stage"><div class="online-coin-title">선후공 동전 던지기</div><div class="online-coin ${gold ? "result-gold" : "result-mono"}"><div class="online-coin-face online-coin-gold">◆</div><div class="online-coin-face online-coin-mono">◐</div></div><div class="online-coin-result">${gold ? "금색" : "흑백"} · ${firstTeam === localTeam ? "내가 선공" : "상대가 선공"}</div></div>`;
         document.body.appendChild(overlay);
-        window.TimerManager.setTimeout(() => overlay.remove(), 2050);
+        const sessionScope=window.OnlineRuntime?.sessionScope;
+        const timerId=sessionScope?.setTimeout?.(()=>overlay.remove(),2050,"online-coin-presentation",{phase:"SESSION"});
+        if(!timerId){overlay.remove();window.__megaRecordRecoveredError?.(new Error("ONLINE_COIN_SESSION_SCOPE_UNAVAILABLE"),"showOnlineCoinToss");}
       }
       function handleOnlineCoinTossPacket(msg){
         if(p2p?.role!=="guest"||p2p?.sessionMode==="bossRaid"||msg?.mode!=="PVP")return false;
@@ -20570,6 +20572,7 @@ function executeFoxWithPlan(actions,mode,plan){
             });
           }
           if (g.mode === "online" && p2p?.role !== "host") return false;
+          if (g.mode === "online" && q.team !== onlineSide) return false;
           const ownerSlot=Math.max(0,Number(g.teams?.[q.team]?.field?.findIndex(unit=>unit?.uid===owner.uid) ?? 0));
           const accepted=window.CanonicalActionTransactionOwner.execute(
             (state,team,slot,admitted)=>applyManualSummonAction(state,team,u.uid,admitted),
@@ -28520,6 +28523,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
     function releaseOnlineApplicationState(reason = "online-session-release") {
       if(typeof resetOnlineStartTransactionState==="function")resetOnlineStartTransactionState(reason);
       if(typeof resetBattleEmoteReliability==="function")resetBattleEmoteReliability(reason);
+      document.querySelector(".online-coin-overlay")?.remove();
       document.querySelector(".online-disconnect-overlay")?.remove();
       onlineAuthoritativeRevision = 0;
       onlineVisualPacketSerial = 0;

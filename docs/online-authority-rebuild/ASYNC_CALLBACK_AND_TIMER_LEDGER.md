@@ -9,6 +9,7 @@
 | heartbeat/watchdog | `TransportOwner` | SESSION/binding | binding retirement and scope close | owned by binding record |
 | restore timeout/probe | `RestoreTransaction`/transport candidate | SESSION | restore completion, binding retirement, scope close | scope identity validated |
 | lobby/start publication retries | lobby/start transaction owners | LOBBY | transaction completion/phase transition/scope close | retain only transaction-owned retry |
+| start coin presentation removal | start presentation owner | SESSION | timer completion or session application release | crosses LOBBY -> IN_BATTLE intentionally; must not be cancelled as a LOBBY-only resource |
 | online automatic action delay | `scheduleAICore` | IN_BATTLE | automatic owner cancel/phase transition/scope close | scope-only while online |
 | scheduled action execution delay | combat scheduling | IN_BATTLE | battle/scope cancellation | callback must validate battle/session/action identity |
 | battle emote ACK retry | battle emote reliability owner | SESSION | ACK/reset/scope close | scope-only while online |
