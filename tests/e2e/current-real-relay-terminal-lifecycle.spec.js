@@ -83,9 +83,15 @@ async function battleState(page) {
       winner: game?.winner || null,
       turn: game?.turn || null,
       turnSerial: Number(game?.turnSerial || 0),
+      revision: Number(game?.networkRevision || 0),
+      eventSequence: Number(game?.eventSequence || 0),
       matchId: game?.matchId || runtime?.matchId || null,
       P: sum(game?.teams?.P),
       A: sum(game?.teams?.A),
+      energy: ['P','A'].reduce((total,team)=>total+[...(game?.teams?.[team]?.field||[]),...(game?.teams?.[team]?.bench||[])].filter(Boolean).reduce((n,u)=>n+[...(u.energy||[]),...(u.beastEnergy||[]),...(u.riderEnergy||[])].reduce((m,e)=>m+Number(e?.a||0),0),0),0),
+      pendingActionId: window.OnlineActionAdmissionOwner?.pendingActionId?.() || null,
+      pendingTransaction: game?.pendingTransaction?.actionId || null,
+      committedTransactions: (window.TransactionAuditChannel?.snapshot?.()||[]).filter(row=>row.type==='ACTION_TRANSACTION_COMMITTED').length,
       runtimeState: runtime?.state || null,
       committed: runtime?.committed === true,
     };
@@ -127,6 +133,15 @@ async function tapAggressiveAction(page) {
   await expect(chosen).toBeEnabled();
   await chosen.tap();
   await resolveInteraction(page);
+  return ((await chosen.textContent().catch(()=>''))||'').replace(/\s+/g,' ').trim();
+}
+
+async function waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest,timeout=60000){
+  expect(beforeGuest.matchId).toBe(beforeHost.matchId);
+  expect(beforeGuest.revision).toBe(beforeHost.revision);
+  let last=null;
+  await expect.poll(async()=>{const [h,g]=await Promise.all([battleState(host.page),battleState(guest.page)]);last={h,g};const converged=h.matchId===g.matchId&&h.revision===g.revision&&h.turnSerial===g.turnSerial&&h.P.hp===g.P.hp&&h.A.hp===g.A.hp&&h.energy===g.energy;const changed=h.turnSerial!==beforeHost.turnSerial||h.eventSequence!==beforeHost.eventSequence||h.P.hp!==beforeHost.P.hp||h.A.hp!==beforeHost.A.hp||h.energy!==beforeHost.energy;return converged&&changed&&h.revision===beforeHost.revision+1&&h.committedTransactions===beforeHost.committedTransactions+1&&!h.pendingActionId&&!g.pendingActionId&&!h.pendingTransaction&&!g.pendingTransaction;},{timeout,message:`UI action must produce one canonical commit/revision and converge; last=${JSON.stringify(last)}`}).toBe(true);
+  return last;
 }
 
 async function waitTerminalResult(host, guest, timeout = 90000) {
@@ -163,23 +178,28 @@ async function playToTerminal(host, guest, options = {}) {
     history.push({ action, actor: next.actor.name, turn, opponentAlive: opponent.alive, opponentHp: opponent.hp, backgrounded: shouldBackground });
 
     if (shouldBackground) {
+      const [beforeHost,beforeGuest]=await Promise.all([battleState(host.page),battleState(guest.page)]);
       await setLifecycle(next.receiver, 'frozen');
       await next.receiver.context.setOffline(true);
       await next.actor.page.waitForTimeout(250);
       await tapAggressiveAction(next.actor.page);
       await next.actor.page.waitForTimeout(500);
-      const actorAfter = await battleState(next.actor.page);
-      if (actorAfter.winner) terminalWhileReceiverOffline = true;
+      const actorWhileReceiverOffline = await battleState(next.actor.page);
+      if (actorWhileReceiverOffline.winner) terminalWhileReceiverOffline = true;
       await next.receiver.context.setOffline(false);
       await setLifecycle(next.receiver, 'active');
       await next.receiver.page.bringToFront();
+      const committed=await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest,90000);
+      const actorAfter=next.actor===host?committed.h:committed.g;
       if (actorAfter.winner) {
         const terminal = await waitTerminalResult(host, guest);
         return { actions: action + 1, terminal, terminalWhileReceiverOffline, history };
       }
       await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
     } else {
+      const [beforeHost,beforeGuest]=await Promise.all([battleState(host.page),battleState(guest.page)]);
       await tapAggressiveAction(next.actor.page);
+      await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest);
     }
   }
   throw new Error(`TERMINAL_NOT_REACHED_AFTER_${maxActions}_UI_ACTIONS`);

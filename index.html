@@ -33,31 +33,38 @@
   const timers = new Map();
   let activeCapture = null;
   const scopeFor = () => window.GameState?.battleId || window.game?.battleId || "ui";
+  const closedOnlineScope = () => {const runtime=window.OnlineRuntime,kind=runtime?.debug?.().kind||null;return !!runtime&&!!kind&&kind!=="spectator"&&runtime.sessionScope?.closed===true;};
   const fail = (kind,error) => { console.error(`[TimerManager:${kind}]`,error); queueMicrotask(()=>{ throw error; }); };
   const settleCapture = capture => { if (capture?.closed && capture.pending===0 && !capture.settled) { capture.settled=true; capture.resolve(); } };
   const finishCapturedTimer = meta => { const capture=meta?.capture;if(!capture||meta.captureSettled)return;meta.captureSettled=true;capture.pending=Math.max(0,capture.pending-1);settleCapture(capture); };
   const record = (id,kind,options={},capture=activeCapture) => {
-    const meta={id,kind,scope:options.scope||scopeFor(),reason:options.reason||kind,createdAt:Date.now(),capture:null,captureSettled:false};
+    const meta={id,kind,scope:options.scope||scopeFor(),reason:options.reason||kind,createdAt:Date.now(),capture:null,captureSettled:false,sessionScope:null};
     if(capture&&kind==="timeout"){meta.capture=capture;capture.pending++;}
-    timers.set(id,meta);return id;
+    timers.set(id,meta);
+    const runtime=window.OnlineRuntime,sessionScope=runtime?.sessionScope,runtimeKind=runtime?.debug?.().kind||null;
+    if(!options.sessionManaged&&runtimeKind!=="spectator"&&sessionScope?.adoptTimer?.(id,kind,meta.reason,options.phase)){meta.sessionScope=sessionScope;}
+    return id;
   };
   const runWithCapture = (capture,fn,args) => { const prev=activeCapture;activeCapture=capture;try{return fn(...args);}finally{activeCapture=prev;} };
   const timeout = (fn,delay=0,options={}) => {
     if(typeof fn!=="function") return native.setTimeout(fn,delay);
+    if(!options.sessionManaged&&closedOnlineScope())return 0;
     const capture=activeCapture;let id=0;
-    id=native.setTimeout((...args)=>{const meta=timers.get(id);timers.delete(id);try{return capture?runWithCapture(capture,fn,args):fn(...args);}catch(error){fail("timeout",error);}finally{finishCapturedTimer(meta);}},Math.max(0,Number(delay)||0));
+    id=native.setTimeout((...args)=>{const meta=timers.get(id);timers.delete(id);meta?.sessionScope?.releaseAdoptedTimer?.(id);try{return capture?runWithCapture(capture,fn,args):fn(...args);}catch(error){fail("timeout",error);}finally{finishCapturedTimer(meta);}},Math.max(0,Number(delay)||0));
     return record(id,"timeout",options,capture);
   };
   const interval = (fn,delay=0,options={}) => {
     if(typeof fn!=="function") return native.setInterval(fn,delay);
+    if(!options.sessionManaged&&closedOnlineScope())return 0;
     const id=native.setInterval((...args)=>{try{fn(...args);}catch(error){fail("interval",error);}},Math.max(1,Number(delay)||1));
     return record(id,"interval",options,null);
   };
   const frame = (fn,options={}) => {
-    let id=0;id=native.requestAnimationFrame(ts=>{timers.delete(id);try{fn(ts);}catch(error){fail("animation-frame",error);}});
+    if(!options.sessionManaged&&closedOnlineScope())return 0;
+    let id=0;id=native.requestAnimationFrame(ts=>{const meta=timers.get(id);timers.delete(id);meta?.sessionScope?.releaseAdoptedTimer?.(id);try{fn(ts);}catch(error){fail("animation-frame",error);}});
     return record(id,"animation-frame",options,null);
   };
-  const clear = id => { const meta=timers.get(id);timers.delete(id);if(meta?.kind==="interval")native.clearInterval(id);else if(meta?.kind==="animation-frame")native.cancelAnimationFrame(id);else{native.clearTimeout(id);native.clearInterval(id);native.cancelAnimationFrame(id);}finishCapturedTimer(meta); };
+  const clear = id => { const meta=timers.get(id);timers.delete(id);meta?.sessionScope?.releaseAdoptedTimer?.(id);if(meta?.kind==="interval")native.clearInterval(id);else if(meta?.kind==="animation-frame")native.cancelAnimationFrame(id);else{native.clearTimeout(id);native.clearInterval(id);native.cancelAnimationFrame(id);}finishCapturedTimer(meta); };
   const clearScope = scope => { for(const [id,meta] of [...timers]) if(meta.scope===scope) clear(id); };
   const captureTimeouts = fn => {
     const capture={pending:0,closed:false,settled:false,resolve:null};const done=new Promise(resolve=>capture.resolve=resolve);const prev=activeCapture;activeCapture=capture;let result;
@@ -11190,6 +11197,13 @@
         endTurn(g, t, s, used);
       }
       function executeCoreBase(g, t, s, a, { sim = false } = {}) {
+        if (a?.type === "noLegalPass") {
+          const current = g.order?.[g.turn];
+          if (!current || current[0] !== t || Number(current[1]) !== Number(s)) return false;
+          if (legalActions(g,t,s).length !== 0) return false;
+          log(g, `${unitAt(g,t,s)?.name || "빈 슬롯"}: 가능한 행동이 없어 턴을 자동으로 넘김.`, "turn");
+          return endTurn(g,t,s,false) !== false;
+        }
         if (a?.type === "deploy") {
           const current = g.order?.[g.turn];
           if (!current || current[0] !== t || current[1] !== s || typeof a.unit !== "string") return false;
@@ -11455,9 +11469,7 @@
           const energy=window.EnergyCanonicalizationEngine;
           return typeof energy?.execute==="function" ? energy.execute(inner,...args) : inner(...args);
         };
-        return typeof actionTransactionExecuteStage==="function"
-          ? actionTransactionExecuteStage.call(thisArg,middle,g,t,s,a,opt)
-          : middle(g,t,s,a,opt);
+        return OnlineActionAdmissionOwner.execute.call(thisArg,middle,g,t,s,a,opt);
       }
       function endTurn(g, t, s, usedSkill) {
         const __managed = typeof StateFactory!=="undefined" && typeof BattleEventEngine!=="undefined" && typeof TurnEngine!=="undefined";
@@ -12432,7 +12444,7 @@
           clearLocalAutoTurnTimer(`resume:${reason}`);
           if (sameTurn) {
             busy = false;
-            renderActions(`local-resume:${reason}`);
+            ActionPanelConvergenceOwner.request(`local-resume:${reason}`);
             scheduleAI();
             return true;
           }
@@ -14645,7 +14657,7 @@
           }
         }
         renderLog();
-        renderActions();
+        ActionPanelConvergenceOwner.request("interaction-cancel");
         playVisuals();
         refreshCardTooltip();
         if (game.winner) showEnd();
@@ -15318,7 +15330,6 @@
             sourceInstanceId:surface.manualSummon.sourceInstanceId,
             candidateIdentity:surface.manualSummon.candidateIdentity,
             pendingSubmitted:surface.manualSummon.pendingSubmitted,
-            submitState:surface.manualSummon.submitState,
           } : surface.boss ? {online:surface.boss.online,localControl:surface.boss.localControl} : null;
           const signature = JSON.stringify({
             battleId:g?.battleId || g?.matchId || null,
@@ -15377,7 +15388,7 @@
             ? (game?.mode === "online"
                 ? (onlineAutoCommandActive
                     ? "예약 행동 처리 중…"
-                    : (typeof onlinePendingCommand !== "undefined" && onlinePendingCommand
+                    : (OnlineActionAdmissionOwner.hasPending()
                         ? "행동 동기화 중…"
                         : "온라인 처리 중…"))
                 : "AI 계산 중…")
@@ -15421,7 +15432,7 @@
           let token = game.token,
             serial = game.turnSerial;
           busy = true;
-          renderActions();
+          ActionPanelConvergenceOwner.request("interaction-choice");
           scheduleLocalAutoTurnTimer(
             "speed-delay",
             true ? 550 : 0,
@@ -15658,7 +15669,6 @@
           snapshot:()=>({requestSerial,commitSerial,skippedDuplicateCount,lastRequest:lastRequest?{...lastRequest,dom:{...lastRequest.dom}}:null,render:ActionRenderEngine.snapshot(),dom:{...domState()}}),
         });
       })();
-      function renderActions(reason="legacy-render-actions"){ return ActionPanelConvergenceOwner.request(reason); }
       function openCustomNaturalGather(a,t,s,u) {
         const store=energyStore(u),amt=status(u,"slow")?.5:1,existingHalf=amt===.5?store.find(e=>e.a===.5):null,
           proposal=previewCustomGatherProposal(game,t,s,u,amt),col=proposal?.color,max=card(u).maxEnergy||4,overflow=totalEnergy(u)+amt-max;
@@ -15935,7 +15945,11 @@
       }
       function afterActionCore() {
         window.__interactionChoiceR25?.clearTarget?.();
-        if ((game?.mode === "online" || game?.bossRaid?.online) && p2p?.role === "guest" && onlinePendingCommand) { pendingSkill=null; render(); return; }
+        if ((game?.mode === "online" || game?.bossRaid?.online) && p2p?.role === "guest" && OnlineActionAdmissionOwner.hasPending()) {
+          pendingSkill=null;
+          window.OnlineRuntime?.projection?.request?.("guest-command-pending",{phase:"IN_BATTLE",canonicalRevision:Number(game?.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});
+          return;
+        }
         pendingSkill = null;
         if (game?.pendingClockTurnAdvance) {
           render();
@@ -15944,8 +15958,10 @@
         const onlineVisuals = game?.mode === "online" && p2p.role === "host"
           ? cloneOnlineVisualEvents(visualEvents)
           : [];
-        render();
-        broadcastOnlineState(onlineVisuals);
+        if(game?.mode==="online"&&p2p?.role==="host"){
+          broadcastOnlineState(onlineVisuals);
+          window.OnlineRuntime?.projection?.request?.("host-action-commit",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});
+        }else render();
         if (!processPendingTraitChoice()) scheduleAI();
       }
       function afterAction(...args) { return invokeBossModeHook("afterAction",afterActionCore,this,args); }
@@ -15957,7 +15973,7 @@
           if (game.winner || busy) return;
           if (summonTeamLocallyControlled(game,pendingSummon.q.team) && game.mode!=="aivai") return;
           if (game.mode==="online") return;
-          busy=true; renderActions();
+          busy=true; ActionPanelConvergenceOwner.request("automatic-start");
           const summonToken=game.token, summonUid=pendingSummon.u.uid;
           scheduleLocalAutoTurnTimer("manual-summon-ai",true?Math.max(Number($("#speed")?.value||900),visualHoldMs):0,()=>{
             if(!game||game.token!==summonToken){busy=false;return;}
@@ -15972,7 +15988,7 @@
         if (game.mode === "online" && p2p?.role === "host" &&
             (p2p.onlineStartPending || (p2p.startCommitPacket && !p2p.startCommitAck))) {
           busy = true;
-          renderActions();
+          window.OnlineRuntime?.projection?.request?.("battle-start-commit-pending",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});
           return;
         }
         prepareCurrentTurn(game);
@@ -15999,7 +16015,7 @@
           onlineAutoCommandOwner = automaticOwner;
           onlineAutoCommandActive = true;
           busy = true;
-          renderActions();
+          window.OnlineRuntime?.projection?.request?.("automatic-scheduled",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});
           const runAutomatic = () => {
             if (onlineAutoCommandOwner !== automaticOwner) return;
             automaticOwner.timerId = 0;
@@ -16007,16 +16023,15 @@
               onlineAutoCommandOwner = null;
               onlineAutoCommandActive = false;
               busy = false;
-              renderActions();
+              window.OnlineRuntime?.projection?.request?.("automatic-stale",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});
               return;
             }
             let executed = false;
             try {
-              if (noLegalActions) {
-                log(game, `${u?.name || "빈 슬롯"}: 가능한 행동이 없어 턴을 자동으로 넘김.`, "turn");
-                endTurn(game, t, s, false);
-                executed = true;
-              } else executed = !!execute(game, t, s, forcedAction, { remoteAuthoritative:true });
+              const automaticAction = noLegalActions
+                ? {type:"noLegalPass",actionId:automaticOwner.actionId,expectedTurnSerial:serial}
+                : forcedAction;
+              executed = !!execute(game,t,s,automaticAction,{admissionSource:"host-automatic"});
             }
             catch (error) {
               executed = false;
@@ -16028,19 +16043,22 @@
             onlineAutoCommandActive = false;
             busy = false;
             if (!executed) {
-              log(game, `${u?.name || "빈 슬롯"}: 예약 행동 검증 실패, 턴을 안전하게 종료.`, "turn");
-              endTurn(game, t, s, false);
+              window.__megaRecordRecoveredError?.(new Error("ONLINE_AUTOMATIC_ACTION_REJECTED"),"scheduleAI.online-automatic");
+              window.OnlineRuntime?.projection?.request?.("automatic-rejected",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});
+              return;
             }
             afterAction();
           };
           const delay = true ? Math.max(Number($("#speed")?.value || 900), visualHoldMs) : 0;
-          automaticOwner.timerId = window.OnlineRuntime?.sessionScope?.setTimeout?.(runAutomatic,delay,"pvp-online-automatic",{phase:"SESSION"}) || window.TimerManager.setTimeout(runAutomatic,delay);
+          const scope=window.OnlineRuntime?.sessionScope;
+          if(!scope || scope.closed){onlineAutoCommandOwner=null;onlineAutoCommandActive=false;busy=false;return;}
+          automaticOwner.timerId = scope.setTimeout(runAutomatic,delay,"pvp-online-automatic",{phase:"IN_BATTLE"});
           return;
         }
 
         if (t === "P" && game.mode === "human" && !forced) return;
         busy = true;
-        renderActions();
+        ActionPanelConvergenceOwner.request("automatic-dispatch");
         scheduleLocalAutoTurnTimer(
           forced ? `scheduled:${forcedAction?.type || "forced"}` : "ai-turn",
           true ? Math.max(Number($("#speed")?.value || 900), visualHoldMs) : 0,
@@ -16087,7 +16105,7 @@
             } catch (error) {
               window.__megaRecordRecoveredError?.(error, "scheduleAI.local-continuation");
               busy = false;
-              renderActions();
+              ActionPanelConvergenceOwner.request("automatic-cleanup");
               scheduleAI();
             }
           },
@@ -16155,9 +16173,8 @@
           p2p.__startedOnlineScope = onlineScope;
           onlineAuthoritativeRevision = 0;
           p2p.lastAuthoritativeRevision = 0;
-          onlineHostCommandResults.clear();
-          stopOnlinePendingCommand({ unlock:false });
-          startOnlineStateProbeLoop();
+          OnlineActionAdmissionOwner.resetBattle();
+          OnlineActionAdmissionOwner.startProbe();
         }
         lastBattleConfig = {
           pDeck: [...pDeck],
@@ -16422,7 +16439,7 @@
           p2p.lastAppliedStartIdentity=identity;
           p2p.__bossStartReceivedMatchId=String(p2p.matchId||g?.matchId||"");
 
-          stopOnlinePendingCommand({unlock:false});
+          OnlineActionAdmissionOwner.clearPending({unlock:false,resolution:"authoritative-start"});
           handleOnlineStartScopePacket(msg);
           document.getElementById("modal")?.classList.remove("open","boss-lobby-closing");
           window.__redTimeoraBossRaid.launch(g);
@@ -17689,7 +17706,7 @@
         g.pendingSummonTurns ||= [];
         const queued=new Set(g.pendingSummonTurns.map(q=>q.summonUid));
         const list=(g.teams[t]?.summons||[]).filter(u=>u&&!u.dead&&u.ownerUid===owner.uid&&!queued.has(u.uid)).sort((a,b)=>b.summonSerial-a.summonSerial);
-        for(const u of list){const q={team:t,ownerUid:owner.uid,summonUid:u.uid,summonSerial:u.summonSerial,submitState:"AWAITING_INPUT"};ensurePendingSummonIdentity(g,q,u);g.pendingSummonTurns.push(q);}
+        for(const u of list){const q={team:t,ownerUid:owner.uid,summonUid:u.uid,summonSerial:u.summonSerial};ensurePendingSummonIdentity(g,q,u);g.pendingSummonTurns.push(q);}
         if(list.length)log(g,`${owner.name}: 소환물 행동 ${list.length}회 대기.`,'turn');
       }
             function customGatherColor(g,t,u,rng=g?.rng,source="custom-gather"){
@@ -17831,14 +17848,15 @@
         }catch(error){window.__megaRecordRecoveredError?.(error,"battle-emote-control-send");}
         return false;
       }
-      function cancelBattleEmoteRetry(timerId){if(!timerId)return false;if(window.OnlineRuntime?.sessionScope?.cancel?.(timerId))return true;window.TimerManager.clear(timerId);return true;}
+      function cancelBattleEmoteRetry(timerId){return !!timerId&&window.OnlineRuntime?.sessionScope?.cancel?.(timerId)===true;}
       function scheduleBattleEmoteRetry(entry){
         if(!entry||battleEmotePending.get(entry.packet.emoteId)!==entry)return false;
         if(Date.now()-entry.createdAt>=15000){battleEmotePending.delete(entry.packet.emoteId);return false;}
         if(entry.timerId)cancelBattleEmoteRetry(entry.timerId);
         const delays=[250,500,900,1500,2200],delay=delays[Math.min(entry.attempts,delays.length-1)];
         const retry=()=>{entry.timerId=0;if(battleEmotePending.get(entry.packet.emoteId)!==entry)return;entry.attempts++;entry.lastSentAt=Date.now();entry.lastSendSucceeded=sendBattleEmoteControl(entry.packet);scheduleBattleEmoteRetry(entry);};
-        entry.timerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        const scope=window.OnlineRuntime?.sessionScope;if(!scope||scope.closed){battleEmotePending.delete(entry.packet.emoteId);return false;}
+        entry.timerId=scope.setTimeout(retry,delay,`emote-retry:${entry.packet.emoteId}`,{phase:"SESSION"});
         return true;
       }
       function resetBattleEmoteReliability(reason="session-reset"){
@@ -17885,7 +17903,6 @@
         const serial=Number(q.summonSerial??u?.summonSerial??0);
         q.actionId ||= `${battleId}:summon:${Number(g?.turnSerial||0)}:${q.summonUid}:${serial}`;
         q.transactionId ||= `${q.actionId}:tx`;
-        q.submitState ||= "AWAITING_INPUT";
         return q;
       }
       function normalizePendingSummonTurns(g){
@@ -17897,6 +17914,15 @@
           return {q,u,owner};
         }
         return null;
+      }
+      function finishSummonQueueAction(g,q,u,usedSkill){
+        const current=g?.pendingSummonTurns?.[0];
+        if(!current||current.actionId!==q?.actionId||current.summonUid!==u?.uid)return false;
+        g.pendingSummonTurns.shift();
+        u.turns=Number(u.turns||0)+1;
+        if(cardCapability(u,"resetDeathBaselineOnTurn",false))u.deathBaseline=Number(g.teams?.[q.team]?.deathSerial||0);
+        BattleEventEngine?.emit?.(g,"SUMMON_ACTION_COMPLETED",{teamId:q.team,sourceEntityId:u.uid,payload:{actionId:q.actionId,usedSkill:!!usedSkill,remaining:g.pendingSummonTurns.length}});
+        return true;
       }
       function summonSkillCost(g,t,u,skillRef){
         const sk=skillOf(u,skillRef);
@@ -17937,6 +17963,32 @@
             for(const {u:target} of summonTargetRefs(g,t,false))out.push({type:'summonSkill',skill:sk.id,targetUid:target.uid,label:`${sk.name} ${cost||'무코스트'} · ${damage}D → ${target.name}`});
         }
         return out;
+      }
+      function manualSummonSurfaceContext(g){
+        const current=normalizePendingSummonTurns(g);if(!current)return null;
+        const {q,u,owner}=current,amount=status(u,"slow")?.5:1;
+        const previewRng=cloneRngForPreview(g.rng),colors=naturalColors(g,q.team,u,amount,null,"summon-gather-preview"),color=previewRng?.pick(colors);
+        const actions=summonActionOptions(g,q.team,u).map(action=>{
+          const base={...action,actionId:q.actionId,transactionId:q.transactionId,sourceInstanceId:u.uid};
+          if(action.type==="summonGather")return {...base,gather:{color,amount,max:Number(card(u).maxEnergy||4)}};
+          const cost=summonSkillCost(g,q.team,u,action.skill),plan=cost?findPaymentPlan(g,q.team,u,cost):{R:0,W:0,B:0};
+          return {...base,paymentRequirements:{cost},paymentPlans:plan?[plan]:[]};
+        });
+        const pendingActionId=OnlineActionAdmissionOwner.pendingActionId(),pendingSubmitted=pendingActionId===q.actionId;
+        return Object.freeze({
+          kind:"manual-summon",
+          eligibilityContext:Object.freeze({
+            surfaceKind:"manual-summon",actorTeam:q.team,actorSlot:null,actor:u,actorUid:u.uid,
+            canonicalLocalTeam:localTeamFor(g),standardOnline:g.mode==="online",skipActiveIdentityChecks:true,
+            actions,pendingSubmitted,pendingActionId,
+          }),
+          manualSummon:Object.freeze({
+            actionId:q.actionId,transactionId:q.transactionId,sourceInstanceId:u.uid,candidateIdentity:`${q.actionId}:${u.uid}`,
+            pendingSubmitted,summonName:u.name,ownerName:owner.name,remaining:g.pendingSummonTurns.length,
+            actions:Object.freeze(actions.map(action=>Object.freeze(action))),
+          }),
+          boss:null,
+        });
       }
       function applyManualSummonAction(g,t,summonUid,a){
         const cur=normalizePendingSummonTurns(g);
@@ -18000,22 +18052,7 @@
         if(a.actionId&&a.actionId!==q.actionId)return;
         if(a.transactionId&&a.transactionId!==q.transactionId)return;
         if(Number.isFinite(Number(a.authoritativeRevision))&&Number(a.authoritativeRevision)!==Number(game.networkRevision||0))return;
-        const canonicalAction={...a,actionId:q.actionId,transactionId:q.transactionId,sourceInstanceId:u.uid};
-        if(game.mode==="online"&&p2p?.role==="guest"&&q.team===onlineSide&&!p2p.applyingRemoteAction){
-          if(onlinePendingCommand||q.submitState!=="AWAITING_INPUT")return;
-          q.submitState="SUBMITTED";
-          q.submittedAction={type:canonicalAction.type||null,skill:canonicalAction.skill||null,targetUid:canonicalAction.targetUid||null,paymentPlan:canonicalAction.paymentPlan?{...canonicalAction.paymentPlan}:null};
-          beginOnlinePendingCommand({
-            type:"actionRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:"PVP",commandKind:"summon",
-            matchId:onlineCurrentMatchId(),actionId:q.actionId,transactionId:q.transactionId,
-            expectedTurnSerial:game.turnSerial,expectedTurn:game.turn,team:q.team,summonUid:u.uid,ownerUid:owner.uid,
-            action:JSON.parse(JSON.stringify(canonicalAction))
-          });
-          return;
-        }
-        q.submitState="COMMITTING";
-        if(applyManualSummonAction(game,q.team,u.uid,canonicalAction))afterAction();
-        else {q.submitState="AWAITING_INPUT";renderActions("manual-summon-rejected");}
+        return OnlineActionAdmissionOwner.submitManualSummon(game,q,u,owner,a);
       }
       function openSummonGatherChoice(base){
         const cur=normalizePendingSummonTurns(game);if(!cur||!base||base.actionId!==cur.q.actionId)return;
@@ -20111,7 +20148,7 @@ function executeFoxWithPlan(actions,mode,plan){
       function resetOnlineStartTransactionState(reason="start-reset",options={}){
         if(!p2p)return false;
         for(const key of ["startRetryTimerId","startRequestTimerId","startAckDeadlineTimerId","startCommitConfirmTimerId"]){
-          const id=p2p[key];if(id&&!window.OnlineRuntime?.sessionScope?.cancel?.(id)){window.TimerManager.clear(id);window.TimerManager.clear(id);}p2p[key]=0;
+          const id=p2p[key];if(id)window.OnlineRuntime?.sessionScope?.cancel?.(id);p2p[key]=0;
         }
         traceOnlineStart("START_TRANSACTION_RESET",p2p.startCommitPacket||{matchId:p2p.matchId},{reason:String(reason)});
         p2p.startCommitPacket=null;p2p.startCommitAck=null;p2p.startCommitConfirmedAck=null;p2p.startCommitTrace=null;
@@ -20155,7 +20192,8 @@ function executeFoxWithPlan(actions,mode,plan){
           sendOnlineStartCommitted(p2p.startCommitPacket,`commit-confirm-retry:${attempt}`);
           scheduleOnlineStartCommittedRetry(p2p.startCommitPacket,attempt+1);
         };
-        p2p.startCommitConfirmTimerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(retry,delay,`start-commit-confirm-retry-${attempt}`,{phase:"SESSION"})||window.TimerManager.setTimeout(retry,delay);
+        const sessionScope=window.OnlineRuntime?.sessionScope;if(!sessionScope||sessionScope.closed)return false;
+        p2p.startCommitConfirmTimerId=sessionScope.setTimeout(retry,delay,`start-commit-confirm-retry-${attempt}`,{phase:"SESSION"});
         return !!p2p.startCommitConfirmTimerId;
       }
       function sendOnlineStartCommittedAck(identity,matchId,battleId,reason="commit-confirmed"){
@@ -20177,7 +20215,7 @@ function executeFoxWithPlan(actions,mode,plan){
         game.battleStarted=true;busy=false;
         const projected=window.OnlineRuntime?.markBattleStarted?.({source:"start-ack-commit",canonicalRevision:Number(game.networkRevision||0)});
         sendOnlineStartCommitted(packet,"pvp-start-ack-commit");scheduleOnlineStartCommittedRetry(packet,1);
-        startOnlineStateProbeLoop();scheduleAI();
+        OnlineActionAdmissionOwner.startProbe();scheduleAI();
         return projected!==false;
       }
       function scheduleOnlineStartPublicationRetry(packet,attempt=1){
@@ -20380,12 +20418,7 @@ function executeFoxWithPlan(actions,mode,plan){
       }
       /* ================= 온라인 턴 권위 동기화·재전송 근본 보강 r7 ================= */
       const ONLINE_TURN_SYNC_VERSION = "mega-online-turn-sync-r7";
-      let onlinePendingCommand = null;
-      let onlineCommandRetryTimer = null;
-      let onlineStateProbeTimer = null;
       let onlineAuthoritativeRevision = 0;
-      const onlineHostCommandResults = new Map();
-      const onlineCommandResolutionTrace = [];
 
       function onlineSafeSend(packet) {
         try {
@@ -20402,101 +20435,286 @@ function executeFoxWithPlan(actions,mode,plan){
       }
       // 온라인도 로컬과 동일한 리그/등급 구성 owner를 사용한다.
 
-      function stopOnlinePendingCommand({ unlock = true, resolution = "cleared" } = {}) {
-        const pending = onlinePendingCommand;
-        if (onlineCommandRetryTimer && !window.OnlineRuntime?.sessionScope?.cancel?.(onlineCommandRetryTimer)) window.TimerManager.clear(onlineCommandRetryTimer);
-        onlineCommandRetryTimer = null;
-        onlinePendingCommand = null;
-        if (p2p) p2p.pendingActionId = null;
-        if (pending) {
-          onlineCommandResolutionTrace.push({
-            at:Date.now(), actionId:pending.packet?.actionId || null,
-            expectedTurnSerial:Number(pending.packet?.expectedTurnSerial ?? -1),
-            resolution:String(resolution || "cleared"), attempts:Number(pending.attempts || 0),
-          });
-          if (onlineCommandResolutionTrace.length > 160) onlineCommandResolutionTrace.splice(0,onlineCommandResolutionTrace.length - 96);
-        }
-        if (unlock && (game?.mode === "online" || game?.bossRaid?.online) && !game?.paused && !game?.winner) {
-          busy = false;
-          render();
-        }
-      }
-      function suspendOnlinePendingCommand(reason = "background") {
-        if (onlineCommandRetryTimer && !window.OnlineRuntime?.sessionScope?.cancel?.(onlineCommandRetryTimer)) window.TimerManager.clear(onlineCommandRetryTimer);
-        onlineCommandRetryTimer = null;
-        if (onlineStateProbeTimer) window.OnlineRuntime?.sessionScope?.cancel?.(onlineStateProbeTimer);
-        onlineStateProbeTimer = null;
-        if (onlinePendingCommand) {
-          onlinePendingCommand.suspendedAt = Date.now();
-          onlinePendingCommand.suspendReason = String(reason);
-        }
-        return !!onlinePendingCommand;
-      }
-      function requestOnlinePendingResolution(reason = "authoritative-resume") {
-        const pending = onlinePendingCommand;
-        if (!pending || !p2p?.connected) return false;
-        pending.reconciliationRequestedAt = Date.now();
-        pending.reconciliationReason = String(reason);
-        return !!window.OnlineRuntime?.sendControl?.({
-          type:"stateRequest", protocol:ONLINE_TURN_SYNC_VERSION, mode:pending.packet.mode || "PVP",
-          matchId:pending.packet.matchId || onlineCurrentMatchId(), actionId:pending.packet.actionId,
-          knownTurnSerial:Number(game?.turnSerial ?? -1),
-          knownRevision:Number(p2p.lastAuthoritativeRevision || game?.networkRevision || 0),
-          resumeReason:String(reason),
+      const OnlineActionAdmissionOwner = (() => {
+        let pending = null;
+        let retryTimer = 0;
+        let stateProbeTimer = 0;
+        let commandSerial = 0;
+        const hostResults = new Map();
+        const resolutionTrace = [];
+        const sessionScope = () => window.OnlineRuntime?.sessionScope || null;
+        const cancelTimer = timerId => {
+          if (!timerId) return false;
+          return sessionScope()?.cancel?.(timerId) === true;
+        };
+        const clearRetry = () => {
+          if (retryTimer) cancelTimer(retryTimer);
+          retryTimer = 0;
+        };
+        const immutablePending = () => pending ? Object.freeze({
+          actionId:String(pending.packet.actionId || ""),
+          expectedTurnSerial:Number(pending.packet.expectedTurnSerial ?? -1),
+          attempts:Number(pending.attempts || 0),
+          acked:!!pending.acked,
+          suspended:!!pending.suspendedAt,
+          createdAt:Number(pending.createdAt || 0),
+        }) : null;
+        const view = () => Object.freeze({
+          pending:immutablePending(),
+          pendingActionId:String(pending?.packet?.actionId || "") || null,
+          hostCommandResults:hostResults.size,
+          authoritativeRevision:Number(onlineAuthoritativeRevision || 0),
+          stateProbeActive:!!stateProbeTimer,
+          resolutionTrace:Object.freeze(resolutionTrace.slice(-40).map(row => Object.freeze({...row}))),
         });
-      }
-      function reconcileOnlinePendingCommand(msg) {
-        const pending = onlinePendingCommand;
-        if (!pending) return Object.freeze({ settled:false, status:"none" });
-        const actionId = String(pending.packet?.actionId || "");
-        const resolution = msg?.actionResolution || null;
-        let status = "pending";
-        if (actionId && String(msg?.ackActionId || "") === actionId) status = "accepted";
-        else if (actionId && String(resolution?.actionId || "") === actionId && ["accepted","rejected","unknown"].includes(String(resolution?.status || ""))) status = String(resolution.status);
-        else if (Number(msg?.turnSerial) !== Number(pending.packet?.expectedTurnSerial)) status = "superseded";
-        if (status === "pending") return Object.freeze({ settled:false, status, actionId });
-        stopOnlinePendingCommand({ unlock:false, resolution:`authority:${status}` });
-        busy = false;
-        return Object.freeze({ settled:true, status, actionId });
-      }
-      function sendOnlinePendingCommand() {
-        if (!onlinePendingCommand || !p2p?.connected) return;
-        const pending = onlinePendingCommand;
-        if (pending.suspendedAt) return;
-        pending.attempts++;
-        pending.lastSentAt = Date.now();
-        if (pending.acked) {
-          onlineSafeSend({
-            type:"stateRequest", protocol:ONLINE_TURN_SYNC_VERSION, mode:pending.packet.mode||"PVP",
+        const hasPending = () => !!pending;
+        const pendingActionId = () => String(pending?.packet?.actionId || "") || null;
+        const clearPending = ({ unlock=true, resolution="cleared" }={}) => {
+          const previous = pending;
+          clearRetry();
+          pending = null;
+          if (previous) {
+            resolutionTrace.push(Object.freeze({
+              at:Date.now(), actionId:previous.packet?.actionId || null,
+              expectedTurnSerial:Number(previous.packet?.expectedTurnSerial ?? -1),
+              resolution:String(resolution || "cleared"), attempts:Number(previous.attempts || 0),
+            }));
+            if (resolutionTrace.length > 160) resolutionTrace.splice(0,resolutionTrace.length - 96);
+          }
+          if (unlock && (game?.mode === "online" || game?.bossRaid?.online) && !game?.paused && !game?.winner) {
+            busy = false;
+            window.OnlineRuntime?.projection?.request?.(`online-action-settled:${resolution}`,{phase:"IN_BATTLE",canonicalRevision:Number(game?.networkRevision||0)});
+          }
+          return !!previous;
+        };
+        const sendPending = () => {
+          if (!pending || !p2p?.connected || pending.suspendedAt) return false;
+          pending.attempts++;
+          pending.lastSentAt = Date.now();
+          if (!pending.acked) return onlineSafeSend(pending.packet);
+          return onlineSafeSend({
+            type:"stateRequest", protocol:ONLINE_TURN_SYNC_VERSION, mode:pending.packet.mode || "PVP",
             matchId:pending.packet.matchId, actionId:pending.packet.actionId,
-            knownTurnSerial:game?.turnSerial ?? -1,
-            knownRevision:p2p.lastAuthoritativeRevision || 0
+            knownTurnSerial:Number(game?.turnSerial ?? -1),
+            knownRevision:Number(p2p?.lastAuthoritativeRevision || game?.networkRevision || 0),
           });
-        } else {
-          onlineSafeSend(pending.packet);
-        }
-      }
-      function beginOnlinePendingCommand(packet) {
-        if (onlinePendingCommand) return false;
-        onlinePendingCommand = { packet, attempts:0, acked:false, createdAt:Date.now(), lastSentAt:0, suspendedAt:0 };
-        p2p.pendingActionId = packet.actionId;
-        busy = true;
-        renderActions();
-        sendOnlinePendingCommand();
-        if (onlineCommandRetryTimer && !window.OnlineRuntime?.sessionScope?.cancel?.(onlineCommandRetryTimer)) window.TimerManager.clear(onlineCommandRetryTimer);
-        onlineCommandRetryTimer = window.OnlineRuntime?.sessionScope?.setInterval?.(sendOnlinePendingCommand,650,"online-command-retry",{phase:"SESSION"}) || window.TimerManager.setInterval(sendOnlinePendingCommand,650);
-        return true;
-      }
+        };
+        const queue = packet => {
+          const scope = sessionScope();
+          if (pending || !scope || scope.closed) return false;
+          const frozenPacket = Object.freeze({
+            ...packet,
+            action:Object.freeze(JSON.parse(JSON.stringify(packet.action || {}))),
+          });
+          pending = { packet:frozenPacket, attempts:0, acked:false, createdAt:Date.now(), lastSentAt:0, suspendedAt:0 };
+          busy = true;
+          window.OnlineRuntime?.projection?.request?.("online-action-pending",{phase:"IN_BATTLE",canonicalRevision:Number(game?.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});
+          sendPending();
+          retryTimer = scope.setInterval(sendPending,650,"online-action-command-retry",{phase:"SESSION"});
+          return true;
+        };
+        const nextActionId = g => {
+          const generation = Number(window.OnlineRuntime?.identity?.().generation || 0);
+          return `${onlineCurrentMatchId()}:generation:${generation}:turn:${Number(g?.turnSerial || 0)}:command:${++commandSerial}`;
+        };
+        const guestOwns = (g,t,s) => {
+          if (!g || g !== game || p2p?.role !== "guest") return false;
+          const active = g.order?.[g.turn] || [];
+          if (active[0] !== t || Number(active[1]) !== Number(s)) return false;
+          if (g?.bossRaid?.online) {
+            if (t !== "P" || !window.__redTimeoraBossRaid?.localControlsCurrent?.(g)) return false;
+            const unit = unitAt(g,t,s);
+            return unit ? unit.bossOwner === "guest" : g.bossRaid.slotOwners?.[s] === "guest";
+          }
+          return g.mode === "online" && t === onlineSide;
+        };
+        const requestAction = (g,t,s,action) => {
+          if (!guestOwns(g,t,s)) return false;
+          const actionId = String(action?.actionId || nextActionId(g));
+          return queue({
+            type:"actionRequest", protocol:ONLINE_TURN_SYNC_VERSION,
+            mode:g?.bossRaid?.online ? "BOSS_COOP" : "PVP",
+            matchId:onlineCurrentMatchId(), actionId,
+            expectedTurnSerial:Number(g.turnSerial || 0), expectedTurn:Number(g.turn || 0),
+            team:t, slot:Number(s), action:{...(action || {}),actionId},
+          });
+        };
+        const execute = function(next,g,t,s,action,opt={}) {
+          const live = !opt?.sim && g && (g === currentGame() || opt?.r48Live === true);
+          if (!live) return window.CanonicalActionTransactionOwner.execute.call(this,next,g,t,s,action,opt);
+          const online = g === game && (g?.mode === "online" || g?.bossRaid?.online);
+          if (online && p2p?.role === "guest") return guestOwns(g,t,s) ? requestAction(g,t,s,action) : false;
+          if (online && p2p?.role !== "host") return false;
+          if(online){
+            const current=g.order?.[g.turn]||[],source=String(opt?.admissionSource||"local-input");
+            if(current[0]!==t||Number(current[1])!==Number(s))return false;
+            if(source==="host-automatic"&&!['scheduled','sequence','speedDelay','noLegalPass','bossPassEmpty'].includes(action?.type))return false;
+            if(source==="local-input"){
+              if(g?.bossRaid?.online){const unit=unitAt(g,t,s);if(t!=="P"||(unit?unit.bossOwner!=="host":g.bossRaid.slotOwners?.[s]!=="host"))return false;}
+              else if(t!==onlineSide)return false;
+            }else if(!['host-remote','host-automatic'].includes(source))return false;
+          }
+          return window.CanonicalActionTransactionOwner.execute.call(this,next,g,t,s,action,opt);
+        };
+        const submitManualSummon = (g,q,u,owner,action) => {
+          if (!g || !q || !u || !owner || !action) return false;
+          const canonicalAction={...action,actionId:q.actionId,transactionId:q.transactionId,sourceInstanceId:u.uid};
+          if (g.mode === "online" && p2p?.role === "guest") {
+            if (q.team !== onlineSide || hasPending()) return false;
+            return queue({
+              type:"actionRequest", protocol:ONLINE_TURN_SYNC_VERSION, mode:"PVP", commandKind:"summon",
+              matchId:onlineCurrentMatchId(), actionId:q.actionId, transactionId:q.transactionId,
+              expectedTurnSerial:Number(g.turnSerial || 0), expectedTurn:Number(g.turn || 0), team:q.team,
+              summonUid:u.uid, ownerUid:owner.uid, action:canonicalAction,
+            });
+          }
+          if (g.mode === "online" && p2p?.role !== "host") return false;
+          const ownerSlot=Math.max(0,Number(g.teams?.[q.team]?.field?.findIndex(unit=>unit?.uid===owner.uid) ?? 0));
+          const accepted=window.CanonicalActionTransactionOwner.execute(
+            (state,team,slot,admitted)=>applyManualSummonAction(state,team,u.uid,admitted),
+            g,q.team,ownerSlot,canonicalAction,{admissionSource:"manual-summon"}
+          );
+          if (accepted) afterAction();
+          else window.OnlineRuntime?.projection?.request?.("manual-summon-rejected",{phase:"IN_BATTLE",canonicalRevision:Number(g.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});
+          return !!accepted;
+        };
+        const cacheResult = (actionId, accepted, reason) => {
+          hostResults.set(actionId,Object.freeze({accepted:!!accepted,reason:String(reason || "")}));
+          if (hostResults.size > 256) hostResults.delete(hostResults.keys().next().value);
+        };
+        const resolutionFor = actionId => {
+          const id=String(actionId || ""),cached=id ? hostResults.get(id) : null;
+          return id ? {actionId:id,status:cached?(cached.accepted?"accepted":"rejected"):"unknown",reason:cached?(cached.reason||(cached.accepted?"accepted-by-authority":"rejected-by-authority")):"not-observed-by-authority"} : null;
+        };
+        const receiveActionRequest = msg => {
+          const bossMode=!!game?.bossRaid?.online,expectedMode=bossMode?"BOSS_COOP":"PVP";
+          if(msg?.mode!==expectedMode || p2p?.role!=="host" || !game || !(game.mode==="online" || bossMode))return false;
+          const actionId=String(msg?.actionId || ""),localMatch=onlineCurrentMatchId(),incomingMatch=String(msg?.matchId || "");
+          if(!actionId || (incomingMatch && incomingMatch!==localMatch))return false;
+          const cached=hostResults.get(actionId);
+          if(cached){
+            onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:expectedMode,matchId:localMatch,actionId,accepted:cached.accepted,reason:cached.reason||"duplicate",turnSerial:game.turnSerial});
+            sendAuthoritativeOnlineState([],cached.accepted?actionId:null,true,resolutionFor(actionId));
+            return true;
+          }
+          const current=game.order?.[game.turn] || [];
+          let valid=Number(msg.expectedTurnSerial)===Number(game.turnSerial)&&Number(msg.expectedTurn)===Number(game.turn);
+          let summon=null;
+          if(bossMode){
+            const currentUnit=unitAt(game,current[0],current[1]);
+            const guestOwnsSlot=currentUnit?.bossOwner==="guest"||(!currentUnit&&game.bossRaid?.slotOwners?.[current[1]]==="guest");
+            valid=valid&&current[0]==="P"&&msg.team==="P"&&Number(current[1])===Number(msg.slot)&&guestOwnsSlot;
+          }else if(msg.commandKind==="summon"){
+            summon=normalizePendingSummonTurns(game);
+            valid=valid&&msg.team==="A"&&!!summon&&summon.q.team==="A"&&summon.u.uid===msg.summonUid&&summon.owner.uid===msg.ownerUid&&actionId===summon.q.actionId&&msg.transactionId===summon.q.transactionId;
+          }else valid=valid&&msg.team==="A"&&current[0]==="A"&&Number(current[1])===Number(msg.slot);
+          if(!valid){
+            cacheResult(actionId,false,"stale-turn");
+            onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:expectedMode,matchId:localMatch,actionId,accepted:false,reason:"stale-turn",turnSerial:game.turnSerial});
+            sendAuthoritativeOnlineState([],null,true,resolutionFor(actionId));
+            return false;
+          }
+          const admittedAction={...(msg.action || {}),actionId};
+          let accepted=false;
+          try{
+            accepted=summon
+              ? !!window.CanonicalActionTransactionOwner.execute((state,team,slot,a)=>applyManualSummonAction(state,team,summon.u.uid,a),game,msg.team,Number(current[1] || 0),admittedAction,{admissionSource:"host-remote"})
+              : !!execute(game,msg.team,Number(msg.slot),admittedAction,{admissionSource:"host-remote"});
+          }catch(error){window.__megaRecordRecoveredError?.(error,"online-action-admission.receive");accepted=false;}
+          cacheResult(actionId,accepted,accepted?"":"invalid-action");
+          if(accepted){p2p.__pendingAuthoritativeAck=actionId;afterAction();}
+          else sendAuthoritativeOnlineState([],null,true,resolutionFor(actionId));
+          onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:expectedMode,matchId:localMatch,actionId,accepted,reason:accepted?"":"invalid-action",turnSerial:game.turnSerial});
+          return accepted;
+        };
+        const settle = msg => {
+          if (!pending) return Object.freeze({settled:false,status:"none"});
+          const actionId=String(pending.packet.actionId || ""),resolution=msg?.actionResolution || null;
+          let status="pending";
+          if(actionId&&String(msg?.ackActionId || "")===actionId)status="accepted";
+          else if(actionId&&String(resolution?.actionId || "")===actionId&&["accepted","rejected","unknown"].includes(String(resolution?.status || "")))status=String(resolution.status);
+          else if(Number(msg?.turnSerial)!==Number(pending.packet.expectedTurnSerial))status="superseded";
+          if(status==="pending")return Object.freeze({settled:false,status,actionId});
+          clearPending({unlock:false,resolution:`authority:${status}`});busy=false;
+          return Object.freeze({settled:true,status,actionId});
+        };
+        const requestResolution = (reason="authoritative-resume") => {
+          if(!pending || !p2p?.connected)return false;
+          pending.reconciliationRequestedAt=Date.now();pending.reconciliationReason=String(reason);
+          return !!window.OnlineRuntime?.sendControl?.({
+            type:"stateRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:pending.packet.mode || "PVP",
+            matchId:pending.packet.matchId || onlineCurrentMatchId(),actionId:pending.packet.actionId,
+            knownTurnSerial:Number(game?.turnSerial ?? -1),knownRevision:Number(p2p?.lastAuthoritativeRevision || game?.networkRevision || 0),resumeReason:String(reason),
+          });
+        };
+        const startProbe = () => {
+          if(stateProbeTimer)cancelTimer(stateProbeTimer);stateProbeTimer=0;
+          const scope=sessionScope();if(!scope || scope.closed)return false;
+          stateProbeTimer=scope.setInterval(()=>{
+            const bossOnline=!!game?.bossRaid?.online;
+            if(!p2p?.connected || !game || !(game.mode==="online" || bossOnline) || p2p.role!=="guest")return;
+            onlineSafeSend({type:"syncProbe",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossOnline?"BOSS_COOP":"PVP",matchId:onlineCurrentMatchId(),turnSerial:game.turnSerial,revision:p2p.lastAuthoritativeRevision||0,pendingActionId:pendingActionId(),awaitingStartCommitIdentity:p2p?.guestStartAwaitingHostCommit?.identity||null});
+          },2500,"battle-authoritative-state-probe",{phase:"IN_BATTLE"});
+          return true;
+        };
+        const receive = msg => {
+          const expectedMode=(p2p?.sessionMode==="bossRaid"||!!game?.bossRaid?.online)?"BOSS_COOP":"PVP";
+          const incomingMatch=String(msg?.matchId || ""),localMatch=String(p2p?.matchId || game?.matchId || "");
+          if(msg?.protocol!==ONLINE_TURN_SYNC_VERSION||msg?.mode!==expectedMode||!incomingMatch||!localMatch||incomingMatch!==localMatch)return false;
+          if(msg.type==="actionRequest")return receiveActionRequest(msg);
+          if(msg.type==="commandAck"&&p2p?.role==="guest"){
+            if(!pending || msg.actionId!==pending.packet.actionId)return false;
+            pending.acked=true;pending.ackAt=Date.now();pending.ackRejected=msg.accepted!==true;return sendPending();
+          }
+          if(msg.type==="authoritativeState")return applyAuthoritativeOnlineState(msg);
+          if(msg.type==="stateRequest"&&p2p?.role==="host"){
+            const actionId=String(msg.actionId || ""),cached=actionId?hostResults.get(actionId):null;
+            sendAuthoritativeOnlineState([],cached?.accepted?actionId:null,true,resolutionFor(actionId));return true;
+          }
+          if(msg.type==="syncProbe"&&p2p?.role==="host"&&(game?.mode==="online"||game?.bossRaid?.online)){
+            const awaitingIdentity=String(msg.awaitingStartCommitIdentity || "");
+            if(awaitingIdentity&&p2p?.startCommitPacket&&onlineStartIdentity(p2p.startCommitPacket)===awaitingIdentity){sendOnlineStartCommitted(p2p.startCommitPacket,"guest-sync-probe-awaiting-commit");scheduleOnlineStartCommittedRetry(p2p.startCommitPacket,1);}
+            const differs=Number(msg.turnSerial)!==Number(game.turnSerial)||Number(msg.revision||0)!==Number(onlineAuthoritativeRevision||0)||!!msg.pendingActionId||!!awaitingIdentity;
+            if(differs){const actionId=String(msg.pendingActionId || ""),cached=actionId?hostResults.get(actionId):null;sendAuthoritativeOnlineState([],cached?.accepted?actionId:null,true,resolutionFor(actionId));}
+            return true;
+          }
+          return false;
+        };
+        const suspendSession = (reason="background") => {
+          clearRetry();
+          if(stateProbeTimer)cancelTimer(stateProbeTimer);stateProbeTimer=0;
+          if(pending){pending.suspendedAt=Date.now();pending.suspendReason=String(reason);}
+          return !!pending;
+        };
+        const resumeSession = (reason="foreground") => {
+          const active=!!game&&(game.mode==="online"||!!game?.bossRaid?.online);
+          if(!active)return false;
+          if(pending){
+            const scope=sessionScope();if(!scope || scope.closed)return false;
+            pending.suspendedAt ||= Date.now();requestResolution(`resume:${reason}`);
+            retryTimer=scope.setInterval(()=>requestResolution(`resume-retry:${reason}`),650,"online-action-resolution-retry",{phase:"SESSION"});
+          }
+          if(game.mode==="online"&&p2p?.role==="host"&&onlineAutoCommandOwner){
+            const owner=onlineAutoCommandOwner,same=owner.game===game&&owner.token===game.token&&owner.serial===game.turnSerial;
+            if(owner.timerId)sessionScope()?.cancel?.(owner.timerId);
+            onlineAutoCommandOwner=null;onlineAutoCommandActive=false;
+            if(same){busy=false;window.OnlineRuntime?.projection?.request?.("online-auto-resume",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});scheduleAI();}
+          }
+          return true;
+        };
+        const closeSession = () => {
+          clearPending({unlock:false,resolution:"session-close"});
+          if(stateProbeTimer)cancelTimer(stateProbeTimer);stateProbeTimer=0;
+          hostResults.clear();onlineAuthoritativeRevision=0;commandSerial=0;
+          if(p2p){p2p.lastAuthoritativeRevision=0;p2p.lastVisualPacketId=null;}
+          return view();
+        };
+        const resetBattle = () => {closeSession();return true;};
+        return Object.freeze({execute,submitManualSummon,receive,settle,startProbe,suspendSession,resumeSession,closeSession,resetBattle,clearPending,hasPending,pendingActionId,resolutionFor,view,debug:view});
+      })();
 
       function executeSupportLayer(next,g,t,s,a,opt={}){
         const actor=unitAt(g,t,s);
-        const bossOnline=!!g?.bossRaid?.online;
-        const guestOwnsAction=g===game&&p2p?.role==="guest"&&!p2p.applyingRemoteAction&&((g?.mode==="online"&&t===onlineSide)||(bossOnline&&t==="P"&&window.__redTimeoraBossRaid?.localControlsCurrent?.(g)));
-        if(guestOwnsAction){
-          if(onlinePendingCommand)return false;
-          const actionId=`${onlineCurrentMatchId()}:turn:${g.turnSerial}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
-          return beginOnlinePendingCommand({type:"actionRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossOnline?"BOSS_COOP":"PVP",matchId:onlineCurrentMatchId(),actionId,expectedTurnSerial:g.turnSerial,expectedTurn:g.turn,team:t,slot:s,action:JSON.parse(JSON.stringify(a||{}))});
-        }
         if(g?.bossRaid&&a?.type==="bossPassEmpty")return window.__redTimeoraBossRaid?.passEmpty?.(g,t,s);
 
         const previousReactive=reactiveEnergyCurrentGame;reactiveEnergyCurrentGame=g;
@@ -20539,14 +20757,11 @@ function executeFoxWithPlan(actions,mode,plan){
                 }else if(a.strikeMode==="double"){if(a.costOverride!=="**")return false;}else return false;
               }
 
-              const skipJcCustom=typeof game!=="undefined"&&g===game&&g.mode==="online"&&p2p.role==="guest"&&!p2p.applyingRemoteAction&&t===onlineSide;
-              if(!skipJcCustom){
-                if(a?.type==="gather"&&actor&&(cardHasCapability(actor,"jungleMud")||cardHasCapability(actor,"alternatingCharge")))return executeCustomGather(g,t,s,actor,a);
-                if(a?.type==="skill"&&actor){
-                  if(skillHasTag(actor,a.skill,"summon")&&summonLimitReached(g,t,actor))return false;
-                  if(actionSkillHasEffect(a,"circuitVoltageBurst")&&countCompleteW(actor)<1)return false;
-                  if(actionSkillHasEffect(a,"abyssVortex")&&(!Array.isArray(a.vortexTargets)||a.vortexTargets.length!==2||a.vortexTargets[0]===a.vortexTargets[1]))return false;
-                }
+              if(a?.type==="gather"&&actor&&(cardHasCapability(actor,"jungleMud")||cardHasCapability(actor,"alternatingCharge")))return executeCustomGather(g,t,s,actor,a);
+              if(a?.type==="skill"&&actor){
+                if(skillHasTag(actor,a.skill,"summon")&&summonLimitReached(g,t,actor))return false;
+                if(actionSkillHasEffect(a,"circuitVoltageBurst")&&countCompleteW(actor)<1)return false;
+                if(actionSkillHasEffect(a,"abyssVortex")&&(!Array.isArray(a.vortexTargets)||a.vortexTargets.length!==2||a.vortexTargets[0]===a.vortexTargets[1]))return false;
               }
 
               if(a?.type==="switch"&&eternaLocksTeam(g,t)){const et=activeEterna(g,other(t));log(g,`${actor?.name||"캐릭터"}: ${et?.name||"이터너"}의 특성으로 교체할 수 없습니다.`);return false;}
@@ -20578,7 +20793,8 @@ function executeFoxWithPlan(actions,mode,plan){
         const normalizedResolution = actionResolution?.actionId && ["accepted","rejected","unknown"].includes(String(actionResolution.status || ""))
           ? { actionId:String(actionResolution.actionId), status:String(actionResolution.status), reason:String(actionResolution.reason || "") }
           : null;
-        onlineAuthoritativeRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0))+1;
+        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));
+        onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;
         game.networkRevision = onlineAuthoritativeRevision;
         const revision = onlineAuthoritativeRevision;
         const sent = onlineSafeSend({
@@ -20655,11 +20871,11 @@ function executeFoxWithPlan(actions,mode,plan){
         if(bossMode){
           let incomingPreview;
           try{incomingPreview=JSON.parse(msg.state);}catch(error){window.__megaRecordRecoveredError?.(error,"authoritative-state.boss.parse");return false;}
-          reconcileOnlinePendingCommand(msg);
+          OnlineActionAdmissionOwner.settle(msg);
           const current=game?.order?.[game?.turn]||[],currentUnit=game?unitAt(game,current[0],current[1]):null;
           const localOwnsTurn=!!game&&current[0]==="P"&&((currentUnit&&currentUnit.bossOwner===p2p.role)||(!currentUnit&&game?.bossRaid?.slotOwners?.[current[1]]===p2p.role));
           const modalDecision=document.getElementById("modal")?.classList.contains("open")&&!game?.winner;
-          const localDecisionOpen=localOwnsTurn&&!onlinePendingCommand&&(!!pendingSkill||modalDecision);
+          const localDecisionOpen=localOwnsTurn&&!OnlineActionAdmissionOwner.hasPending()&&(!!pendingSkill||modalDecision);
           const sameTurnSnapshot=Number(msg.turnSerial)===Number(game?.turnSerial)&&Number(incomingPreview?.turn)===Number(game?.turn);
           const sameDecisionState=sameTurnSnapshot&&!!game&&onlineSnapshotEquivalentForInput(window.__redTimeoraBossRaid.serialize(game),msg.state);
           if(localDecisionOpen&&sameDecisionState){
@@ -20696,15 +20912,15 @@ function executeFoxWithPlan(actions,mode,plan){
           if(game.pendingTraitChoices?.[0]?.kind==="bossReward")processPendingTraitChoice();
           else{document.getElementById("modal")?.classList.remove("open");scheduleAI();}
           onlineSafeSend({type:"stateAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:onlineCurrentMatchId(),revision,turnSerial:game.turnSerial,ackActionId:msg.ackActionId||null});
-          startOnlineStateProbeLoop();
+          OnlineActionAdmissionOwner.startProbe();
           return true;
         }
         try{JSON.parse(msg.state);}catch(error){window.__megaRecordRecoveredError?.(error,"authoritative-state.pvp.parse");return false;}
-        reconcileOnlinePendingCommand(msg);
+        OnlineActionAdmissionOwner.settle(msg);
         const activeTurn = game?.order?.[game?.turn] || [];
         const localTurn = activeTurn[0] === onlineSide;
         const modalDecision = document.getElementById("modal")?.classList.contains("open") && !game?.winner;
-        const localDecisionOpen = localTurn && !onlinePendingCommand && (!!pendingSkill || modalDecision);
+        const localDecisionOpen = localTurn && !OnlineActionAdmissionOwner.hasPending() && (!!pendingSkill || modalDecision);
         const sameTurnSnapshot = Number(msg.turnSerial) === Number(game?.turnSerial) && Number(msg.turn) === Number(game?.turn);
         const sameDecisionState = sameTurnSnapshot && !!game && onlineSnapshotEquivalentForInput(serializeOnlineGame(), msg.state);
         if (localDecisionOpen && sameDecisionState) {
@@ -20739,148 +20955,8 @@ function executeFoxWithPlan(actions,mode,plan){
         return true;
       }
 
-      function handleOnlineActionRequest(msg) {
-        const bossMode=!!game?.bossRaid?.online,expectedMode=bossMode?"BOSS_COOP":"PVP";
-        if(msg?.mode!==expectedMode)return false;
-        if (p2p?.role !== "host" || !game || !(game.mode === "online" || bossMode)) return false;
-        const actionId = String(msg?.actionId || "");
-        if (!actionId) return false;
-        const incomingMatch = String(msg.matchId || ""), localMatch = onlineCurrentMatchId();
-        if (incomingMatch && localMatch && incomingMatch !== localMatch) return false;
-        const cached = onlineHostCommandResults.get(actionId);
-        if (cached) {
-          onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossMode?"BOSS_COOP":"PVP",matchId:localMatch,actionId,accepted:cached.accepted,reason:cached.reason||"duplicate",turnSerial:game.turnSerial});
-          sendAuthoritativeOnlineState([], cached.accepted ? actionId : null, true, {actionId,status:cached.accepted?"accepted":"rejected",reason:cached.reason||"duplicate"});
-          return true;
-        }
-        const cur = game.order?.[game.turn] || [];
-        let valid = Number(msg.expectedTurnSerial) === Number(game.turnSerial) && Number(msg.expectedTurn) === Number(game.turn);
-        if(bossMode){
-          const currentUnit=unitAt(game,cur[0],cur[1]);
-          const guestOwnsSlot=currentUnit?.bossOwner==="guest"||(!currentUnit&&game.bossRaid?.slotOwners?.[cur[1]]==="guest");
-          valid=valid&&cur[0]==="P"&&msg.team==="P"&&Number(cur[1])===Number(msg.slot)&&guestOwnsSlot;
-        }else if (msg.commandKind === "summon") {
-          const pending = normalizePendingSummonTurns(game);
-          valid = valid && msg.team === "A" && !!pending && pending.q.team === "A" &&
-            pending.u.uid === msg.summonUid && pending.owner.uid === msg.ownerUid &&
-            msg.actionId === pending.q.actionId && msg.transactionId === pending.q.transactionId;
-          if(valid)pending.q.submitState="COMMITTING";
-        } else {
-          valid = valid && msg.team === "A" && cur[0] === "A" && Number(cur[1]) === Number(msg.slot);
-        }
-        if (!valid) {
-          onlineHostCommandResults.set(actionId, { accepted:false, reason:"stale-turn" });
-          onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossMode?"BOSS_COOP":"PVP",matchId:localMatch,actionId,accepted:false,reason:"stale-turn",turnSerial:game.turnSerial});
-          sendAuthoritativeOnlineState([], null, true, {actionId,status:"rejected",reason:"stale-turn"});
-          return false;
-        }
-        const previousApplyingRemoteAction = p2p.applyingRemoteAction;
-        p2p.applyingRemoteAction = true;
-        let accepted = false;
-        try {
-          accepted = !bossMode && msg.commandKind === "summon"
-            ? !!applyManualSummonAction(game, msg.team, msg.summonUid, msg.action || {})
-            : !!execute(game, msg.team, Number(msg.slot), msg.action || {}, { remoteAuthoritative:true });
-        } catch (error) {
-          accepted = false;
-          if (window.DEBUG_BATTLE_EVENTS) console.error("[online] remote action error", error);
-        } finally { p2p.applyingRemoteAction = previousApplyingRemoteAction; }
-        onlineHostCommandResults.set(actionId, { accepted, reason:accepted ? "" : "invalid-action" });
-        if (onlineHostCommandResults.size > 256) onlineHostCommandResults.delete(onlineHostCommandResults.keys().next().value);
-        if (accepted) { p2p.__pendingAuthoritativeAck = actionId; afterAction(); }
-        else sendAuthoritativeOnlineState([], null, true, {actionId,status:"rejected",reason:"invalid-action"});
-        onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossMode?"BOSS_COOP":"PVP",matchId:localMatch,actionId,accepted,reason:accepted?"":"invalid-action",turnSerial:game.turnSerial});
-        return accepted;
-      }
-
-      function startOnlineStateProbeLoop() {
-        if(onlineStateProbeTimer)window.OnlineRuntime?.sessionScope?.cancel?.(onlineStateProbeTimer);
-        onlineStateProbeTimer=null;
-        onlineStateProbeTimer = window.OnlineRuntime?.sessionScope?.setInterval?.(() => {
-          const bossOnline=!!game?.bossRaid?.online;
-          if (!p2p?.connected || !game || !(game.mode === "online" || bossOnline)) return;
-          if (p2p.role === "guest") {
-            onlineSafeSend({type:"syncProbe",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossOnline?"BOSS_COOP":"PVP",matchId:onlineCurrentMatchId(),turnSerial:game.turnSerial,revision:p2p.lastAuthoritativeRevision||0,pendingActionId:onlinePendingCommand?.packet?.actionId||null,awaitingStartCommitIdentity:p2p?.guestStartAwaitingHostCommit?.identity||null});
-          }
-        }, 2500,"battle-authoritative-state-probe",{phase:"IN_BATTLE"}) || null;
-        return !!onlineStateProbeTimer;
-      }
-
-      function handleOnlineTurnSyncPacket(msg){
-        const expectedMode=(p2p?.sessionMode==="bossRaid"||!!game?.bossRaid?.online)?"BOSS_COOP":"PVP";
-        const incomingMatch=String(msg?.matchId||""),localMatch=String(p2p?.matchId||game?.matchId||"");
-        if(msg?.protocol!==ONLINE_TURN_SYNC_VERSION||msg?.mode!==expectedMode||!incomingMatch||!localMatch||incomingMatch!==localMatch)return false;
-        if(msg.type==="actionRequest"){handleOnlineActionRequest(msg);return true;}
-        if(msg.type==="commandAck"&&p2p?.role==="guest"){
-          const pending=onlinePendingCommand;
-          if(!pending||msg.actionId!==pending.packet.actionId)return;
-          pending.acked=true;pending.ackAt=Date.now();pending.ackRejected=msg.accepted!==true;
-          // Rejection may mean this client is stale. Keep input locked until the host state resolves it.
-          sendOnlinePendingCommand();
-          return;
-        }
-        if(msg.type==="authoritativeState")return applyAuthoritativeOnlineState(msg);
-        if(msg.type==="stateRequest"&&p2p?.role==="host"){
-          const requestedActionId=String(msg.actionId||"");
-          const cached=requestedActionId?onlineHostCommandResults.get(requestedActionId):null;
-          const resolution=requestedActionId?{actionId:requestedActionId,status:cached?(cached.accepted?"accepted":"rejected"):"unknown",reason:cached?(cached.reason||(cached.accepted?"accepted-by-authority":"rejected-by-authority")):"not-observed-by-authority"}:null;
-          sendAuthoritativeOnlineState([],cached?.accepted?requestedActionId:null,true,resolution);return;
-        }
-        if(msg.type==="syncProbe"&&p2p?.role==="host"&&(game?.mode==="online"||game?.bossRaid?.online)){
-          const awaitingIdentity=String(msg.awaitingStartCommitIdentity||"");
-          if(awaitingIdentity&&p2p?.startCommitPacket&&onlineStartIdentity(p2p.startCommitPacket)===awaitingIdentity){sendOnlineStartCommitted(p2p.startCommitPacket,"guest-sync-probe-awaiting-commit");scheduleOnlineStartCommittedRetry(p2p.startCommitPacket,1);}
-          const differs=Number(msg.turnSerial)!==Number(game.turnSerial)||Number(msg.revision||0)!==Number(onlineAuthoritativeRevision||0)||!!msg.pendingActionId||!!awaitingIdentity;
-          if(differs){const requestedActionId=String(msg.pendingActionId||"");const cached=requestedActionId?onlineHostCommandResults.get(requestedActionId):null;const resolution=requestedActionId?{actionId:requestedActionId,status:cached?(cached.accepted?"accepted":"rejected"):"unknown",reason:cached?(cached.reason||(cached.accepted?"accepted-by-authority":"rejected-by-authority")):"not-observed-by-authority"}:null;sendAuthoritativeOnlineState([],cached?.accepted?requestedActionId:null,true,resolution);}
-        }
-      }
       for(const type of ["actionRequest","commandAck","authoritativeState","stateRequest","syncProbe"])
-        registerOnlineConnectionRoute(type,"turn-sync",handleOnlineTurnSyncPacket,70);
-
-      const OnlineTurnSyncEngine = (() => {
-        const resumeSession = (reason = "foreground") => {
-          const active=!!game&&(game.mode==="online"||!!game?.bossRaid?.online);
-          if(!active)return false;
-          if(onlinePendingCommand){
-            if(onlineCommandRetryTimer&&!window.OnlineRuntime?.sessionScope?.cancel?.(onlineCommandRetryTimer))window.TimerManager.clear(onlineCommandRetryTimer);
-            onlineCommandRetryTimer=null;
-            // After background, never blindly replay the original action. Re-query the host until
-            // an authoritative resolution arrives; a single stateRequest can itself be lost.
-            onlinePendingCommand.suspendedAt ||= Date.now();
-            requestOnlinePendingResolution(`resume:${reason}`);
-            const retryResolution=()=>requestOnlinePendingResolution(`resume-retry:${reason}`);
-            onlineCommandRetryTimer=window.OnlineRuntime?.sessionScope?.setInterval?.(retryResolution,650,"online-command-resolution-retry",{phase:"SESSION"}) || window.TimerManager.setInterval(retryResolution,650);
-          }
-          if(game.mode==="online"&&p2p?.role==="host"&&onlineAutoCommandOwner){
-            const owner=onlineAutoCommandOwner,same=owner.game===game&&owner.token===game.token&&owner.serial===game.turnSerial;
-            if(owner.timerId&&!window.OnlineRuntime?.sessionScope?.cancel?.(owner.timerId))window.TimerManager.clear(owner.timerId);
-            onlineAutoCommandOwner=null;onlineAutoCommandActive=false;
-            if(same){busy=false;renderActions();scheduleAI();}
-          }
-          return true;
-        };
-        const suspendSession = (reason = "background") => suspendOnlinePendingCommand(reason);
-        const closeSession = () => {
-          if(onlineStateProbeTimer)window.OnlineRuntime?.sessionScope?.cancel?.(onlineStateProbeTimer); onlineStateProbeTimer = null;
-          stopOnlinePendingCommand({ unlock: false, resolution:"session-close" });
-          onlineHostCommandResults.clear();
-          onlineAuthoritativeRevision = 0;
-          if (p2p) {
-            p2p.lastAuthoritativeRevision = 0;
-            p2p.lastVisualPacketId = null;
-          }
-          return debug();
-        };
-        const debug = () => ({
-          stateProbeTimer: !!onlineStateProbeTimer,
-          pendingCommand: !!onlinePendingCommand,
-          pendingActionId:onlinePendingCommand?.packet?.actionId || null,
-          pendingSuspended:!!onlinePendingCommand?.suspendedAt,
-          hostCommandResults: onlineHostCommandResults.size,
-          authoritativeRevision: Number(onlineAuthoritativeRevision || 0),
-          resolutionTrace:onlineCommandResolutionTrace.slice(-40),
-        });
-        return Object.freeze({ closeSession, suspendSession, resumeSession, debug });
-      })();
+        registerOnlineConnectionRoute(type,"online-action-admission",OnlineActionAdmissionOwner.receive,70);
 
       /* ===================== 타임오러 4.5☆ / 운명의 시계 / 드래곤메모리 리워크 ===================== */
       const TIMEORA_CARD = C(
@@ -21250,7 +21326,7 @@ function executeFoxWithPlan(actions,mode,plan){
         }
         if (!on && timeInputLockBusyOwned) {
           timeInputLockBusyOwned = false;
-          if (!(typeof onlinePendingCommand !== "undefined" && onlinePendingCommand)) busy = false;
+          if (!OnlineActionAdmissionOwner.hasPending()) busy = false;
         }
         return timeInputLocked;
       }
@@ -21260,9 +21336,6 @@ function executeFoxWithPlan(actions,mode,plan){
 
       function timeExecuteLayerBody(next,g,t,s,a,opt={}) {
         const actor = unitAt(g,t,s);
-        const isGuestRequest = g===game && g?.mode==="online" && p2p?.role==="guest" && !p2p.applyingRemoteAction && t===onlineSide;
-        if (isGuestRequest) return executeSupportLayer(next,g,t,s,a,opt);
-
         if (a?.type === "gather" && cardHasCapability(actor, "timeControl")) {
           const accelerationActive = timeAccelerationIsActive(g,actor);
           /* 로컬 미리보기와 권위 상태가 어긋나도 기본 1E로 조용히 행동을 소비하지 않는다. */
@@ -23634,11 +23707,12 @@ bossHooks.card = function(bossCardBefore,u){ const legacy=LEGACY_CARD_ALIASES[u?
     })();
     function bossStartLobbyHeartbeat(){
       if(bossLobbyHeartbeatTimer)return;
-      bossLobbyHeartbeatTimer=window.OnlineRuntime?.sessionScope?.setInterval?.(()=>BossLobbyApplication.publish("heartbeat"),850,"boss-lobby-heartbeat",{phase:"SESSION"})||window.TimerManager.setInterval(()=>BossLobbyApplication.publish("heartbeat"),850);
+      const scope=window.OnlineRuntime?.sessionScope;if(!scope||scope.closed)return false;
+      bossLobbyHeartbeatTimer=scope.setInterval(()=>BossLobbyApplication.publish("heartbeat"),850,"boss-lobby-heartbeat",{phase:"SESSION"});
       BossLobbyApplication.publish("lobby-state");
     }
     function bossStopLobbyHeartbeat(){
-      if(bossLobbyHeartbeatTimer&&!window.OnlineRuntime?.sessionScope?.cancel?.(bossLobbyHeartbeatTimer))window.TimerManager.clear(bossLobbyHeartbeatTimer);
+      if(bossLobbyHeartbeatTimer)window.OnlineRuntime?.sessionScope?.cancel?.(bossLobbyHeartbeatTimer);
       bossLobbyHeartbeatTimer=0;
     }
     function bossRefreshOnlineLobby(){
@@ -23890,7 +23964,7 @@ bossHooks.aiReason = function(bossReasonBefore,g,t,s,a){
       g.bossRaid={version:BOSS_RAID_VERSION,online,difficulty:4.5,bossId:"red-timeora-legion",sharedClock:{hourDeg:0,minuteDeg:90},kills:0,rewardSerial:0,hyperGuard:0,slotOwners:online?["host","guest"]:["solo","solo"],hostDeck:[...hostDeck],guestDeck:guestDeck?[...guestDeck]:null,hostPlusStar:hostChoice,guestPlusStar:guestChoice,rewardResolvedSerial:0};
       g.matchId=online?(p2p.matchId||bossRandomId("raid-match")):bossRandomId("raid-solo");g.token=++battleToken;bossSyncClock(g);return g;
     }
-    function bossPrepareGame(g){window.TimerManager.clear(bossRewardDelayTimer);bossRewardDelayTimer=0;bossRewardLocalReadyAt.clear();window.TimerManager.clear(bossVictoryDelayTimer);bossVictoryDelayTimer=0;bossVictoryReadyAt=0;bossVictoryMatchId="";if(bossOnlineAiTimer&&!window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer))window.TimerManager.clear(bossOnlineAiTimer);bossOnlineAiTimer=0;game=g;lastBattleConfig=null;busy=true;pendingSkill=null;lastLog=0;visualEvents=[];visualHoldMs=0;document.getElementById("log").innerHTML="";log(g,"붉은 시간의 군단 보스전 시작 · 타임오러 사용 불가 · 적 공용 시계 활성.","turn");NavigationApplication.request("game");render();startBgm();}
+    function bossPrepareGame(g){window.TimerManager.clear(bossRewardDelayTimer);bossRewardDelayTimer=0;bossRewardLocalReadyAt.clear();window.TimerManager.clear(bossVictoryDelayTimer);bossVictoryDelayTimer=0;bossVictoryReadyAt=0;bossVictoryMatchId="";if(bossOnlineAiTimer)window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer);bossOnlineAiTimer=0;game=g;lastBattleConfig=null;busy=true;pendingSkill=null;lastLog=0;visualEvents=[];visualHoldMs=0;document.getElementById("log").innerHTML="";log(g,"붉은 시간의 군단 보스전 시작 · 타임오러 사용 불가 · 적 공용 시계 활성.","turn");NavigationApplication.request("game");render();startBgm();}
     function bossPlayIntro(){
       if(bossIntroPromise)return bossIntroPromise;
       bossIntroPromise=new Promise(resolve=>{
@@ -23905,7 +23979,7 @@ bossHooks.aiReason = function(bossReasonBefore,g,t,s,a){
       });
       return bossIntroPromise;
     }
-    async function bossLaunch(g){if(g?.bossRaid?.online)bossStopLobbyHeartbeat();bossPrepareGame(g);if(g?.bossRaid?.online){onlineAuthoritativeRevision=Number(g?.networkRevision||0);p2p.lastAuthoritativeRevision=Number(g?.networkRevision||0);window.OnlineRuntime?.markBattleStarted?.({source:"boss-launch",canonicalRevision:Number(g?.networkRevision||g?.turnSerial||0)});startOnlineStateProbeLoop();}await bossPlayIntro();if(game!==g)return;busy=false;render();if(g?.bossRaid&&(!g.bossRaid.online||p2p?.role==="host"))window.TimerManager.setTimeout(()=>window.__megaSpectatorR18?.startHost?.(),80);bossSendState(true);scheduleAI();}
+    async function bossLaunch(g){if(g?.bossRaid?.online)bossStopLobbyHeartbeat();bossPrepareGame(g);if(g?.bossRaid?.online){onlineAuthoritativeRevision=Number(g?.networkRevision||0);p2p.lastAuthoritativeRevision=Number(g?.networkRevision||0);window.OnlineRuntime?.markBattleStarted?.({source:"boss-launch",canonicalRevision:Number(g?.networkRevision||g?.turnSerial||0)});OnlineActionAdmissionOwner.startProbe();}await bossPlayIntro();if(game!==g)return;busy=false;render();if(g?.bossRaid&&(!g.bossRaid.online||p2p?.role==="host"))window.TimerManager.setTimeout(()=>window.__megaSpectatorR18?.startHost?.(),80);bossSendState(true);scheduleAI();}
 
     const BOSS_REWARDS=[
       {id:"energyPair",rarity:"common",weight:34,name:"시간 결정 묶음",desc:"현재 필드 아군 둘에게 무작위 에너지 1개씩 지급."},
@@ -24093,31 +24167,31 @@ bossHooks.scheduleAI = function(bossScheduleBefore){
       if(game.winner||busy||game.pendingTraitChoices?.length)return;
       prepareCurrentTurn(game);
       const [t,s]=game.order[game.turn],u=unitAt(game,t,s),actions=legalActions(game,t,s),noLegalActions=actions.length===0;
-      if(game.bossRaid.online&&p2p.role==="guest"){busy=false;renderActions();return;}
-      if(t==="P"&&!noLegalActions){renderActions();return;}
+      if(game.bossRaid.online&&p2p.role==="guest"){busy=false;window.OnlineRuntime?.projection?.request?.("boss-guest-wait",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});return;}
+      if(t==="P"&&!noLegalActions){window.OnlineRuntime?.projection?.request?.("boss-player-turn",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});return;}
       const token=game.token,serial=game.turnSerial;
-      busy=true;renderActions();
+      busy=true;if(game.bossRaid.online)window.OnlineRuntime?.projection?.request?.("boss-automatic-start",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});else ActionPanelConvergenceOwner.request("boss-automatic-start");
       let onlineTimerId=0;
       const run=()=>{
         if(game?.bossRaid?.online&&bossOnlineAiTimer!==onlineTimerId)return;
         bossOnlineAiTimer=0;
         if(!game||game.token!==token||game.turnSerial!==serial){busy=false;return;}
         if(noLegalActions){
-          log(game,`${u?.name||"빈 슬롯"}: 가능한 행동이 없어 턴을 자동으로 넘김.`,"turn");
-          endTurn(game,t,s,false);busy=false;afterAction();return;
+          const ok=execute(game,t,s,{type:"noLegalPass",actionId:`${game.battleId||game.matchId}:boss-automatic:${serial}:no-legal-actions`},game.bossRaid.online?{admissionSource:"host-automatic"}:{});
+          busy=false;if(ok)afterAction();else window.__megaRecordRecoveredError?.(new Error("BOSS_NO_LEGAL_ACTION_REJECTED"),"boss.scheduleAI");return;
         }
         const view=maskedStateFor(game,t),liveVisualEvents=visualEvents,liveVisualHoldMs=visualHoldMs;
         let a=null,reason="";
         try{visualEvents=[];visualHoldMs=0;a=u?.scheduledAction?{type:"scheduled"}:chooseAI(view,t,s,false);if(a&&!u?.scheduledAction)reason=aiReason(view,t,s,a)||"";}
         finally{visualEvents=liveVisualEvents;visualHoldMs=liveVisualHoldMs;}
-        let ok=a?execute(game,t,s,a):false;
+        let ok=a?execute(game,t,s,a,game.bossRaid.online?{admissionSource:"host-automatic"}:{}):false;
         if(a&&ok&&reason)log(game,`보스 AI 판단: ${reason}`,"aiwhy");
-        if(!ok){const fallback=legalActions(game,t,s)[0];if(fallback)ok=execute(game,t,s,fallback);}
-        if(!ok)endTurn(game,t,s,false);
-        busy=false;afterAction();
+        busy=false;
+        if(ok)afterAction();
+        else window.__megaRecordRecoveredError?.(new Error("BOSS_AUTOMATIC_ACTION_REJECTED"),"boss.scheduleAI");
       };
       const delay=Math.max(520,Number(document.getElementById("speed")?.value||900));
-      if(game.bossRaid.online){if(bossOnlineAiTimer&&!window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer))window.TimerManager.clear(bossOnlineAiTimer);onlineTimerId=window.OnlineRuntime?.sessionScope?.setTimeout?.(run,delay,"boss-online-ai",{phase:"SESSION"})||window.TimerManager.setTimeout(run,delay);bossOnlineAiTimer=onlineTimerId;}
+      if(game.bossRaid.online){if(bossOnlineAiTimer)window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer);const scope=window.OnlineRuntime?.sessionScope;if(!scope||scope.closed){busy=false;return;}onlineTimerId=scope.setTimeout(run,delay,"boss-online-ai",{phase:"IN_BATTLE"});bossOnlineAiTimer=onlineTimerId;}
       else scheduleLocalAutoTurnTimer(noLegalActions?"boss-no-legal-actions":"boss-ai",delay,run);
     };
 
@@ -24149,17 +24223,19 @@ bossHooks.scheduleAI = function(bossScheduleBefore){
 bossHooks.afterAction = function(bossAfterBefore){
       if(!game?.bossRaid)return bossAfterBefore();
       pendingSkill=null;
-      if(game.bossRaid.online&&p2p.role==="guest"&&onlinePendingCommand){
-        render();
+      if(game.bossRaid.online&&p2p.role==="guest"&&OnlineActionAdmissionOwner.hasPending()){
+        window.OnlineRuntime?.projection?.request?.("boss-guest-command-pending",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0),surfaceIntent:"PRESERVE_LOCAL_INPUT"});
         return;
       }
       const teammateVisuals=game.bossRaid.online&&p2p.role==="host"
         ?cloneOnlineVisualEvents(visualEvents)
         :[];
-      render();
       const reward=game.pendingTraitChoices?.[0];
       if(reward?.kind==="bossReward"&&reward.visualDelayMs==null)reward.visualDelayMs=true?Math.max(0,Number(visualHoldMs||0))+140:0;
-      bossSendState(false,teammateVisuals);
+      if(game.bossRaid.online&&p2p.role==="host"){
+        bossSendState(false,teammateVisuals);
+        window.OnlineRuntime?.projection?.request?.("boss-host-action-commit",{phase:"IN_BATTLE",canonicalRevision:Number(game.networkRevision||0)});
+      }else render();
       if(!processPendingTraitChoice())scheduleAI();
     };
 
@@ -24426,7 +24502,7 @@ bossHooks.afterAction = function(bossAfterBefore){
         active: !!s?.active,
         matched: !!s?.matched,
         networkPresent: !!s,
-        guestPending: !!onlinePendingCommand,
+        guestPending: OnlineActionAdmissionOwner.hasPending(),
         lobbyHeartbeat: !!bossLobbyHeartbeatTimer,
         sessionMode: p2p?.sessionMode || null,
       };
@@ -24459,14 +24535,14 @@ bossHooks.afterAction = function(bossAfterBefore){
       p2p.__bossStartReceivedMatchId=null;
       const boundBossConn=rawConnection;
       const boundBossMatchId=p2p.matchId;
-      onlineAuthoritativeRevision=0;onlineHostCommandResults.clear();stopOnlinePendingCommand({unlock:false});p2p.lastAuthoritativeRevision=0;p2p.lastVisualPacketId=null;
+      onlineAuthoritativeRevision=0;OnlineActionAdmissionOwner.resetBattle();p2p.lastAuthoritativeRevision=0;p2p.lastVisualPacketId=null;
       const onConnectionOpen=()=>{
         if(p2p.conn!==boundBossConn||p2p.sessionMode!=="bossRaid"||p2p.matchId!==boundBossMatchId)return;
         p2p.connected=true;p2p.connectionInterrupted=false;
         if(game?.bossRaid?.online){
           game.connectionInterrupted=false;
           if(p2p.role==="host")sendAuthoritativeOnlineState([],null,true);
-          else onlineSafeSend({type:"stateRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:p2p.matchId,actionId:onlinePendingCommand?.packet?.actionId||null,knownTurnSerial:game.turnSerial,knownRevision:p2p.lastAuthoritativeRevision||0,resumeReason:"connection-open"});
+          else onlineSafeSend({type:"stateRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:p2p.matchId,actionId:OnlineActionAdmissionOwner.pendingActionId(),knownTurnSerial:game.turnSerial,knownRevision:p2p.lastAuthoritativeRevision||0,resumeReason:"connection-open"});
         }else{bossStartLobbyHeartbeat();BossLobbyApplication.publish("lobby-state");bossRefreshOnlineLobby();}
         window.__megaSyncOnlineChatUI?.();
       };
@@ -24503,16 +24579,16 @@ bossHooks.afterAction = function(bossAfterBefore){
         if(p2p.role==="host"){
           bossSendState(true);
           const [team]=game.order?.[game.turn]||[];
-          if(team==="A"&&!game.winner&&!game.pendingTraitChoices?.length){if(bossOnlineAiTimer&&!window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer))window.TimerManager.clear(bossOnlineAiTimer);bossOnlineAiTimer=0;busy=false;scheduleAI();}
+          if(team==="A"&&!game.winner&&!game.pendingTraitChoices?.length){if(bossOnlineAiTimer)window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer);bossOnlineAiTimer=0;busy=false;scheduleAI();}
         }else{
-          onlineSafeSend({type:"stateRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:p2p.matchId,actionId:onlinePendingCommand?.packet?.actionId||null,knownTurnSerial:game.turnSerial,knownRevision:p2p.lastAuthoritativeRevision||0,resumeReason:reason});
+          onlineSafeSend({type:"stateRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:"BOSS_COOP",matchId:p2p.matchId,actionId:OnlineActionAdmissionOwner.pendingActionId(),knownTurnSerial:game.turnSerial,knownRevision:p2p.lastAuthoritativeRevision||0,resumeReason:reason});
         }
         return true;
       }
       return false;
     }
     function bossPauseOnlineSession(reason="background"){
-      if(bossOnlineAiTimer&&!window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer))window.TimerManager.clear(bossOnlineAiTimer);
+      if(bossOnlineAiTimer)window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer);
       bossOnlineAiTimer=0;
       if(game?.bossRaid?.online){busy=true;return true;}
       return false;
@@ -24577,8 +24653,8 @@ bossHooks.afterAction = function(bossAfterBefore){
       showDeckPicker:showBossDeckPicker,
       localControlsCurrent:bossLocalControlsCurrent,
       passEmpty:bossPassEmptySlot,
-      guestActionPending:()=>!!onlinePendingCommand,
-      clearGuestPending:()=>stopOnlinePendingCommand({unlock:true}),
+      guestActionPending:()=>OnlineActionAdmissionOwner.hasPending(),
+      clearGuestPending:()=>OnlineActionAdmissionOwner.clearPending({unlock:true,resolution:"boss-clear"}),
       abortMatchmaking:()=>bossAbortMatchmaking({showMenu:false,closeModal:true}),
       closeSession:bossCloseSession,
       debug:bossDebug,
@@ -26845,7 +26921,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         releaseClockOwner();
         if (timeInputLockBusyOwned) {
           timeInputLockBusyOwned = false;
-          if (!(typeof onlinePendingCommand !== "undefined" && onlinePendingCommand)) busy = false;
+          if (!OnlineActionAdmissionOwner.hasPending()) busy = false;
         }
       }
       return timeInputLocked;
@@ -26890,7 +26966,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         connected:!!p2p?.connected && !!p2p?.conn?.open,
         battleStarted:(!!p2p?.battleStarted || !!g?.battleStarted) && !(p2p?.role==="host" && (p2p?.onlineStartPending || p2p?.startCommitPacket) && !p2p?.startCommitAck) && !(p2p?.role==="guest" && p2p?.guestStartAwaitingHostCommit),
         reconnecting:!!p2p?.reconnecting || !!p2p?.connectionInterrupted || runtime.state === "RECONNECTING" || (!!runtime.generation&&runtime.committed&&!runtime.routesReady),
-        pendingActionId:(typeof onlinePendingCommand !== "undefined" ? onlinePendingCommand?.packet?.actionId : null) || p2p?.pendingActionId || null,
+        pendingActionId:OnlineActionAdmissionOwner.pendingActionId(),
         authoritativeRevision:Number(p2p?.lastAuthoritativeRevision || (typeof onlineAuthoritativeRevision !== "undefined" ? onlineAuthoritativeRevision : 0) || 0),
         busy:!!busy,
         runtime,
@@ -27255,14 +27331,14 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
     const committed = new Map(), failed = new Map();
     const begin = (g,t,s,action) => {
       StateFactory.decorate(g);
-      const actionId = action?.actionId || action?._r48ActionId || IdFactory.transaction(g.battleId);
-      if (action && typeof action === "object" && !action._r48ActionId) Object.defineProperty(action,"_r48ActionId",{value:actionId,configurable:true});
+      const actionId = action?.actionId || IdFactory.transaction(g.battleId);
       const seen = committed.get(g.battleId) || new Set(); committed.set(g.battleId,seen);
       const rejected = failed.get(g.battleId) || new Set(); failed.set(g.battleId,rejected);
       if (seen.has(actionId) || rejected.has(actionId)) return { duplicate:true, actionId, terminalStatus:seen.has(actionId)?"committed":"failed" };
-      const transaction = { transactionId:IdFactory.transaction(g.battleId), actionId, teamId:t, slot:s, action, startedAt:now(), eventSequenceAtStart:Number(g.eventSequence||0), snapshot:snapshotState(g) };
+      const transaction = { transactionId:IdFactory.transaction(g.battleId), actionId, teamId:t, slot:s, sourceEntityId:action?.sourceInstanceId||g.activeEntityId||null, action, startedAt:now(), turnSerialAtStart:Number(g.turnSerial||0), revisionAtStart:Number(g.networkRevision||0), phaseAtStart:g.phase||null, eventSequenceAtStart:Number(g.eventSequence||0), snapshot:snapshotState(g) };
       g.pendingTransaction = transaction; g.pendingAction = action; g.phase = "EXECUTING_ACTION";
-      BattleEventEngine.emit(g,"ACTION_TRANSACTION_STARTED",{teamId:t,sourceEntityId:g.activeEntityId,payload:{transactionId:transaction.transactionId,actionId,actionType:action?.type}});
+      TransactionAuditChannel.emit({type:"ACTION_TRANSACTION_BEGAN",battleId:g.battleId,teamId:t,transactionId:transaction.transactionId,actionId,actionType:action?.type||null,action:action?JSON.parse(JSON.stringify(action)):null,turnSerialBefore:transaction.turnSerialAtStart,revisionBefore:transaction.revisionAtStart,phaseBefore:transaction.phaseAtStart});
+      BattleEventEngine.emit(g,"ACTION_TRANSACTION_STARTED",{teamId:t,sourceEntityId:transaction.sourceEntityId,payload:{transactionId:transaction.transactionId,actionId,actionType:action?.type}});
       return transaction;
     };
     const commit = (g,tx) => {
@@ -27270,6 +27346,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       g.pendingTransaction=null; g.pendingAction=null; g.pendingTargetSelection=null; g.pendingPayment=null;
       g.phase = g.winner ? "BATTLE_ENDED" : "WAITING_FOR_ACTION";
       BattleEventEngine.emit(g,"ACTION_TRANSACTION_COMMITTED",{teamId:tx.teamId,payload:{transactionId:tx.transactionId,actionId:tx.actionId,durationMs:now()-tx.startedAt}});
+      TransactionAuditChannel.emit({type:"ACTION_TRANSACTION_COMMITTED",battleId:g.battleId,teamId:tx.teamId,transactionId:tx.transactionId,actionId:tx.actionId,actionType:tx.action?.type||null,durationMs:now()-tx.startedAt,turnSerialBefore:tx.turnSerialAtStart,turnSerialAfter:Number(g.turnSerial||0),revisionBefore:tx.revisionAtStart,phaseAfter:g.phase||null});
     };
     const rollback = (g,tx,reason,error=null) => {
       restoreState(g,tx.snapshot);
@@ -27277,7 +27354,6 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       const rejected = failed.get(g.battleId) || new Set(); rejected.add(tx.actionId); failed.set(g.battleId,rejected);
       const rollbackEvent = TransactionAuditChannel.emit({type:"ACTION_TRANSACTION_ROLLED_BACK",battleId:g.battleId,teamId:tx.teamId,transactionId:tx.transactionId,actionId:tx.actionId,reason,error:error?String(error):null});
       TransactionAuditChannel.emit({type:reason === "action-rejected" ? "ACTION_COMMAND_REJECTED" : "ACTION_COMMAND_FAILED",battleId:g.battleId,teamId:tx.teamId,transactionId:tx.transactionId,actionId:tx.actionId,reason,error:error?String(error):null});
-      try { if (typeof p2p !== "undefined") { p2p.remotePending = null; p2p.terminalPending = null; } } catch {}
       return rollbackEvent;
     };
     const clearBattle = id => {
@@ -27384,29 +27460,13 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
     });
   })();
 
-  // Live authoritative actions use the transaction boundary. Guest request submission and simulation do not mutate authority state.
-  const isBossGuestRequestOnlyExecution = (g,t,s,opt={}) => {
-    if (opt?.sim || !g || g !== currentGame() || !g?.bossRaid?.online) return false;
-    if (p2p?.role !== "guest" || p2p?.applyingRemoteAction || t !== "P") return false;
-    const active = g.order?.[g.turn];
-    if (!active || active[0] !== "P" || Number(active[1]) !== Number(s)) return false;
-    if (!window.__redTimeoraBossRaid?.localControlsCurrent?.()) return false;
-    const unit = unitAt(g,t,s);
-    return unit ? unit.bossOwner === "guest" : g.bossRaid.slotOwners?.[s] === "guest";
-  };
-  const classifyR48Execution = (g,t,s,action,opt={}) => {
-    const live = !opt?.sim && g && (g === currentGame() || opt?.r48Live === true);
-    if (!live) return "simulation";
-    const standardGuestRequest = g === currentGame() && g?.mode === "online" && !g?.bossRaid &&
-      p2p?.role === "guest" && !p2p?.applyingRemoteAction && t === onlineSide;
-    const bossGuestRequest = isBossGuestRequestOnlyExecution(g,t,s,opt);
-    return standardGuestRequest || bossGuestRequest ? "request-only" : "authoritative-execution";
-  };
-  function actionTransactionExecuteStage(next,g,t,s,action,opt={}) {
-      const disposition = classifyR48Execution(g,t,s,action,opt);
-      if (disposition !== "authoritative-execution") return next(g,t,s,action,opt);
+  // This executor receives only actions already admitted as authoritative.
+  function executeCanonicalActionTransaction(next,g,t,s,action,opt={}) {
+      const live = !opt?.sim && g && (g === currentGame() || opt?.r48Live === true);
+      if (!live) return next(g,t,s,action,opt);
       StateFactory.decorate(g);
       if (g.ended || g.winner) return false;
+      if(action&&typeof action==="object")action={...action,actionId:action.actionId||IdFactory.transaction(g.battleId)};
       if (action && (action.type === "scheduled" || action.type === "sequence")) {
         const scheduled = ensureScheduledActionIdentity(g, unitAt(g, t, s));
         if (scheduled) {
@@ -27432,7 +27492,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         const deaths = DeathEngine.reconcile(g);
         StateFactory.updateActive(g);
         ActionFaultInjector.hit("event-publication-before");
-        const commitEvent = BattleEventEngine.emit(g,"ACTION_EXECUTED",{teamId:t,sourceEntityId:tx.snapshot ? null : g.activeEntityId,payload:{actionId:tx.actionId,actionType:action?.type,deaths}});
+        const commitEvent = BattleEventEngine.emit(g,"ACTION_EXECUTED",{teamId:t,sourceEntityId:tx.sourceEntityId,payload:{actionId:tx.actionId,actionType:action?.type,deaths}});
         diffUnits(tx.snapshot,g,commitEvent?.eventId||null,tx.eventSequenceAtStart);
         ActionFaultInjector.hit("remote-ack-before");
         ActionTransactionManager.commit(g,tx);
@@ -27454,6 +27514,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         throw error;
       } finally { InputLockManager.unlock(lock); }
   }
+  const CanonicalActionTransactionOwner = Object.freeze({execute:executeCanonicalActionTransaction});
 
   // Energy identity survives every legacy mutator and online revive.
   /* Energy store normalization is owned directly by the canonical mutators. */
@@ -27533,23 +27594,26 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
     let projectionTransactionSerial = 0;
     const phaseForState = state => ({STARTING:"ENTRY",SIGNALING:"ENTRY",HOSTING:"ENTRY",JOINING:"ENTRY",MATCHMAKING:"ENTRY",HANDSHAKING:"ENTRY",LOBBY:"LOBBY",STARTING_BATTLE:"LOBBY",IN_BATTLE:"IN_BATTLE",RECONNECTING:activeSession?.committed?(activeSession?.resumeState||"LOBBY"):"ENTRY",ENDING:"TERMINAL",CLOSED:"SETUP",FAILED:"ENTRY"}[state]||"ENTRY");
     class SessionScope {
-      constructor(session){this.session=session;this.generation=session.generation;this.sessionToken=session.sessionToken||"";this.phase="ENTRY";this.projectionEpoch=1;this.closed=false;this.abortController=new AbortController();this.resources=new Map();this.promises=new Set();this.transactions=new Map();this.trace=[];}
+      constructor(session){this.session=session;this.generation=session.generation;this.sessionToken=session.sessionToken||"";this.phase="ENTRY";this.projectionEpoch=1;this.invalidated=false;this.closed=false;this.abortController=new AbortController();this.resources=new Map();this.promises=new Set();this.transactions=new Map();this.trace=[];}
       capture(label="callback",phase=this.phase){return Object.freeze({generation:this.generation,sessionToken:this.session.sessionToken||this.sessionToken||"",phase,projectionEpoch:this.projectionEpoch,label:String(label)});}
-      valid(capture,phase=capture?.phase){const currentToken=String(this.session.sessionToken||this.sessionToken||""),capturedToken=String(capture?.sessionToken||"");const tokenOk=capturedToken?capturedToken===currentToken:!currentToken;const phaseOk=!phase||phase==="SESSION"||this.phase===phase;const epochOk=phase==="SESSION"||Number(capture?.projectionEpoch||0)===Number(this.projectionEpoch);return !this.closed&&activeSession===this.session&&Number(capture?.generation)===Number(this.generation)&&tokenOk&&phaseOk&&epochOk;}
+      valid(capture,phase=capture?.phase){const currentToken=String(this.session.sessionToken||this.sessionToken||""),capturedToken=String(capture?.sessionToken||"");const tokenOk=capturedToken?capturedToken===currentToken:!currentToken;const phaseOk=!phase||phase==="SESSION"||this.phase===phase;const epochOk=phase==="SESSION"||Number(capture?.projectionEpoch||0)===Number(this.projectionEpoch);return !this.invalidated&&!this.closed&&activeSession===this.session&&Number(capture?.generation)===Number(this.generation)&&tokenOk&&phaseOk&&epochOk;}
       guard(capture,fn){return(...args)=>{if(!this.valid(capture)){counters.staleCallbackDropCount++;this.record("stale-callback-dropped",{label:capture?.label||null,capturedPhase:capture?.phase||null});return false;}return fn(...args);};}
       record(stage,detail={}){const row={at:Date.now(),stage:String(stage),generation:this.generation,phase:this.phase,projectionEpoch:this.projectionEpoch,...detail};this.trace.push(row);if(this.trace.length>480)this.trace.splice(0,this.trace.length-320);return row;}
-      setTimeout(fn,delay,label="session-timeout",options={}){const phase=options.phase||"SESSION",capture=this.capture(label,phase);let id=0;id=window.TimerManager.setTimeout(()=>{this.resources.delete(id);this.guard(capture,fn)();},Math.max(0,Number(delay)||0));this.resources.set(id,{kind:"timeout",phase,label,cancel:()=>window.TimerManager.clear(id)});return id;}
-      setInterval(fn,delay,label="session-interval",options={}){const phase=options.phase||"SESSION",capture=this.capture(label,phase);const id=window.TimerManager.setInterval(this.guard(capture,fn),Math.max(16,Number(delay)||0));this.resources.set(id,{kind:"interval",phase,label,cancel:()=>window.TimerManager.clear(id)});return id;}
-      requestAnimationFrame(fn,label="session-raf",options={}){const phase=options.phase||this.phase,capture=this.capture(label,phase);const id=window.TimerManager.requestAnimationFrame(()=>{this.resources.delete(id);this.guard(capture,fn)();});this.resources.set(id,{kind:"raf",phase,label,cancel:()=>window.TimerManager.clear(id)});return id;}
+      setTimeout(fn,delay,label="session-timeout",options={}){if(this.invalidated||this.closed)return 0;const phase=options.phase||"SESSION",capture=this.capture(label,phase);let id=0;id=window.TimerManager.setTimeout(()=>{this.resources.delete(id);this.guard(capture,fn)();},Math.max(0,Number(delay)||0),{scope:`online-session:${this.generation}`,reason:label,sessionManaged:true,phase});this.resources.set(id,{kind:"timeout",phase,label,cancel:()=>window.TimerManager.clear(id)});return id;}
+      setInterval(fn,delay,label="session-interval",options={}){if(this.invalidated||this.closed)return 0;const phase=options.phase||"SESSION",capture=this.capture(label,phase);const id=window.TimerManager.setInterval(this.guard(capture,fn),Math.max(16,Number(delay)||0),{scope:`online-session:${this.generation}`,reason:label,sessionManaged:true,phase});this.resources.set(id,{kind:"interval",phase,label,cancel:()=>window.TimerManager.clear(id)});return id;}
+      requestAnimationFrame(fn,label="session-raf",options={}){if(this.invalidated||this.closed)return 0;const phase=options.phase||this.phase,capture=this.capture(label,phase);const id=window.TimerManager.requestAnimationFrame(()=>{this.resources.delete(id);this.guard(capture,fn)();},{scope:`online-session:${this.generation}`,reason:label,sessionManaged:true,phase});this.resources.set(id,{kind:"raf",phase,label,cancel:()=>window.TimerManager.clear(id)});return id;}
+      adoptTimer(id,kind,label="adopted-timer",phase=this.phase){if(this.invalidated||this.closed||!id||this.resources.has(id))return false;this.resources.set(id,{kind:`adopted-${kind}`,phase:phase||this.phase,label:String(label),cancel:()=>window.TimerManager.clear(id)});return true;}
+      releaseAdoptedTimer(id){return this.resources.delete(id);}
       listen(target,event,fn,options,label=`listener:${event}`){if(!target?.addEventListener)return()=>false;const capture=this.capture(label,"SESSION"),guarded=this.guard(capture,fn);target.addEventListener(event,guarded,options);const key={};this.resources.set(key,{kind:"listener",phase:"SESSION",label,cancel:()=>target.removeEventListener(event,guarded,options)});return()=>this.cancelResource(key);}
       track(promise,label="session-promise",options={}){const phase=options.phase||this.phase,capture=this.capture(label,phase),record={label,phase,capture,cancel:typeof options.cancel==="function"?options.cancel:null};this.promises.add(record);return Promise.resolve(promise).then(value=>this.valid(capture)?value:undefined,error=>{if(this.valid(capture))throw error;return undefined;}).finally(()=>this.promises.delete(record));}
       transaction(kind,data={}){const id=`${kind}:${this.generation}:${Date.now()}:${Math.random().toString(36).slice(2,8)}`,row={id,kind,state:"OPEN",createdAt:Date.now(),...data};this.transactions.set(kind,row);this.record("transaction-open",{kind,id});return row;}
       completeTransaction(kind,detail={}){const row=this.transactions.get(kind);if(!row)return false;Object.assign(row,{state:"COMPLETED",completedAt:Date.now(),...detail});this.transactions.delete(kind);this.record("transaction-complete",{kind,id:row.id});return true;}
-      cancelResource(key){const row=this.resources.get(key);if(!row)return false;try{row.cancel?.();}catch{}this.resources.delete(key);return true;}
-      cancelPhase(phase,reason="phase-transition"){let count=0;for(const [key,row] of [...this.resources])if(row.phase===phase){this.cancelResource(key);count++;}for(const row of [...this.promises])if(row.phase===phase){try{row.cancel?.(reason);}catch{}this.promises.delete(row);count++;}this.record("phase-resources-cancelled",{phase,reason,count});return count;}
+      cancelResource(key){const row=this.resources.get(key);if(!row)return false;try{row.cancel?.();}catch(error){this.record("resource-cancel-failed",{kind:row.kind,label:row.label,error:error?.message||String(error)});window.__megaRecordRecoveredError?.(error,`SessionScope.cancelResource:${row.label}`);}this.resources.delete(key);return true;}
+      cancelPhase(phase,reason="phase-transition"){let count=0;for(const [key,row] of [...this.resources])if(row.phase===phase){this.cancelResource(key);count++;}for(const row of [...this.promises])if(row.phase===phase){try{row.cancel?.(reason);}catch(error){this.record("promise-cancel-failed",{label:row.label,error:error?.message||String(error)});window.__megaRecordRecoveredError?.(error,`SessionScope.cancelPhase:${row.label}`);}this.promises.delete(row);count++;}this.record("phase-resources-cancelled",{phase,reason,count});return count;}
       transitionPhase(next,reason="phase-transition"){next=String(next||"ENTRY");const prior=this.phase;if(prior===next)return this.projectionEpoch;this.cancelPhase(prior,reason);this.phase=next;this.projectionEpoch++;this.record("phase-transition",{from:prior,to:next,reason});return this.projectionEpoch;}
-      close(reason="scope-close"){if(this.closed)return false;this.closed=true;for(const key of [...this.resources.keys()])this.cancelResource(key);for(const row of [...this.promises]){try{row.cancel?.(reason);}catch{}}this.promises.clear();this.transactions.clear();this.abortController.abort(reason);this.record("scope-closed",{reason});return true;}
-      debug(){return{generation:this.generation,phase:this.phase,projectionEpoch:this.projectionEpoch,closed:this.closed,resourceCount:this.resources.size,promiseCount:this.promises.size,transactionCount:this.transactions.size,trace:this.trace.slice(-160)};}
+      invalidate(reason="scope-invalidate"){if(this.invalidated)return false;this.invalidated=true;this.projectionEpoch++;this.record("scope-invalidated",{reason});return true;}
+      close(reason="scope-close"){if(this.closed)return false;this.invalidate(reason);this.closed=true;for(const key of [...this.resources.keys()])this.cancelResource(key);for(const row of [...this.promises]){try{row.cancel?.(reason);}catch(error){this.record("promise-close-failed",{label:row.label,error:error?.message||String(error)});window.__megaRecordRecoveredError?.(error,`SessionScope.close:${row.label}`);}}this.promises.clear();this.transactions.clear();this.abortController.abort(reason);this.record("scope-closed",{reason});return true;}
+      debug(){return{generation:this.generation,phase:this.phase,projectionEpoch:this.projectionEpoch,invalidated:this.invalidated,closed:this.closed,resourceCount:this.resources.size,promiseCount:this.promises.size,transactionCount:this.transactions.size,trace:this.trace.slice(-160)};}
     }
     const projectStatusDom = () => {
       const session=activeSession,state=session?.machine.state||"IDLE",errorCode=session?.lastError?.code||"",suffix=state==="FAILED"&&errorCode?` · ${errorCode}`:"",text=`${STATUS_TEXT[state]||state}${suffix}`;
@@ -27565,8 +27629,8 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       const identity=document.getElementById("onlineRuntimeIdentity");if(identity)identity.textContent=session?`generation ${session.generation} · ${session.mode} · ${session.role||"role pending"} · ${session.scope?.phase||"ENTRY"}#${session.scope?.projectionEpoch||0}`:"session 없음";
       return text;
     };
-    const ProjectionTransaction = (() => {
-      const trace=[];let lastCommit=null;
+      const ProjectionTransaction = (() => {
+        const trace=[];let lastCommit=null;
       const canonicalRevisionFor=phase=>phase==="LOBBY"?Number(LobbyEngine?.debug?.().revision||0):phase==="IN_BATTLE"||phase==="TERMINAL"?Number(currentGame()?.networkRevision||0):Number(activeSession?.scope?.projectionEpoch||0);
       const commitNavigation=(phase,reason)=>{
         const before=[...document.querySelectorAll(".screen.active")].map(node=>node.id);
@@ -27580,6 +27644,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         return true;
       };
       const commit=tx=>{const session=activeSession,scope=session?.scope;if(!scope||!scope.valid(tx.identity,tx.phase)||phaseForState(session.machine.state)!==tx.phase&&!(session.machine.state==="RECONNECTING"&&session.resumeState===tx.phase)){counters.staleCallbackDropCount++;scope?.record("projection-drop",{reason:tx.reason,phase:tx.phase});return Object.freeze({...tx,committed:false,dropReason:"IDENTITY_PHASE_OR_EPOCH"});}
+        const currentRevision=canonicalRevisionFor(tx.phase);if(Number(tx.canonicalRevision)<Number(currentRevision)){counters.staleCallbackDropCount++;scope.record("projection-drop",{reason:tx.reason,phase:tx.phase,dropReason:"STALE_CANONICAL_REVISION",requestedRevision:tx.canonicalRevision,currentRevision});return Object.freeze({...tx,committed:false,dropReason:"STALE_CANONICAL_REVISION"});}
         if(scope.transactions.has("restore")&&tx.reason!=="restore-authoritative-apply"&&!tx.allowDuringRestore){scope.record("projection-drop",{reason:tx.reason,phase:tx.phase,dropReason:"RESTORE_INCOMPLETE"});return Object.freeze({...tx,committed:false,dropReason:"RESTORE_INCOMPLETE"});}
         let result=null,phaseCommitOk=true,dropReason=null;projectStatusDom();
         if(tx.phase==="LOBBY"){
@@ -27646,7 +27711,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         session.routesReady=false;
         if(session.machine.state==="RECONNECTING")session.machine.transition(phase,"restore-authoritative-complete",{project:false});
         const restoredGame=currentGame();
-        const releaseBusy=!!(restoredGame&&!restoredGame.pendingAnimation&&!restoredGame.pendingClockTurnAdvance&&!onlinePendingCommand&&!pendingSkill);
+        const releaseBusy=!!(restoredGame&&!restoredGame.pendingAnimation&&!restoredGame.pendingClockTurnAdvance&&!OnlineActionAdmissionOwner.hasPending()&&!pendingSkill);
         if(releaseBusy)busy=false;
         // Projection is synchronous. Open the final eligibility flags in the same task so the
         // action panel is rendered from the committed state, never from the transient reconnect lock.
@@ -28138,11 +28203,11 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         const g=currentGame(),bossOnline=!!g?.bossRaid?.online;
         try {
           if(p2p?.role==="host"&&(g?.mode==="online"||bossOnline))return !!sendAuthoritativeOnlineState([],null,true);
-          const request={type:"stateRequest",protocol:typeof ONLINE_TURN_SYNC_VERSION!=="undefined"?ONLINE_TURN_SYNC_VERSION:"online-turn-sync-r1",mode:bossOnline?"BOSS_COOP":"PVP",matchId:typeof onlineCurrentMatchId==="function"?onlineCurrentMatchId():(p2p?.matchId||g?.matchId||null),actionId:typeof onlinePendingCommand!=="undefined"?onlinePendingCommand?.packet?.actionId||null:null,knownTurnSerial:Number(g?.turnSerial??-1),knownRevision:Number(p2p?.lastAuthoritativeRevision||g?.networkRevision||0),resumeReason:String(reason)};
+          const request={type:"stateRequest",protocol:ONLINE_TURN_SYNC_VERSION,mode:bossOnline?"BOSS_COOP":"PVP",matchId:onlineCurrentMatchId(),actionId:OnlineActionAdmissionOwner.pendingActionId(),knownTurnSerial:Number(g?.turnSerial??-1),knownRevision:Number(p2p?.lastAuthoritativeRevision||g?.networkRevision||0),resumeReason:String(reason)};
           return !!activeSession?.transport?.sendControlPayload?.(request);
         } catch { return false; }
       },
-      applicationOwner: "OnlineTurnSyncEngine",
+      applicationOwner: "OnlineActionAdmissionOwner",
     });
     const ChatCoordinator = Object.freeze({
       applicationOwner: "ChatEngine",
@@ -28346,7 +28411,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       window.__megaOnlineBattleChat?.startSession?.();
       if(normalizedPhase==="IN_BATTLE"){
         window.OnlineReliableStateEngine?.start?.();
-        if(typeof startOnlineStateProbeLoop==="function")startOnlineStateProbeLoop();
+        OnlineActionAdmissionOwner.startProbe();
       }
       if(normalizedPhase==="LOBBY"&&session.role==="host"&&!session.rulesPublished){
         p2p.rules=p2p.rules||onlineRulesPayload();applySharedOnlineRules(p2p.rules);
@@ -28411,7 +28476,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       const adapter = modeAdapters.get(session.mode);
       try { adapter?.resume?.(session, packet, session.connection); }
       catch (error) { window.__megaRecordRecoveredError?.(error,"OnlineRuntime.resume.modeAdapter"); }
-      OnlineTurnSyncEngine?.resumeSession?.("transport-resume");
+      OnlineActionAdmissionOwner.resumeSession("transport-resume");
       if(session.mode==="BOSS_COOP")window.__redTimeoraBossRaid?.runtimeResume?.("transport-resume");
       if(!options.deferPromotion)RestoreTransaction.transportReady(session,session.transport?.activeBinding,{canonicalRevision:Number(currentGame()?.networkRevision||LobbyEngine.debug().revision||0)});
     }
@@ -28447,15 +28512,11 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       return session;
     }
 
-    function resetStartNewOnlineSessionBoundary(reason = "start-new-online-session") {
-      // START_NEW_ONLINE_SESSION must discard battle/session-scoped state. Reconnect never calls this owner.
+    function releaseOnlineApplicationState(reason = "online-session-release") {
       if(typeof resetOnlineStartTransactionState==="function")resetOnlineStartTransactionState(reason);
       if(typeof resetBattleEmoteReliability==="function")resetBattleEmoteReliability(reason);
-      stopOnlinePendingCommand({ unlock: false });
-      window.TimerManager.clear(onlineStateProbeTimer); onlineStateProbeTimer = null;
       document.querySelector(".online-disconnect-overlay")?.remove();
       onlineAuthoritativeRevision = 0;
-      onlineHostCommandResults.clear();
       onlineVisualPacketSerial = 0;
       onlineCoinShownScopes.clear();
       const priorGame = game;
@@ -28465,7 +28526,6 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         try { if (priorGame.battleId) ActionTransactionManager?.clearBattle?.(priorGame.battleId); } catch (error) { window.__megaRecordRecoveredError?.(error,"OnlineRuntime.newSession.ActionTransactionManager"); }
         game = null;
       }
-      OnlineConnectionEngine.closeSession({ closeConnection: false });
       busy = false;
       onlineAutoCommandOwner = null;
       onlineAutoCommandActive = false;
@@ -28483,8 +28543,6 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
     function beginSession({ kind, mode, roomCode = "", explicitRoomMutation = "", context = {} }) {
       const spectatorSidecar = kind === "spectator" && mode === "SPECTATOR";
       if (activeSession) CleanupCoordinator.close("new-session", { notify: !["CLOSED","FAILED","IDLE"].includes(activeSession.machine.state), keepUi: true, releaseActive:true });
-      // Spectator relay used by a solo boss is a side-channel. It must never reset battle/UI state.
-      if (!spectatorSidecar) resetStartNewOnlineSessionBoundary("begin-session");
       const checked = validateEndpoint(configuredEndpoint || readEndpoint());
       const session = freshSession({ kind, mode, roomCode, context });
       if (roomCode) {
@@ -28544,23 +28602,30 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         if (!session || runtimeClosing) return false;
         runtimeClosing = true;
         try {
+          session.scope?.invalidate?.(`cleanup:${reason}`);
           RestoreTransaction.cancel(session,`cleanup:${reason}`);session.routesReady=false;
           if (!["CLOSED", "FAILED", "ENDING"].includes(session.machine.state)) {
             if (ALLOWED[session.machine.state]?.has("ENDING")) session.machine.transition("ENDING", reason);
             else if (ALLOWED[session.machine.state]?.has("CLOSED")) session.machine.transition("CLOSED", reason);
           }
-          try{OnlineTurnSyncEngine?.closeSession?.(options);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.turn-sync");}
+          try{OnlineActionAdmissionOwner.closeSession(options);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.action-admission");}
           try{window.OnlineReliableStateEngine?.closeSession?.(options);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.reliable-state");}
           try{window.__megaOnlineBattleChat?.closeSession?.({clearChat:options.clearChat===true,resetUnread:options.clearChat===true});}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.chat");}
           try{resetBattleEmoteReliability?.(`cleanup:${reason}`);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.emote");}
           try{SyncEngine?.reset?.(reason);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.sync");}
           try{LobbyEngine?.reset?.(options);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.lobby");}
           try{OnlineTransportEngine?.closeSession?.(options);}catch(error){window.__megaRecordRecoveredError?.(error,"OnlineRuntime.cleanup.legacy-timer-drain");}
+          session.scope?.close?.(`cleanup:${reason}`);
+          if(session.kind!=="spectator")releaseOnlineApplicationState(`cleanup:${reason}`);
           OnlineConnectionEngine.closeSession({closeConnection:false});
-          session.scope?.close?.(`cleanup:${reason}`);session.transport?.close(options.notify !== false, reason);
+          session.transport?.close(options.notify !== false, reason);
           session.connection?._closeFromRuntime(reason);
           session.readyOfferIds.clear(); session.pendingOffer = null;
-          if (p2p) { p2p.connected = false; p2p.connectionInterrupted = false; }
+          if (p2p&&session.kind!=="spectator") {
+            p2p.connected=false;p2p.connectionInterrupted=false;p2p.reconnecting=false;p2p.battleStarted=false;
+            p2p.conn=null;p2p.peer=null;p2p.role=null;p2p.matchId=null;p2p.roomCode=null;p2p.queueEntryId=null;
+            p2p.remoteDeck=null;p2p.remotePlusStar=null;p2p.remoteComposition=null;p2p.guestStartAwaitingHostCommit=null;
+          }
           if (session.machine.state !== "CLOSED") {
             if (session.machine.state === "FAILED") session.machine.transition("CLOSED", reason);
             else if (session.machine.state === "ENDING") session.machine.transition("CLOSED", reason);
@@ -28580,7 +28645,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         session.hiddenAt||=Date.now();session.backgroundReason=String(reason);session.lifecycleRestorePending=!!(session.committed&&session.sessionToken);
         if(session.lifecycleRestorePending){
           session.transport?.pauseHeartbeat?.(session.transport.activeBinding,`background:${reason}`);session.routesReady=false;
-          OnlineTurnSyncEngine?.suspendSession?.(reason);
+          OnlineActionAdmissionOwner.suspendSession(reason);
           window.OnlineReliableStateEngine?.pause?.();window.__megaOnlineBattleChat?.pause?.();
           if(p2p){p2p.reconnecting=true;p2p.connectionInterrupted=true;}
           const g=currentGame();
@@ -28800,7 +28865,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
         version: VERSION, state: session.machine.state, generation: session.generation, kind: session.kind, mode: session.mode,
         role: session.role || null, playerId, roomCode: session.roomCode || null, queueEntryId: session.queueEntryId || null,
         matchId: session.matchId || null, sessionToken: session.sessionToken || null, committed: session.committed,
-        transport: session.transport?.debug() || null, scope:session?.scope?.debug?.()||null, routesReady:!!session?.routesReady, projection:ProjectionTransaction.debug(), restore:RestoreTransaction.debug(), startTrace:typeof onlineStartTrace!=="undefined"?onlineStartTrace.slice(-160):[], counters: { ...counters }, lastError: session.lastError,
+        transport: session.transport?.debug() || null, scope:session?.scope?.debug?.()||null, routesReady:!!session?.routesReady, projection:ProjectionTransaction.debug(), restore:RestoreTransaction.debug(), actionAdmission:OnlineActionAdmissionOwner.debug(), startTrace:typeof onlineStartTrace!=="undefined"?onlineStartTrace.slice(-160):[], counters: { ...counters }, lastError: session.lastError,
       } : { version: VERSION, state: "IDLE", generation: 0, playerId, counters: { ...counters } };
     }
 
@@ -28851,7 +28916,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       close: (reason, options) => CleanupCoordinator.close(reason, options), debug: snapshot,
       identity(){const s=activeSession;return Object.freeze({generation:Number(s?.generation||0),sessionToken:String(s?.sessionToken||""),roomCode:s?.roomCode||null,lobbyId:s?.roomCode||null,matchId:s?.matchId||null,battleId:currentGame()?.battleId||null,phase:s?.scope?.phase||(s?phaseForState(s.machine?.state):"IDLE"),projectionEpoch:Number(s?.scope?.projectionEpoch||0),bindingGeneration:Number(s?.transport?.activeBinding?.serial||s?.transport?.candidateBinding?.serial||0),routesReady:!!s?.routesReady});},
       sendControl(payload){try{return activeSession?.transport?.sendControlPayload?.(payload)||false;}catch(error){recordError(error?.code||"CONTROL_SEND_FAILED",error?.message||error);return false;}},restore:Object.freeze({authoritativeApplied:detail=>RestoreTransaction.authoritativeApplied(detail),pending:()=>!!activeSession?.scope?.transactions?.has?.("restore"),debug:()=>RestoreTransaction.debug()}),
-      projection:ProjectionTransaction,sessionScope:Object.freeze({requestAnimationFrame:(fn,label,options)=>activeSession?.scope?.requestAnimationFrame?.(fn,label,options||{phase:activeSession?.scope?.phase}),setTimeout:(fn,delay,label,options)=>activeSession?.scope?.setTimeout?.(fn,delay,label,options),setInterval:(fn,delay,label,options)=>activeSession?.scope?.setInterval?.(fn,delay,label,options),cancel:key=>activeSession?.scope?.cancelResource?.(key)||false,track:(promise,label,options)=>activeSession?.scope?.track?.(promise,label,options),debug:()=>activeSession?.scope?.debug?.()||null}),
+      projection:ProjectionTransaction,sessionScope:Object.freeze({requestAnimationFrame:(fn,label,options)=>activeSession?.scope?.requestAnimationFrame?.(fn,label,options||{phase:activeSession?.scope?.phase}),setTimeout:(fn,delay,label,options)=>activeSession?.scope?.setTimeout?.(fn,delay,label,options),setInterval:(fn,delay,label,options)=>activeSession?.scope?.setInterval?.(fn,delay,label,options),cancel:key=>activeSession?.scope?.cancelResource?.(key)||false,track:(promise,label,options)=>activeSession?.scope?.track?.(promise,label,options),adoptTimer:(id,kind,label,phase)=>activeSession?.scope?.adoptTimer?.(id,kind,label,phase)||false,releaseAdoptedTimer:id=>activeSession?.scope?.releaseAdoptedTimer?.(id)||false,get closed(){return !activeSession?.scope||activeSession.scope.invalidated||activeSession.scope.closed;},debug:()=>activeSession?.scope?.debug?.()||null}),
       abortBattleStart(reason="battle-start-aborted") {const s=activeSession;if(!s||!["STARTING_BATTLE","IN_BATTLE"].includes(s.machine.state))return false;s.routesReady=false;s.resumeState="LOBBY";if(s.mode==="PVP")LobbyEngine.setStartTransaction(null);s.machine.transition("LOBBY",reason);const projected=ProjectionTransaction.request(`battle-start-aborted:${reason}`,{phase:"LOBBY",canonicalRevision:s.mode==="PVP"?Number(LobbyEngine.debug().revision||0):Number(s.scope?.projectionEpoch||0)});s.routesReady=!!projected?.committed;if(s.routesReady)activateOnlineApplicationRoutes(s,"LOBBY",reason);return projected;},
       markBattleStarting() { const s=activeSession;if(s?.machine.state==="LOBBY"){s.routesReady=false;s.machine.transition("STARTING_BATTLE","application-start");} },
       markBattleStarted(detail={}) {
@@ -29174,7 +29239,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
 
   registerOnlineConnectionRoute("*","sync-engine-observer",packet=>SyncEngine.handlePacket(packet),90);
 
-  Object.assign(window,{GameConfig,StateFactory,StateValidator,EntityRegistry,ActionPanelViewModelOwner,ActionPanelConvergenceOwner,ActionRenderEngine,EnergyEngine,TurnEngine,DeathEngine,NetworkEngine,SyncEngine,LobbyEngine,ChatEngine,SpectatorEngine,OnlineConnectionEngine,OnlineTransportEngine,OnlineTurnSyncEngine,AnimationEngine,InputLockManager,TimerManager,EventBus,BattleRenderer,LifecycleManager,BattleEventEngine,RenderedBattleEntityMapOwner,VfxCoordinateOwner,DamagePresentationAnchorOwner,CombatStatPresentationOwner,HorizonStrikeSequenceOwner,DynamicSkillVfxPresentationOwner,PlusStarInteractionOwner,PlusStarBannerPresentationOwner,ResultContributionPresentationOwner,GenericBattleStatisticsOwner,EnergyOverflowPresentationOwner});
+  Object.assign(window,{GameConfig,StateFactory,StateValidator,EntityRegistry,ActionPanelViewModelOwner,ActionPanelConvergenceOwner,ActionRenderEngine,OnlineActionAdmissionOwner,CanonicalActionTransactionOwner,EnergyEngine,TurnEngine,DeathEngine,NetworkEngine,SyncEngine,LobbyEngine,ChatEngine,SpectatorEngine,OnlineConnectionEngine,OnlineTransportEngine,AnimationEngine,InputLockManager,TimerManager,EventBus,BattleRenderer,LifecycleManager,BattleEventEngine,RenderedBattleEntityMapOwner,VfxCoordinateOwner,DamagePresentationAnchorOwner,CombatStatPresentationOwner,HorizonStrikeSequenceOwner,DynamicSkillVfxPresentationOwner,PlusStarInteractionOwner,PlusStarBannerPresentationOwner,ResultContributionPresentationOwner,GenericBattleStatisticsOwner,EnergyOverflowPresentationOwner});
   Object.defineProperty(window,"GameState",{configurable:true,get:currentGame});
 
   const g=currentGame(); if(g)StateFactory.decorate(g);
