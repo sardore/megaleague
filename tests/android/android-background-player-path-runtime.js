@@ -5,8 +5,31 @@ import path from 'node:path';
 const sourcePath=fileURLToPath(new URL('./android-background-player-path.js',import.meta.url));
 const generatedPath=path.join(path.dirname(sourcePath),'.android-background-player-path.generated.mjs');
 const source=fs.readFileSync(sourcePath,'utf8');
-const start=source.indexOf('async function selectedDeck(client)');
-const end=source.indexOf('async function state(client,{full=false}={}){');
+
+const blockerStart=source.indexOf('function knownChromeBlocker(nodes){');
+const blockerEnd=source.indexOf('async function androidWebContentFrame(client){');
+if(blockerStart<0||blockerEnd<0||blockerEnd<=blockerStart)throw new Error(`ANDROID_RUNTIME_BLOCKER_PATCH_ANCHOR_MISSING:${JSON.stringify({blockerStart,blockerEnd})}`);
+
+function patchedKnownChromeBlocker(nodes){
+  const preferredIds=[
+    'android:id/aerr_wait',
+    `${ANDROID_PACKAGE}:id/negative_button`,
+    'com.android.permissioncontroller:id/permission_deny_button',
+    'com.google.android.permissioncontroller:id/permission_deny_button',
+    'android:id/aerr_close',
+  ];
+  for(const resourceId of preferredIds){
+    const node=nodes.find(row=>row['resource-id']===resourceId&&row.width>0&&row.height>0);
+    if(node)return node;
+  }
+  return nodes.find(row=>row.class==='android.widget.Button'&&row.width>0&&row.height>0&&/^(Wait|Close app)$/i.test(String(row.text||'').trim()))||null;
+}
+
+const blockerReplacement=patchedKnownChromeBlocker.toString().replace('patchedKnownChromeBlocker','knownChromeBlocker')+'\n\n';
+const blockerPatched=source.slice(0,blockerStart)+blockerReplacement+source.slice(blockerEnd);
+
+const start=blockerPatched.indexOf('async function selectedDeck(client)');
+const end=blockerPatched.indexOf('async function state(client,{full=false}={}){');
 if(start<0||end<0||end<=start)throw new Error(`ANDROID_RUNTIME_DECK_PATCH_ANCHOR_MISSING:${JSON.stringify({start,end})}`);
 
 async function patchedSelectedDeck(client){
@@ -41,7 +64,7 @@ const replacement=[
   patchedSelectDeck.toString().replace('patchedSelectDeck','selectDeck'),
 ].join('\n\n')+'\n\n';
 
-const transformed=source.slice(0,start)+replacement+source.slice(end);
+const transformed=blockerPatched.slice(0,start)+replacement+blockerPatched.slice(end);
 fs.writeFileSync(generatedPath,transformed);
 process.once('exit',()=>{try{fs.unlinkSync(generatedPath);}catch{}});
 await import(`${pathToFileURL(generatedPath).href}?runtimeDeck=${Date.now()}`);
