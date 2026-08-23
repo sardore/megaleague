@@ -11,6 +11,14 @@ const out='artifacts/android';fs.mkdirSync(out,{recursive:true});
 const run=(...a)=>execFileSync(ADB,a,{encoding:'utf8'});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function record(name,data){fs.writeFileSync(path.join(out,name),typeof data==='string'?data:JSON.stringify(data,null,2));}
+const active={cdp:null,peer:null,stage:'bootstrap',case:null};
+function captureLogcat(){
+  let exitCode=0,stderr='';
+  try{record('logcat.txt',run('logcat','-d'));}
+  catch(error){exitCode=Number(error?.status||1);stderr=String(error?.stderr||error);record('logcat.txt',String(error?.stdout||''));}
+  fs.writeFileSync('artifacts/android/logcat.stderr.log',stderr);
+  fs.writeFileSync('artifacts/preflight/android-logcat-capture.json',JSON.stringify({exitCode,stdoutPath:'artifacts/android/logcat.txt',stderrPath:'artifacts/android/logcat.stderr.log',owner:'android-driver-before-emulator-cleanup'},null,2));
+}
 async function cdpConnect(){
   run('forward','tcp:9222','localabstract:chrome_devtools_remote');
   for(let tries=0;tries<30;tries++){
@@ -24,6 +32,14 @@ async function tap(cdp,selector){const b=await bounds(cdp,selector);if(!b?.visib
 async function waitSelector(cdp,selector,timeout=60000){const end=Date.now()+timeout;while(Date.now()<end){const b=await bounds(cdp,selector).catch(()=>null);if(b?.visible)return b;await sleep(500);}throw new Error(`ANDROID_SELECTOR_TIMEOUT:${selector}`);}
 async function androidSelectFour(cdp){for(let i=0;i<4;i++){await tap(cdp,'#onlineRoomDeck .online-room-card:not(.selected)');const end=Date.now()+10000;while(Date.now()<end){const n=await evaluate(cdp,"document.querySelectorAll('#onlineRoomDeck .online-room-card.selected').length");if(n===i+1)break;await sleep(250);}}}
 async function androidSummary(cdp){return evaluate(cdp,`(()=>({build:document.querySelector('#cp32BuildIdentity')?.dataset.buildId||null,room:document.querySelector('#roomReadyState')?.textContent||null,lobby:!!document.querySelector('#onlineRoomDeck'),battle:!!document.querySelector('#actions'),actions:document.querySelectorAll('#actionButtons button:not([disabled])').length,runtime:window.OnlineRuntime?.debug?.()||null,diag:window.DiagnosticTraceOwner?.currentStateSummary?.()||null}))()`);}
+async function failureEvidence(error){
+  const android=active.cdp?await androidSummary(active.cdp).catch(snapshotError=>({snapshotError:String(snapshotError)})):null;
+  const peer=active.peer?await runtimeSummary(active.peer.client.page).catch(snapshotError=>({snapshotError:String(snapshotError)})):null;
+  const result={ok:false,error:String(error),stage:active.stage,case:active.case,at:new Date().toISOString(),android,peer};
+  record('android-result.json',result);record('android-failure.json',result);
+  try{fs.writeFileSync(path.join(out,'failure.png'),execFileSync(ADB,['exec-out','screencap','-p']));}catch{}
+  return result;
+}
 async function androidResolveInteraction(cdp){for(let i=0;i<8;i++){const selector=await evaluate(cdp,`(()=>{const modal=document.querySelector('#modal.open');if(!modal)return null;return [...modal.querySelectorAll('button:not([disabled])')].find(b=>{const s=getComputedStyle(b),r=b.getBoundingClientRect(),t=(b.textContent||'').trim();return r.width&&r.height&&s.display!=='none'&&!/취소|뒤로|연결 끊기|메뉴/.test(t)})?.id||null})()`);if(!selector)return;await tap(cdp,`#${selector}`);}}
 async function androidAction(cdp){await waitSelector(cdp,'#actionButtons button:not([disabled])',45000);await tap(cdp,'#actionButtons button:not([disabled])');await androidResolveInteraction(cdp);}
 async function ensureAndroidTurn(cdp,peerPage){for(let i=0;i<20;i++){const a=await androidSummary(cdp);if(a.actions>0)return a;const p=await runtimeSummary(peerPage);if(p.actions>0)await touchFirstLegalAction(peerPage);await sleep(500);}throw new Error('ANDROID_LOCAL_TURN_NOT_REACHED');}
@@ -37,9 +53,9 @@ async function prepareChrome(url){
 async function main(){
   const androidUrl=process.env.CP32_ANDROID_CANDIDATE_URL||'https://10.0.2.2:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline';
   const peerUrl=process.env.CP32_PEER_CANDIDATE_URL||candidateUrl();
-  const peer=await launchAndroidPeer('artifacts/android-peer');
+  const peer=await launchAndroidPeer('artifacts/android-peer');active.peer=peer;
   try{
-    await prepareChrome(androidUrl);const cdp=await cdpConnect();
+    active.stage='prepare-chrome';await prepareChrome(androidUrl);const cdp=await cdpConnect();active.cdp=cdp;
     const identity=await androidSummary(cdp);if(identity.build!=='CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST')throw new Error(`ANDROID_BUILD_IDENTITY_MISMATCH:${identity.build}`);
     const roomCode=await createRoomHost(peer.client.page);
     await tap(cdp,'#onlineBtn');await tap(cdp,'#openRoomCode');await tap(cdp,'#p2pGuest');await tap(cdp,'#roomCodeInput');run('shell','input','text',roomCode);await tap(cdp,'#joinRoom');
@@ -51,9 +67,10 @@ async function main(){
     await Promise.all([waitSelector(cdp,'#actions',60000),peer.client.page.locator('#actions').waitFor({state:'visible',timeout:60000})]);
     await ensureAndroidTurn(cdp,peer.client.page);await androidAction(cdp);record('first-action.json',{ok:true,android:await androidSummary(cdp),peer:await runtimeSummary(peer.client.page)});
     const cases=[...Array(CASES.short)].map((_,i)=>({kind:'short',i,seconds:5,offline:false})).concat([...Array(CASES.long)].map((_,i)=>({kind:'long',i,seconds:30,offline:false})),[...Array(CASES.offline)].map((_,i)=>({kind:'offline',i,seconds:10,offline:true})));
-    for(const c of cases){await ensureAndroidTurn(cdp,peer.client.page);try{run('shell','screenrecord','--time-limit',String(Math.min(180,c.seconds+15)),`/sdcard/cp32-${c.kind}-${c.i}.mp4`)}catch{};run('shell','input','keyevent','KEYCODE_HOME');if(c.offline)run('shell','svc','wifi','disable');await sleep(c.seconds*1000);if(c.offline)run('shell','svc','wifi','enable');run('shell','am','start','-n',`${ANDROID_PACKAGE}/${ANDROID_ACTIVITY}`);await sleep(5000);await ensureAndroidTurn(cdp,peer.client.page);await androidAction(cdp);const row={ok:true,case:c,android:await androidSummary(cdp),peer:await runtimeSummary(peer.client.page)};record(`${c.kind}-${c.i}.json`,row);try{run('pull',`/sdcard/cp32-${c.kind}-${c.i}.mp4`,path.join(out,`${c.kind}-${c.i}.mp4`))}catch{};try{fs.writeFileSync(path.join(out,`${c.kind}-${c.i}.png`),execFileSync(ADB,['exec-out','screencap','-p']))}catch{}
+    for(const c of cases){active.stage=`case:${c.kind}:${c.i}:before-background`;active.case=c;await ensureAndroidTurn(cdp,peer.client.page);try{run('shell','screenrecord','--time-limit',String(Math.min(180,c.seconds+15)),`/sdcard/cp32-${c.kind}-${c.i}.mp4`)}catch{};run('shell','input','keyevent','KEYCODE_HOME');if(c.offline)run('shell','svc','wifi','disable');active.stage=`case:${c.kind}:${c.i}:background`;await sleep(c.seconds*1000);if(c.offline)run('shell','svc','wifi','enable');run('shell','am','start','-n',`${ANDROID_PACKAGE}/${ANDROID_ACTIVITY}`);active.stage=`case:${c.kind}:${c.i}:foreground`;await sleep(5000);await ensureAndroidTurn(cdp,peer.client.page);active.stage=`case:${c.kind}:${c.i}:action`;await androidAction(cdp);const row={ok:true,case:c,android:await androidSummary(cdp),peer:await runtimeSummary(peer.client.page)};record(`${c.kind}-${c.i}.json`,row);try{run('pull',`/sdcard/cp32-${c.kind}-${c.i}.mp4`,path.join(out,`${c.kind}-${c.i}.mp4`))}catch{};try{fs.writeFileSync(path.join(out,`${c.kind}-${c.i}.png`),execFileSync(ADB,['exec-out','screencap','-p']))}catch{}
     }
-    record('android-result.json',{ok:true,completedAt:new Date().toISOString(),caseCount:cases.length});cdp.ws.close();
-  }finally{await peer.close();}
+    active.stage='complete';active.case=null;record('android-result.json',{ok:true,completedAt:new Date().toISOString(),caseCount:cases.length});
+  }catch(error){await failureEvidence(error);throw error;}
+  finally{captureLogcat();try{active.cdp?.ws?.close();}catch{};await peer.close();}
 }
-main().catch(e=>{record('android-result.json',{ok:false,error:String(e),at:new Date().toISOString()});try{record('logcat.txt',run('logcat','-d'))}catch{};process.exit(2)});
+main().catch(()=>process.exit(2));

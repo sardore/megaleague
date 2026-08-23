@@ -1,6 +1,13 @@
 name: CP32 Android Background E2E
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/cp32-android-background-e2e.yml'
+      - 'tests/android/**'
+      - 'tests/helpers/**'
+      - 'tools/static-validation.js'
+      - 'index.html'
 permissions:
   contents: read
 jobs:
@@ -69,15 +76,14 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: node tests/android/android-background-player-path.js
-      - name: Capture Android logcat
+      - name: Verify emulator-owned Android evidence capture
         if: always()
         shell: bash
         run: |
-          set +e
-          adb logcat -d > artifacts/android/logcat.txt 2> artifacts/android/logcat.stderr.log
-          RC=$?
-          set -e
-          printf '{"exitCode":%s,"stdoutPath":"artifacts/android/logcat.txt","stderrPath":"artifacts/android/logcat.stderr.log"}\n' "$RC" > artifacts/preflight/android-logcat-capture.json
+          set -euo pipefail
+          test -f artifacts/android/android-result.json
+          test -f artifacts/android/logcat.txt
+          test -f artifacts/preflight/android-logcat-capture.json
       - name: Validate required evidence on successful run
         shell: bash
         run: |
