@@ -11,11 +11,30 @@ export async function waitRemoteCount(page,count){await expect(page.locator('#ro
 export async function startBattle(host,guest){const startHost=host.locator('#onlineRoomStart');const startGuest=guest.locator('#onlineRoomStart');await expect.poll(async()=>((await startHost.isEnabled().catch(()=>false))||(await startGuest.isEnabled().catch(()=>false))),{timeout:30000}).toBe(true);let target=null;if(await startHost.isEnabled().catch(()=>false))target=host;else if(await startGuest.isEnabled().catch(()=>false))target=guest;else throw new Error('READY_START_BUTTON_UNAVAILABLE');await tap(target,'#onlineRoomStart');await Promise.all([waitBattle(host),waitBattle(guest)]);}
 export async function waitBattle(page){await page.locator('#actions').waitFor({state:'visible',timeout:60000});await page.locator('#actionButtons').waitFor({state:'visible'});await expect(page.locator('.online-coin-overlay')).toHaveCount(0,{timeout:60000});}
 export async function touchFirstLegalAction(page){const buttons=page.locator('#actionButtons button:not([disabled]), #actionButtons .skillbtn:not([disabled])');await expect.poll(()=>buttons.count()).toBeGreaterThan(0);const button=buttons.first();const b=await button.boundingBox();if(!b)throw new Error('ACTION_BUTTON_DETACHED');await page.touchscreen.tap(b.x+b.width/2,b.y+b.height/2);await resolveInteraction(page);}
+async function resolveManualPayment(modal){
+  const confirm=modal.locator('#manualPaymentConfirm');
+  if(!await confirm.count())return false;
+  if(await confirm.isEnabled()){await confirm.tap();return true;}
+  const energies=modal.locator('.manual-payment-energy button:visible');
+  const count=await energies.count();
+  if(!count)throw new Error('MANUAL_PAYMENT_ENERGY_SURFACE_EMPTY');
+  if(count>12)throw new Error(`MANUAL_PAYMENT_ENERGY_SURFACE_TOO_LARGE:${count}`);
+  for(let mask=1;mask<(1<<count);mask++){
+    for(let index=0;index<count;index++){
+      const button=energies.nth(index),want=!!(mask&(1<<index));
+      const chosen=await button.evaluate(element=>element.classList.contains('chosen'));
+      if(chosen!==want)await button.tap();
+    }
+    if(await confirm.isEnabled()){await confirm.tap();return true;}
+  }
+  throw new Error('MANUAL_PAYMENT_VALID_UI_COMBINATION_NOT_FOUND');
+}
 export async function resolveInteraction(page){
   const rejected=/취소|뒤로|닫기|연결 끊기|메뉴/;
   for(let i=0;i<12;i++){
     const modal=page.locator('#modal.open');
     if(await modal.count()){
+      if(await resolveManualPayment(modal)){await page.waitForTimeout(60);continue;}
       const preferred=modal.locator('button.primary:not([disabled]):visible,button[id$="Confirm"]:not([disabled]):visible');
       let chosen=null;
       for(let j=0;j<await preferred.count();j++){

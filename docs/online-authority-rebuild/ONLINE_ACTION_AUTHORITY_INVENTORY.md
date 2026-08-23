@@ -24,6 +24,8 @@ Exact-relay run #54 then proved a fourth **PRODUCTION RUNTIME FAILURE** at the r
 
 Run #54's non-terminal result after 220 successful UI commits was separately classified as a **HARNESS FAILURE**. The driver treated the last non-gather button as aggressive; an actor with a one-energy support skill repeatedly spent its energy before reaching the cost of its damage skill. The terminal setup now selects a non-healing damage deck through the real lobby UI and taps the strongest currently rendered damage skill, otherwise gather, through the real touchscreen path. It still verifies canonical state before/after every action. The finishing-packet regression also backgrounds only the guest while the host is actor: under host authority, a guest command cannot commit while its host authority is offline, so that state cannot prove a missed terminal publication.
 
+Exact-relay run #55 reached real damage and death progression (`turnSerial/revision 40/40`, one side reduced to two survivors) and kept both clients converged. Both terminal cases then stopped on the same `pierce` payment interaction with no transaction begin. This was a **HARNESS FAILURE**: the generic interaction driver selected every rendered manual-payment energy, leaving the modal at `total 4/2, cost condition unmet` with its confirm button disabled. The shared player-path helper now explores the rendered energy-button subsets through touchscreen taps and confirms only the first combination the UI itself marks enabled. It does not inject a payment plan or mutate game state.
+
 ## Baseline owners and capabilities
 
 | Owner/function | Reads | Writes | May reject | May retry | May mutate game | May mutate DOM | Cleanup owner | Consolidation decision |
