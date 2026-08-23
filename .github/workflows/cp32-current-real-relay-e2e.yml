@@ -25,39 +25,6 @@ permissions:
   contents: read
 
 jobs:
-  source-snapshot:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: e2b0f29cec168ca33ccecc70e81c343c35795408
-          fetch-depth: 0
-      - name: Build exact tracked-source archive
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p transfer
-          git archive --format=zip --output=transfer/megaleague-source-e2b0f29cec168ca33ccecc70e81c343c35795408.zip e2b0f29cec168ca33ccecc70e81c343c35795408
-          python3 - <<'PY'
-          import hashlib, json
-          from pathlib import Path
-          p=Path('transfer/megaleague-source-e2b0f29cec168ca33ccecc70e81c343c35795408.zip')
-          Path('transfer/SOURCE_IDENTITY.json').write_text(json.dumps({
-            'repository':'sardore/megaleague',
-            'commit':'e2b0f29cec168ca33ccecc70e81c343c35795408',
-            'archive':p.name,
-            'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
-            'sizeBytes':p.stat().st_size,
-            'method':'git archive exact commit'
-          },indent=2)+'\n')
-          PY
-      - uses: actions/upload-artifact@v7
-        with:
-          name: megaleague-source-e2b0f29
-          path: transfer/
-          if-no-files-found: error
-
   real-relay:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
