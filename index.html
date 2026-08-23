@@ -22222,6 +22222,13 @@ function executeFoxWithPlan(actions,mode,plan){
           const id = String(message.id || "");
           if (id && onlineChatMessages.some(item => String(item?.id || "") === id)) return false;
           onlineChatMessages.push(message);
+          // Delivery/restore order is not presentation order. Every peer sorts the same
+          // immutable message facts so late/retried packets converge to one transcript.
+          onlineChatMessages.sort((a,b) => {
+            const at=Number(a?.sentAt||0), bt=Number(b?.sentAt||0);
+            if(at!==bt)return at-bt;
+            return String(a?.id||"").localeCompare(String(b?.id||""));
+          });
           if (onlineChatMessages.length > 100) onlineChatMessages.splice(0, onlineChatMessages.length - 100);
           if (!message.mine && !onlineChatPanelOpen) onlineChatUnread++;
           syncOnlineChatUI();
