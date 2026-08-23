@@ -187,10 +187,13 @@ async function patchedTapGeometry(client,geometry,label='target'){
   if(!geometry?.visible||geometry.disabled||geometry.pointerEvents==='none')throw new Error(`${client.name}_ANDROID_TARGET_UNAVAILABLE:${label}:${JSON.stringify(geometry)}`);
   const contentFrame=await androidWebContentFrame(client),display=contentFrame.display,metrics=geometry.metrics||{};
   const viewportWidth=Number(metrics.visualViewport?.width||metrics.innerWidth||1),viewportHeight=Number(metrics.visualViewport?.height||metrics.innerHeight||1);
+  const viewportOffsetLeft=Number(metrics.visualViewport?.offsetLeft||0),viewportOffsetTop=Number(metrics.visualViewport?.offsetTop||0);
   const scaleX=contentFrame.width/viewportWidth,scaleY=contentFrame.height/viewportHeight;
-  const x=Math.max(contentFrame.left+1,Math.min(contentFrame.right-2,Math.round(contentFrame.left+(Number(geometry.x)+Number(geometry.w)/2)*scaleX)));
-  const y=Math.max(contentFrame.top+1,Math.min(contentFrame.bottom-2,Math.round(contentFrame.top+(Number(geometry.y)+Number(geometry.h)/2)*scaleY)));
-  const rec={client:client.name,label,text:geometry.text,x,y,display,contentFrame,scale:{x:scaleX,y:scaleY},viewport:{width:viewportWidth,height:viewportHeight,source:metrics.visualViewport?'visualViewport':'layoutViewport'},metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h}};
+  const centerX=Number(geometry.x)+Number(geometry.w)/2-viewportOffsetLeft;
+  const centerY=Number(geometry.y)+Number(geometry.h)/2-viewportOffsetTop;
+  const x=Math.max(contentFrame.left+1,Math.min(contentFrame.right-2,Math.round(contentFrame.left+centerX*scaleX)));
+  const y=Math.max(contentFrame.top+1,Math.min(contentFrame.bottom-2,Math.round(contentFrame.top+centerY*scaleY)));
+  const rec={client:client.name,label,text:geometry.text,x,y,display,contentFrame,scale:{x:scaleX,y:scaleY},viewport:{width:viewportWidth,height:viewportHeight,offsetLeft:viewportOffsetLeft,offsetTop:viewportOffsetTop,source:metrics.visualViewport?'visualViewport':'layoutViewport'},metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h}};
   timeline('adb-touch',rec);record(`last-touch-${client.name}.json`,rec);
   adb(client,'shell','input','tap',String(x),String(y));
   await sleep(180);
