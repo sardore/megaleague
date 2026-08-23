@@ -30,6 +30,8 @@ Exact-relay run #56 proved the natural action path and canonical terminal commit
 
 Exact-relay run #57 passed 17/18 regressions, including the complete natural first match, result-menu teardown to `IDLE`, fresh second room/session/match identities, and normal second-battle actions. The remaining background-terminal assertion was a **HARNESS FAILURE**: every host-authority action after the threshold really occurred with its guest receiver frozen/offline, but the symmetric strategy allowed the guest to make the eventual finishing action after reconnection. The terminal state itself converged on both clients at winner `A`, revision 97, runtime `ENDING`, with no errors. The regression now uses the real gather UI for guest turns in this case and damaging UI actions for host turns. This does not mutate or inject state; it deterministically reserves the finishing damage for the only authority that can commit while its receiver is offline.
 
+Exact-relay run #58 again passed 17/18 and stopped only when the guest's defeated active unit made gather unavailable and the UI correctly exposed mandatory deployment buttons. This was a **HARNESS FAILURE**, confirmed by the screenshot and converged state at turn/revision 20 with no errors. The conservative guest driver now selects gather when offered, otherwise an actual rendered non-skill deployment/switch action. It never selects a damaging skill and still requires one canonical transaction, revision advance and peer convergence after the touch interaction.
+
 ## Baseline owners and capabilities
 
 | Owner/function | Reads | Writes | May reject | May retry | May mutate game | May mutate DOM | Cleanup owner | Consolidation decision |

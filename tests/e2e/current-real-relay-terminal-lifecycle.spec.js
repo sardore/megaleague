@@ -172,12 +172,21 @@ async function tapAggressiveAction(page) {
   return chosenLabel;
 }
 
-async function tapGatherAction(page) {
-  const gather = page.locator(LEGAL_ACTION).filter({ hasText: /에너지\s*모으기/ }).first();
-  await expect(gather, 'the non-authority peer must expose the real gather action').toBeVisible({ timeout: 30000 });
-  await expect(gather).toBeEnabled();
-  const label = ((await gather.textContent()) || '').replace(/\s+/g, ' ').trim();
-  await gather.tap();
+async function tapNonDamagingAction(page) {
+  const buttons = page.locator(LEGAL_ACTION);
+  const gather = buttons.filter({ hasText: /에너지\s*모으기/ }).first();
+  let chosen = await gather.count() ? gather : null;
+  if (!chosen) {
+    for (let index = 0; index < await buttons.count(); index++) {
+      const button = buttons.nth(index);
+      if (!await button.getAttribute('data-skill-id')) { chosen = button; break; }
+    }
+  }
+  if (!chosen) throw new Error('NON_DAMAGING_UI_ACTION_UNAVAILABLE');
+  await expect(chosen).toBeVisible({ timeout: 30000 });
+  await expect(chosen).toBeEnabled();
+  const label = ((await chosen.textContent()) || '').replace(/\s+/g, ' ').trim();
+  await chosen.tap();
   await resolveInteraction(page);
   return label;
 }
@@ -250,7 +259,7 @@ async function playToTerminal(host, guest, options = {}) {
     } else {
       const [beforeHost,beforeGuest]=await Promise.all([battleState(host.page),battleState(guest.page)]);
       row.clickedLabel=backgroundFinishingReceiver&&next.actor!==host
-        ? await tapGatherAction(next.actor.page)
+        ? await tapNonDamagingAction(next.actor.page)
         : await tapAggressiveAction(next.actor.page);
       const committed=await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest);
       row.revisionAfter=committed.h.revision;row.hpBefore=beforeHost.P.hp+beforeHost.A.hp;row.hpAfter=committed.h.P.hp+committed.h.A.hp;
