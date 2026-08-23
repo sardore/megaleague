@@ -35,28 +35,42 @@ export async function resolveInteraction(page){
     const modal=page.locator('#modal.open');
     if(await modal.count()){
       if(await resolveManualPayment(modal)){await page.waitForTimeout(60);continue;}
-      const preferred=modal.locator('button.primary:not([disabled]):visible,button[id$="Confirm"]:not([disabled]):visible');
-      let chosen=null;
-      for(let j=0;j<await preferred.count();j++){
-        const candidate=preferred.nth(j),text=(await candidate.textContent()||'').trim();
-        if(!rejected.test(text)){chosen=candidate;break}
-      }
-      if(!chosen){
-        const candidates=modal.locator('button:not([disabled]):visible:not(.chosen)');
-        for(let j=0;j<await candidates.count();j++){
-          const candidate=candidates.nth(j),text=(await candidate.textContent()||'').trim();
-          if(!rejected.test(text)){chosen=candidate;break}
-        }
-      }
-      if(!chosen)return;
-      const point=await chosen.evaluate(element=>{const r=element.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};});
+      const point=await page.evaluate(({rejectedSource})=>{
+        const root=document.querySelector('#modal.open');
+        if(!root)return null;
+        const rejected=new RegExp(rejectedSource);
+        const choose=selector=>{
+          for(const element of root.querySelectorAll(selector)){
+            if(!(element instanceof HTMLElement))continue;
+            const style=getComputedStyle(element),r=element.getBoundingClientRect();
+            if(style.display==='none'||style.visibility==='hidden'||style.pointerEvents==='none'||r.width<=0||r.height<=0)continue;
+            const text=(element.textContent||'').trim();
+            if(rejected.test(text))continue;
+            const x=Math.max(0,Math.min(innerWidth-1,r.left+r.width/2)),y=Math.max(0,Math.min(innerHeight-1,r.top+r.height/2));
+            const hit=document.elementFromPoint(x,y);
+            if(hit!==element&&!element.contains(hit))continue;
+            return{x,y};
+          }
+          return null;
+        };
+        return choose('button.primary:not([disabled]),button[id$="Confirm"]:not([disabled])')||choose('button:not([disabled]):not(.chosen)');
+      },{rejectedSource:rejected.source});
+      if(!point)return;
       await page.touchscreen.tap(point.x,point.y);await page.waitForTimeout(60);continue;
     }
-    const targets=page.locator('.battle-unit-card.targetable:visible,.summon-card.targetable:visible');
-    if(await targets.count()){
-      const point=await targets.first().evaluate(element=>{const r=element.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};});
-      await page.touchscreen.tap(point.x,point.y);await page.waitForTimeout(60);continue;
-    }
+    const point=await page.evaluate(()=>{
+      for(const element of document.querySelectorAll('.battle-unit-card.targetable,.summon-card.targetable')){
+        if(!(element instanceof HTMLElement))continue;
+        const style=getComputedStyle(element),r=element.getBoundingClientRect();
+        if(style.display==='none'||style.visibility==='hidden'||style.pointerEvents==='none'||r.width<=0||r.height<=0)continue;
+        const x=Math.max(0,Math.min(innerWidth-1,r.left+r.width/2)),y=Math.max(0,Math.min(innerHeight-1,r.top+r.height/2));
+        const hit=document.elementFromPoint(x,y);
+        if(hit!==element&&!element.contains(hit))continue;
+        return{x,y};
+      }
+      return null;
+    });
+    if(point){await page.touchscreen.tap(point.x,point.y);await page.waitForTimeout(60);continue;}
     return;
   }
 }
