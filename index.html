@@ -17862,6 +17862,7 @@
       function resetBattleEmoteReliability(reason="session-reset"){
         for(const entry of battleEmotePending.values())cancelBattleEmoteRetry(entry.timerId);
         battleEmotePending.clear();battleEmoteSeenIds.clear();
+        document.querySelectorAll(".battle-emote").forEach(node=>node.remove());
         return String(reason);
       }
       function sendOnlineEmote(emoji){
@@ -23967,16 +23968,20 @@ bossHooks.aiReason = function(bossReasonBefore,g,t,s,a){
     function bossPrepareGame(g){window.TimerManager.clear(bossRewardDelayTimer);bossRewardDelayTimer=0;bossRewardLocalReadyAt.clear();window.TimerManager.clear(bossVictoryDelayTimer);bossVictoryDelayTimer=0;bossVictoryReadyAt=0;bossVictoryMatchId="";if(bossOnlineAiTimer)window.OnlineRuntime?.sessionScope?.cancel?.(bossOnlineAiTimer);bossOnlineAiTimer=0;game=g;lastBattleConfig=null;busy=true;pendingSkill=null;lastLog=0;visualEvents=[];visualHoldMs=0;document.getElementById("log").innerHTML="";log(g,"붉은 시간의 군단 보스전 시작 · 타임오러 사용 불가 · 적 공용 시계 활성.","turn");NavigationApplication.request("game");render();startBgm();}
     function bossPlayIntro(){
       if(bossIntroPromise)return bossIntroPromise;
-      bossIntroPromise=new Promise(resolve=>{
+      let cancelIntro=null;
+      const introPromise=new Promise(resolve=>{
         const el=document.createElement("div");el.className="boss-raid-intro";el.innerHTML=`<div class="boss-intro-core"><div class="boss-intro-hourglasses"><span>⏳</span><span>⏳</span><span>⏳</span><span>⏳</span></div><div class="boss-intro-title">붉은 시간의 군단</div><div class="boss-intro-sub">SHARED CLOCK RAID</div></div>`;
         let done=false,backgrounded=false,endingTimer=0,finishTimer=0;
         const onHide=()=>{backgrounded=true;};
         const finish=()=>{if(done)return;done=true;window.TimerManager.clear(endingTimer);window.TimerManager.clear(finishTimer);window.removeEventListener("pagehide",onHide);window.removeEventListener("pageshow",onResume);document.removeEventListener("visibilitychange",onVisibility);el.remove();bossIntroPromise=null;resolve();};
+        cancelIntro=finish;
         const onResume=()=>{if(backgrounded)finish();};
         const onVisibility=()=>{if(document.visibilityState==="hidden")backgrounded=true;else if(backgrounded)finish();};
         document.body.appendChild(el);window.addEventListener("pagehide",onHide,{passive:true});window.addEventListener("pageshow",onResume,{passive:true});document.addEventListener("visibilitychange",onVisibility,{passive:true});
         endingTimer=window.TimerManager.setTimeout(()=>{if(!done)el.classList.add("ending");},1850);finishTimer=window.TimerManager.setTimeout(finish,2400);
       });
+      const scope=game?.bossRaid?.online?window.OnlineRuntime?.sessionScope:null;
+      bossIntroPromise=scope&&!scope.closed?scope.track(introPromise,"boss-raid-intro",{phase:"IN_BATTLE",cancel:()=>cancelIntro?.()}):introPromise;
       return bossIntroPromise;
     }
     async function bossLaunch(g){if(g?.bossRaid?.online)bossStopLobbyHeartbeat();bossPrepareGame(g);if(g?.bossRaid?.online){onlineAuthoritativeRevision=Number(g?.networkRevision||0);p2p.lastAuthoritativeRevision=Number(g?.networkRevision||0);window.OnlineRuntime?.markBattleStarted?.({source:"boss-launch",canonicalRevision:Number(g?.networkRevision||g?.turnSerial||0)});OnlineActionAdmissionOwner.startProbe();}await bossPlayIntro();if(game!==g)return;busy=false;render();if(g?.bossRaid&&(!g.bossRaid.online||p2p?.role==="host"))window.TimerManager.setTimeout(()=>window.__megaSpectatorR18?.startHost?.(),80);bossSendState(true);scheduleAI();}
