@@ -20466,6 +20466,7 @@ function executeFoxWithPlan(actions,mode,plan){
           pending:immutablePending(),
           pendingActionId:String(pending?.packet?.actionId || "") || null,
           hostCommandResults:hostResults.size,
+          hostResolutionTrace:Object.freeze([...hostResults.entries()].slice(-40).map(([actionId,result])=>Object.freeze({actionId,...result}))),
           authoritativeRevision:Number(onlineAuthoritativeRevision || 0),
           stateProbeActive:!!stateProbeTimer,
           resolutionTrace:Object.freeze(resolutionTrace.slice(-40).map(row => Object.freeze({...row}))),
@@ -20619,16 +20620,16 @@ function executeFoxWithPlan(actions,mode,plan){
             return false;
           }
           const admittedAction={...(msg.action || {}),actionId};
-          let accepted=false;
+          let accepted=false,rejectionReason="invalid-action";
           try{
             accepted=summon
               ? !!window.CanonicalActionTransactionOwner.execute((state,team,slot,a)=>applyManualSummonAction(state,team,summon.u.uid,a),game,msg.team,Number(current[1] || 0),admittedAction,{admissionSource:"host-remote"})
               : !!execute(game,msg.team,Number(msg.slot),admittedAction,{admissionSource:"host-remote"});
-          }catch(error){window.__megaRecordRecoveredError?.(error,"online-action-admission.receive");accepted=false;}
-          cacheResult(actionId,accepted,accepted?"":"invalid-action");
+          }catch(error){rejectionReason=`execution-error:${error?.name||"Error"}:${error?.message||String(error)}`;window.__megaRecordRecoveredError?.(error,"online-action-admission.receive");accepted=false;}
+          cacheResult(actionId,accepted,accepted?"":rejectionReason);
           if(accepted){p2p.__pendingAuthoritativeAck=actionId;afterAction();}
           else sendAuthoritativeOnlineState([],null,true,resolutionFor(actionId));
-          onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:expectedMode,matchId:localMatch,actionId,accepted,reason:accepted?"":"invalid-action",turnSerial:game.turnSerial});
+          onlineSafeSend({type:"commandAck",protocol:ONLINE_TURN_SYNC_VERSION,mode:expectedMode,matchId:localMatch,actionId,accepted,reason:accepted?"":rejectionReason,turnSerial:game.turnSerial});
           return accepted;
         };
         const settle = msg => {

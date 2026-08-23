@@ -14,6 +14,8 @@ The rebuild exposes the actual executor as `CanonicalActionTransactionOwner.exec
 
 The first exact-relay CI of the rebuilt path exposed a second **PRODUCTION RUNTIME FAILURE** of the same ownership-boundary class. `OnlineActionAdmissionOwner` was declared in the main application script but used `currentGame()`, a helper private to later IIFEs. Every UI action therefore raised `ReferenceError: currentGame is not defined` before admission. The admission owner now compares its argument directly with the main script's canonical `game` binding. It does not depend on a private helper or compatibility alias.
 
+The following exact-relay artifact proved that a valid guest gather reached host admission and passed match/turn/team/slot validation, but host execution was rejected before `ActionTransactionManager.begin`: the command cache contained one rejected identity while transaction audit remained empty. The receive path had collapsed caught execution exceptions into the generic reason `invalid-action`. The canonical admission owner now preserves the actual exception name/message in its immutable result cache, authoritative resolution and ACK, and the browser regression records the recovered-error registry. This removes error hiding and makes the rejecting owner observable without adding another execution path.
+
 ## Baseline owners and capabilities
 
 | Owner/function | Reads | Writes | May reject | May retry | May mutate game | May mutate DOM | Cleanup owner | Consolidation decision |
