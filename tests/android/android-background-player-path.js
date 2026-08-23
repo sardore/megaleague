@@ -15,10 +15,10 @@ const APP_URL=process.env.CP32_ANDROID_CANDIDATE_URL||'https://10.0.2.2:8443/?re
 const BUILD_ID='CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST';
 const SECONDARY_AVD='cp32-secondary';
 const CLIENTS=Object.freeze([
-  Object.freeze({name:'host',role:'host',serial:PRIMARY_SERIAL,cdpPort:PRIMARY_CDP_PORT,canonicalTeam:'P'}),
-  Object.freeze({name:'guest',role:'guest',serial:SECONDARY_SERIAL,cdpPort:SECONDARY_CDP_PORT,canonicalTeam:'A'}),
+  {name:'host',role:'host',serial:PRIMARY_SERIAL,cdpPort:PRIMARY_CDP_PORT,canonicalTeam:'P',cdp:null},
+  {name:'guest',role:'guest',serial:SECONDARY_SERIAL,cdpPort:SECONDARY_CDP_PORT,canonicalTeam:'A',cdp:null},
 ]);
-const active={stage:'bootstrap',cycle:null,spec:null,clients:new Map(),timeline:[],secondary:null,secondaryLogFd:null,videos:new Map()};
+const active={stage:'bootstrap',cycle:null,spec:null,timeline:[],secondary:null,secondaryLogFd:null,videos:new Map()};
 
 fs.mkdirSync(OUTPUT,{recursive:true});
 fs.mkdirSync(PREFLIGHT,{recursive:true});
@@ -181,7 +181,7 @@ async function prepareChrome(client){
   fs.writeFileSync(commandLinePath,`${commandLine}\n`);
   adb(client,'push',commandLinePath,'/data/local/tmp/chrome-command-line');
   adb(client,'shell','am','start','-W','-a','android.intent.action.VIEW','-d',APP_URL,ANDROID_PACKAGE);
-  client.cdp=await cdpConnect(client);active.clients.set(client.name,client);
+  client.cdp=await cdpConnect(client);
   await waitUntil(()=>evaluate(client,"document.readyState==='complete'||document.readyState==='interactive'"),{timeout:60000,label:`${client.name}_PAGE_READY`});
   await installPageTimeline(client);
   const build=await evaluate(client,"document.querySelector('#cp32BuildIdentity')?.dataset.buildId||null");
