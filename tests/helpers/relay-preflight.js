@@ -3,6 +3,11 @@ import fs from 'node:fs';
 import { RELAY_ENDPOINT, PRODUCTION_URL, CANDIDATE_ORIGIN, EXPECTED_SHA256, EXPECTED_SIZE } from './constants.js';
 import { requestLocalCandidateJson } from './local-candidate-tls.js';
 
+const candidateExpectedSha=String(process.env.CP32_CANDIDATE_EXPECTED_SHA || EXPECTED_SHA256).trim();
+const candidateExpectedSizeRaw=String(process.env.CP32_CANDIDATE_EXPECTED_SIZE || EXPECTED_SIZE).trim();
+const candidateExpectedSize=Number(candidateExpectedSizeRaw);
+if(!/^[0-9a-f]{64}$/.test(candidateExpectedSha)||!Number.isSafeInteger(candidateExpectedSize)||candidateExpectedSize<0)throw new Error(`CANDIDATE_EXPECTED_IDENTITY_INVALID:${candidateExpectedSha}:${candidateExpectedSizeRaw}`);
+
 async function websocketOpen(url, timeout=15000) {
   return await new Promise((resolve,reject)=>{
     const ws=new WebSocket(url);
@@ -14,7 +19,7 @@ async function websocketOpen(url, timeout=15000) {
 
 export async function runPreflight({mode=process.env.CP32_PREFLIGHT_MODE || process.env.CP32_TARGET_MODE || 'candidate'}={}) {
   if (!['candidate','production'].includes(mode)) throw new Error(`PREFLIGHT_MODE_INVALID:${mode}`);
-  const out={mode,startedAt:new Date().toISOString(),checks:[]};
+  const out={mode,startedAt:new Date().toISOString(),candidateExpected:{sha:candidateExpectedSha,size:candidateExpectedSize,file:process.env.CP32_CANDIDATE_FILE||null},checks:[]};
   async function check(name,fn){
     try{const value=await fn();out.checks.push({name,ok:true,value});return value;}
     catch(error){out.checks.push({name,ok:false,error:String(error),code:error?.code||null});return undefined;}
@@ -36,7 +41,8 @@ export async function runPreflight({mode=process.env.CP32_PREFLIGHT_MODE || proc
     out.checks.push({name:'PRODUCTION_HTTPS',ok:true,skipped:true,reason:'NOT_CANDIDATE_RESPONSIBILITY'});
     await check('CANDIDATE_HTTPS',async()=>{
       const health=await requestLocalCandidateJson(`${CANDIDATE_ORIGIN}/healthz`);
-      if(health?.sha!==EXPECTED_SHA256 || health?.size!==EXPECTED_SIZE) throw new Error(`CANDIDATE_IDENTITY_MISMATCH:${health?.sha}:${health?.size}`);
+      if(health?.sha!==candidateExpectedSha || Number(health?.size)!==candidateExpectedSize) throw new Error(`CANDIDATE_IDENTITY_MISMATCH:${health?.sha}:${health?.size}:${candidateExpectedSha}:${candidateExpectedSize}`);
+      if(process.env.CP32_CANDIDATE_FILE && health?.file!==process.env.CP32_CANDIDATE_FILE) throw new Error(`CANDIDATE_FILE_MISMATCH:${health?.file}:${process.env.CP32_CANDIDATE_FILE}`);
       return health;
     });
   }

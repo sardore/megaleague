@@ -7,13 +7,17 @@ import {requestLocalCandidateJson} from '../tests/helpers/local-candidate-tls.js
 import {CANDIDATE_ORIGIN,EXPECTED_SHA256,EXPECTED_SIZE} from '../tests/helpers/constants.js';
 
 const output=process.env.CP32_TLS_REGRESSION_OUTPUT || 'artifacts/preflight/tls-trust-regression.json';
-const record={startedAt:new Date().toISOString(),checks:[]};
+const expectedSha=String(process.env.CP32_CANDIDATE_EXPECTED_SHA || EXPECTED_SHA256).trim();
+const expectedSizeRaw=String(process.env.CP32_CANDIDATE_EXPECTED_SIZE || EXPECTED_SIZE).trim();
+const expectedSize=Number(expectedSizeRaw);
+if(!/^[0-9a-f]{64}$/.test(expectedSha)||!Number.isSafeInteger(expectedSize)||expectedSize<0)throw new Error(`LOCAL_CANDIDATE_EXPECTED_IDENTITY_INVALID:${expectedSha}:${expectedSizeRaw}`);
+const record={startedAt:new Date().toISOString(),expected:{sha:expectedSha,size:expectedSize,file:process.env.CP32_CANDIDATE_FILE||null},checks:[]};
 const push=(name,ok,detail={})=>record.checks.push({name,ok,...detail});
 
 try {
   const health=await requestLocalCandidateJson(`${CANDIDATE_ORIGIN}/healthz`);
-  const exact=health?.sha===EXPECTED_SHA256 && health?.size===EXPECTED_SIZE;
-  push('LOCAL_CANDIDATE_SELF_SIGNED_OR_PRIVATE_CA_ACCEPTED',exact,{health});
+  const exact=health?.sha===expectedSha && Number(health?.size)===expectedSize;
+  push('LOCAL_CANDIDATE_SELF_SIGNED_OR_PRIVATE_CA_ACCEPTED',exact,{health,expected:record.expected});
   if(!exact) throw new Error('LOCAL_CANDIDATE_IDENTITY_MISMATCH');
 
   const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'cp32-unrelated-tls-'));
