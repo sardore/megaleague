@@ -45,33 +45,29 @@ jobs:
           if marker in s:
               print('AUTHORITATIVE_REVISION_PATCH_ALREADY_PRESENT')
               raise SystemExit(0)
-          old='''        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));
-        onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;
-        game.networkRevision = onlineAuthoritativeRevision;
-        const revision = onlineAuthoritativeRevision;
-        // Transport availability cannot veto an already committed host mutation. Advance the
-        // canonical revision first; onlineSafeSend may fail and the same immutable revision is
-        // then retained by the single reliable-state retry owner below.'''
-          new='''        // Publication order is not canonical mutation order. A resend of the same
-        // canonical state must reuse its committed revision, even when it comes through the
-        // ordinary publication path rather than a force/recovery path. Compare against the
-        // last immutable PVP canonical packet while ignoring transport revision metadata.
-        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state==="string"
-          ? p2p.__reliableStatePacket.state
-          : null;
-        const currentCanonicalState=bossOnline?null:serializeOnlineGame();
-        const canonicalChanged=bossOnline
-          ? !force
-          : previousCanonicalState===null
-            ? !force
-            : !onlineSnapshotEquivalentForInput(previousCanonicalState,currentCanonicalState);
-        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));
-        onlineAuthoritativeRevision=canonicalChanged?currentRevision+1:currentRevision;
-        game.networkRevision = onlineAuthoritativeRevision;
-        const revision = onlineAuthoritativeRevision;
-        // Transport availability cannot veto an already committed host mutation. When the
-        // canonical state actually changed, advance the revision before delivery; otherwise
-        // retain the existing revision so retries/resends cannot manufacture canonical history.'''
+          old="        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));\n        onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;\n        game.networkRevision = onlineAuthoritativeRevision;\n        const revision = onlineAuthoritativeRevision;\n        // Transport availability cannot veto an already committed host mutation. Advance the\n        // canonical revision first; onlineSafeSend may fail and the same immutable revision is\n        // then retained by the single reliable-state retry owner below."
+          new="\n".join([
+              "        // Publication order is not canonical mutation order. A resend of the same",
+              "        // canonical state must reuse its committed revision, even when it comes through the",
+              "        // ordinary publication path rather than a force/recovery path. Compare against the",
+              "        // last immutable PVP canonical packet while ignoring transport revision metadata.",
+              "        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state===\"string\"",
+              "          ? p2p.__reliableStatePacket.state",
+              "          : null;",
+              "        const currentCanonicalState=bossOnline?null:serializeOnlineGame();",
+              "        const canonicalChanged=bossOnline",
+              "          ? !force",
+              "          : previousCanonicalState===null",
+              "            ? !force",
+              "            : !onlineSnapshotEquivalentForInput(previousCanonicalState,currentCanonicalState);",
+              "        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));",
+              "        onlineAuthoritativeRevision=canonicalChanged?currentRevision+1:currentRevision;",
+              "        game.networkRevision = onlineAuthoritativeRevision;",
+              "        const revision = onlineAuthoritativeRevision;",
+              "        // Transport availability cannot veto an already committed host mutation. When the",
+              "        // canonical state actually changed, advance the revision before delivery; otherwise",
+              "        // retain the existing revision so retries/resends cannot manufacture canonical history.",
+          ])
           count=s.count(old)
           if count != 1:
               raise SystemExit(f'AUTHORITATIVE_REVISION_PATCH_TARGET_COUNT:{count}')
