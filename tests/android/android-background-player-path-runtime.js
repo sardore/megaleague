@@ -154,7 +154,13 @@ async function patchedAndroidWebContentFrame(client){
   };
 
   const display=physicalDisplay(client);
-  const cached=client.verifiedContentFrame;
+  // Android/Chrome can surface ANR/permission UI or move browser chrome without changing
+  // the JS viewport metrics. Reusing a previously verified physical frame can therefore send
+  // a later ADB touch into browser/system UI while elementFromPoint still reports the target.
+  // Re-read the Android hierarchy for every real touch so blockers and physical insets are
+  // admitted from the same instant as the touch coordinates.
+  client.verifiedContentFrame=null;
+  const cached=null;
   if(cached&&cached.display?.width===display.width&&cached.display?.height===display.height){
     let page=null;
     try{page=await readPageMetrics();}catch{}
