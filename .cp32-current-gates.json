@@ -1,0 +1,45 @@
+{
+  "mainSha": "5a27f0c44cd3ede6d42168c3285dd9016efe4037",
+  "exact": [
+    {
+      "id": 32624682452,
+      "name": "CP32 Current Real Relay E2E",
+      "run_number": 71,
+      "event": "push",
+      "head_sha": "5a27f0c44cd3ede6d42168c3285dd9016efe4037",
+      "status": "in_progress",
+      "conclusion": null,
+      "html_url": "https://github.com/sardore/megaleague/actions/runs/32624682452",
+      "created_at": "2026-08-23T07:06:22Z",
+      "updated_at": "2026-08-23T07:06:26Z"
+    }
+  ],
+  "production": [
+    {
+      "id": 32624682462,
+      "name": "CP32 Production Origin E2E",
+      "run_number": 7,
+      "event": "push",
+      "head_sha": "5a27f0c44cd3ede6d42168c3285dd9016efe4037",
+      "status": "in_progress",
+      "conclusion": null,
+      "html_url": "https://github.com/sardore/megaleague/actions/runs/32624682462",
+      "created_at": "2026-08-23T07:06:22Z",
+      "updated_at": "2026-08-23T07:06:26Z"
+    }
+  ],
+  "android": [
+    {
+      "id": 32624812975,
+      "name": "CP32 Android Background E2E",
+      "run_number": 1,
+      "event": "workflow_dispatch",
+      "head_sha": "5a27f0c44cd3ede6d42168c3285dd9016efe4037",
+      "status": "in_progress",
+      "conclusion": null,
+      "html_url": "https://github.com/sardore/megaleague/actions/runs/32624812975",
+      "created_at": "2026-08-23T07:09:16Z",
+      "updated_at": "2026-08-23T07:09:21Z"
+    }
+  ]
+}
