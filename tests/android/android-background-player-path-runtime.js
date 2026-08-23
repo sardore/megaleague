@@ -68,6 +68,51 @@ if(frameStart<0||frameEnd<0||frameEnd<=frameStart)throw new Error(`ANDROID_RUNTI
 
 async function patchedAndroidWebContentFrame(client){
   let last=[];
+  const readPageMetrics=()=>evaluate(client,`(()=>{
+    const vv=window.visualViewport;
+    return{
+      origin:location.origin,
+      visibility:document.visibilityState,
+      ready:document.readyState,
+      hasGame:typeof game!=='undefined',
+      hasRuntime:!!window.OnlineRuntime?.debug,
+      hasInput:!!window.InputLockManager,
+      hasPanel:!!window.ActionPanelConvergenceOwner,
+      innerWidth:Number(innerWidth||0),innerHeight:Number(innerHeight||0),
+      outerWidth:Number(outerWidth||0),outerHeight:Number(outerHeight||0),
+      screenWidth:Number(screen.width||0),screenHeight:Number(screen.height||0),
+      dpr:Number(devicePixelRatio||1),
+      visualViewport:vv?{width:Number(vv.width||0),height:Number(vv.height||0),offsetLeft:Number(vv.offsetLeft||0),offsetTop:Number(vv.offsetTop||0),scale:Number(vv.scale||1)}:null,
+    };
+  })()`);
+  const pageUsable=page=>!!page&&page.origin===APP_ORIGIN&&page.visibility==='visible'&&(page.ready==='complete'||page.ready==='interactive')&&page.hasGame&&page.hasRuntime&&page.hasInput&&page.hasPanel;
+  const close=(a,b,tolerance=1)=>Math.abs(Number(a||0)-Number(b||0))<=tolerance;
+  const viewportStable=(before,after)=>{
+    if(!before||!after)return false;
+    if(!close(before.innerWidth,after.innerWidth)||!close(before.innerHeight,after.innerHeight))return false;
+    if(!close(before.screenWidth,after.screenWidth)||!close(before.screenHeight,after.screenHeight))return false;
+    if(!close(before.dpr,after.dpr,0.01))return false;
+    const a=before.visualViewport,b=after.visualViewport;
+    if(!!a!==!!b)return false;
+    if(a&&b&&(!close(a.width,b.width)||!close(a.height,b.height)||!close(a.offsetLeft,b.offsetLeft)||!close(a.offsetTop,b.offsetTop)||!close(a.scale,b.scale,0.01)))return false;
+    return true;
+  };
+
+  const display=physicalDisplay(client);
+  const cached=client.verifiedContentFrame;
+  if(cached&&cached.display?.width===display.width&&cached.display?.height===display.height){
+    let page=null;
+    try{page=await readPageMetrics();}catch{}
+    if(pageUsable(page)&&viewportStable(cached.pageMetrics,page)){
+      const reused={...cached,display,pageMetrics:page,cacheFallback:true,usedAt:now()};
+      timeline('android-web-content-frame-cache-hit',{client:client.name,verifiedAt:cached.verifiedAt,ageMs:now()-Number(cached.verifiedAt||0),display,page});
+      record(`last-web-content-frame-fallback-${client.name}.json`,{fallback:reused,page});
+      return reused;
+    }
+    timeline('android-web-content-frame-cache-invalidated',{client:client.name,display,cachedDisplay:cached.display||null,cachedPage:cached.pageMetrics||null,page});
+    client.verifiedContentFrame=null;
+  }
+
   return waitUntil(async()=>{
     const hierarchy=androidUiHierarchy(client);last=hierarchy.nodes;
     const blocker=knownChromeBlocker(last);
@@ -79,29 +124,19 @@ async function patchedAndroidWebContentFrame(client){
       return false;
     }
     const webviews=last.filter(node=>node.class==='android.webkit.WebView'&&node.package===ANDROID_PACKAGE&&node.width>0&&node.height>0).sort((a,b)=>b.width*b.height-a.width*a.height);
-    const display=physicalDisplay(client);
-    if(webviews.length){
-      const view=webviews[0];
-      if(view.left<0||view.top<0||view.right>display.width||view.bottom>display.height)return false;
-      const verified={left:view.left,top:view.top,right:view.right,bottom:view.bottom,width:view.width,height:view.height,display,resourceId:view['resource-id']||null,verifiedAt:now()};
-      client.verifiedContentFrame=verified;
-      return verified;
-    }
-    const cached=client.verifiedContentFrame;
-    if(!cached||now()-Number(cached.verifiedAt||0)>120000)return false;
-    if(cached.display?.width!==display.width||cached.display?.height!==display.height)return false;
-    let focus='';
-    try{focus=adb(client,'shell','dumpsys','window','windows');}catch{return false;}
-    const focusLines=String(focus).split(/\r?\n/).filter(line=>/mCurrentFocus|mFocusedApp/.test(line));
-    if(!focusLines.some(line=>line.includes(ANDROID_PACKAGE)))return false;
+    const currentDisplay=physicalDisplay(client);
+    if(!webviews.length)return false;
+    const view=webviews[0];
+    if(view.left<0||view.top<0||view.right>currentDisplay.width||view.bottom>currentDisplay.height)return false;
     let page=null;
-    try{page=await evaluate(client,`(()=>({origin:location.origin,visibility:document.visibilityState,ready:document.readyState,hasGame:typeof game!=='undefined',hasRuntime:!!window.OnlineRuntime?.debug,hasInput:!!window.InputLockManager,hasPanel:!!window.ActionPanelConvergenceOwner}))()`);}catch{return false;}
-    if(page?.origin!==APP_ORIGIN||page?.visibility!=='visible'||!page?.hasGame||!page?.hasRuntime||!page?.hasInput||!page?.hasPanel)return false;
-    const fallback={...cached,display,cacheFallback:true,usedAt:now()};
-    timeline('android-web-content-frame-cache-fallback',{client:client.name,verifiedAt:cached.verifiedAt,ageMs:now()-Number(cached.verifiedAt||0),display,page,focus:focusLines.slice(-4)});
-    record(`last-web-content-frame-fallback-${client.name}.json`,{fallback,page,focus:focusLines.slice(-8)});
-    return fallback;
-  },{timeout:20000,interval:250,label:`${client.name}_ANDROID_WEB_CONTENT_FRAME`}).catch(error=>{
+    try{page=await readPageMetrics();}catch{return false;}
+    if(!pageUsable(page))return false;
+    const verified={left:view.left,top:view.top,right:view.right,bottom:view.bottom,width:view.width,height:view.height,display:currentDisplay,resourceId:view['resource-id']||null,verifiedAt:now(),pageMetrics:page};
+    client.verifiedContentFrame=verified;
+    timeline('android-web-content-frame-calibrated',{client:client.name,verified});
+    record(`last-web-content-frame-calibrated-${client.name}.json`,verified);
+    return verified;
+  },{timeout:8000,interval:250,label:`${client.name}_ANDROID_WEB_CONTENT_FRAME`}).catch(error=>{
     const summary=last.map(node=>({class:node.class,package:node.package,resourceId:node['resource-id'],text:node.text,bounds:[node.left,node.top,node.right,node.bottom]}));
     throw new Error(`${client.name}_ANDROID_WEB_CONTENT_FRAME_FAILED:last=${JSON.stringify(summary)}:cause=${String(error)}`);
   });
