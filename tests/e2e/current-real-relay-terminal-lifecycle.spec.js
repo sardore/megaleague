@@ -211,7 +211,9 @@ async function playToTerminal(host, guest, options = {}) {
     const state = next.actor === host ? next.hostState : next.guestState;
     const turn = state.actorTeam;
     const opponent = turn === 'P' ? state.A : turn === 'A' ? state.P : { alive: 4, hp: Infinity };
-    const shouldBackground = backgroundFinishingReceiver && (action >= 6 || opponent.alive <= 3 || opponent.hp <= 500);
+    // Only the host can commit while its peer is offline. A guest command with the host offline
+    // is correctly pending, so it cannot prove that the terminal packet itself was missed.
+    const shouldBackground = backgroundFinishingReceiver && next.actor === host && (action >= 6 || opponent.alive <= 3 || opponent.hp <= 500);
     const row={ action, actor: next.actor.name, turn, opponentAlive: opponent.alive, opponentHp: opponent.hp, backgrounded: shouldBackground };
     history.push(row);
 

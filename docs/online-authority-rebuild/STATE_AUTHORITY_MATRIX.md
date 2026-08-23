@@ -11,7 +11,7 @@
 | action ID | admission owner for command; transaction owner after admission | protocol, audit, snapshot publication | UI renderers and retry timers |
 | canonical game mutation | `ActionTransactionManager` transaction executing admitted combat action | serializers and view owners | guest request path, projection, transport callbacks from stale epoch |
 | turn serial | `TurnEngine` inside canonical transaction | admission, snapshot, projection | retry/reconnect/UI |
-| host authoritative revision | `sendAuthoritativeOnlineState` publication owner | snapshot encoder, diagnostics | combat sublayers and projection |
+| host authoritative revision | `sendAuthoritativeOnlineState` publication owner | snapshot encoder, diagnostics, reliable delivery owner | combat sublayers, projection, transport availability/connection flags |
 | guest admitted revision | authoritative envelope admission | immutable view/projection/input | DOM, retry task, host command handler |
 | transport binding | `OnlineRuntime.TransportOwner` | protocol send/control paths | game engine and DOM |
 | reconnect state | `OnlineRuntime` state machine/restore transaction | input availability/projection | action engine, visibility UI handlers |

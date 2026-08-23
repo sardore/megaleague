@@ -20793,7 +20793,7 @@ function executeFoxWithPlan(actions,mode,plan){
       function sendAuthoritativeOnlineState(visuals = [], ackActionId = null, force = false, actionResolution = null) {
         window.__megaSpectatorR18?.beforeAuthoritativeState?.(visuals);
         const bossOnline=!!game?.bossRaid?.online;
-        if (!game || !(game.mode === "online" || bossOnline) || p2p?.role !== "host" || !p2p.connected) return false;
+        if (!game || !(game.mode === "online" || bossOnline) || p2p?.role !== "host") return false;
         const packet = cloneOnlineVisualEvents(visuals);
         const normalizedResolution = actionResolution?.actionId && ["accepted","rejected","unknown"].includes(String(actionResolution.status || ""))
           ? { actionId:String(actionResolution.actionId), status:String(actionResolution.status), reason:String(actionResolution.reason || "") }
@@ -20802,6 +20802,9 @@ function executeFoxWithPlan(actions,mode,plan){
         onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;
         game.networkRevision = onlineAuthoritativeRevision;
         const revision = onlineAuthoritativeRevision;
+        // Transport availability cannot veto an already committed host mutation. Advance the
+        // canonical revision first; onlineSafeSend may fail and the same immutable revision is
+        // then retained by the single reliable-state retry owner below.
         const sent = onlineSafeSend({
           type:"authoritativeState", protocol:ONLINE_TURN_SYNC_VERSION, mode:bossOnline?"BOSS_COOP":"PVP",
           matchId:onlineCurrentMatchId(), revision,

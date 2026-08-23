@@ -4,6 +4,8 @@
 
 Exact-relay Chromium evidence exposed a production cross-phase resource bug after the first consolidation pass: `showOnlineCoinToss` created its removal timer through the ambient `TimerManager` while the session scope was still in LOBBY. Automatic adoption correctly cancelled that LOBBY timer on the IN_BATTLE transition, but the presentation node itself had no cancellation cleanup and remained above the action panel indefinitely. The start presentation now explicitly owns a SESSION-scoped removal timer because its defined lifetime crosses LOBBY -> IN_BATTLE, and application release removes the node synchronously if the session ends first.
 
+Exact-relay run #54 exposed the inverse transport/lifecycle coupling at host publication. A buffered guest command was admitted while host restore had not yet promoted the transport binding; its transaction committed, but the transport-derived `p2p.connected` flag was still false. Buffered host-authority commands are now replayed only after promotion and restore projection readiness. Canonical revision ownership is independently protected from socket availability: the host publication owner advances and stores its reliable snapshot once; the transport owner may only report/send/retry delivery of that immutable revision.
+
 | Fact/domain | Baseline owner(s) | Writers | Conflict/gap | Canonical owner after rebuild |
 |---|---|---|---|---|
 | session identity/generation/token | `OnlineRuntime` active session | runtime session factory/cleanup | none found | `OnlineRuntime` |
