@@ -12,6 +12,8 @@ The source audit nevertheless proves a **PRODUCTION RUNTIME AUTHORITY FAILURE**.
 
 The rebuild exposes the actual executor as `CanonicalActionTransactionOwner.execute`, makes `execute()` enter `OnlineActionAdmissionOwner` unconditionally, and removes the inaccessible name lookup rather than adding another fallback.
 
+The first exact-relay CI of the rebuilt path exposed a second **PRODUCTION RUNTIME FAILURE** of the same ownership-boundary class. `OnlineActionAdmissionOwner` was declared in the main application script but used `currentGame()`, a helper private to later IIFEs. Every UI action therefore raised `ReferenceError: currentGame is not defined` before admission. The admission owner now compares its argument directly with the main script's canonical `game` binding. It does not depend on a private helper or compatibility alias.
+
 ## Baseline owners and capabilities
 
 | Owner/function | Reads | Writes | May reject | May retry | May mutate game | May mutate DOM | Cleanup owner | Consolidation decision |

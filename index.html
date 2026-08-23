@@ -20543,7 +20543,7 @@ function executeFoxWithPlan(actions,mode,plan){
           });
         };
         const execute = function(next,g,t,s,action,opt={}) {
-          const live = !opt?.sim && g && (g === currentGame() || opt?.r48Live === true);
+          const live = !opt?.sim && g && (g === game || opt?.r48Live === true);
           if (!live) return window.CanonicalActionTransactionOwner.execute.call(this,next,g,t,s,action,opt);
           const online = g === game && (g?.mode === "online" || g?.bossRaid?.online);
           if (online && p2p?.role === "guest") return guestOwns(g,t,s) ? requestAction(g,t,s,action) : false;

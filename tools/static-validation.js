@@ -20,6 +20,8 @@ const relayPreflight=fs.readFileSync('tests/helpers/relay-preflight.js','utf8');
 check('PREFLIGHT_MODE_SPLIT',relayPreflight.includes("mode==='production'")&&relayPreflight.includes('requestLocalCandidateJson'),'candidate/production responsibility split');
 const indexText=fs.readFileSync('index.html','utf8');
 check('ONE_ACTION_ADMISSION_ENTRY',indexText.includes('return OnlineActionAdmissionOwner.execute.call(thisArg,middle,g,t,s,a,opt);'),'execute enters canonical admission owner');
+const admissionSource=indexText.slice(indexText.indexOf('const OnlineActionAdmissionOwner = (() => {'),indexText.indexOf('function sendAuthoritativeOnlineState('));
+check('ACTION_ADMISSION_SCOPE_SELF_CONTAINED',admissionSource.includes('g === game')&&!admissionSource.includes('currentGame('),'admission owner uses the canonical main-script game binding and no inaccessible IIFE helper');
 check('CANONICAL_TRANSACTION_OWNER_EXPORTED',indexText.includes('CanonicalActionTransactionOwner = Object.freeze({execute:executeCanonicalActionTransaction})'),'canonical transaction executor is explicitly owned across script scopes');
 check('LEGACY_ACTION_TRANSACTION_LOOKUP_REMOVED',!indexText.includes('actionTransactionExecuteStage'),'inaccessible legacy transaction lookup removed');
 check('DUPLICATE_ROLE_GUARDS_REMOVED',!indexText.includes('applyingRemoteAction'),'remote execution flag removed from combat layers');
