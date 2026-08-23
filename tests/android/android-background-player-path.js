@@ -175,6 +175,10 @@ async function prepareChrome(client){
   active.stage=`prepare-chrome:${client.name}`;timeline('chrome-prepare-begin',{client:client.name,serial:client.serial});
   try{adb(client,'shell','am','force-stop',ANDROID_PACKAGE);}catch{}
   try{adb(client,'shell','pm','clear',ANDROID_PACKAGE);}catch{}
+  let notificationPermission='GRANTED';
+  try{adb(client,'shell','pm','grant',ANDROID_PACKAGE,'android.permission.POST_NOTIFICATIONS');}
+  catch(error){notificationPermission=`UNAVAILABLE:${String(error?.stderr||error?.message||error)}`;}
+  timeline('chrome-notification-permission',{client:client.name,result:notificationPermission});
   const spki=requireLocalCandidateSpki();
   const commandLine=`chrome --ignore-certificate-errors-spki-list=${spki} --disable-fre --no-default-browser-check --disable-first-run-ui --remote-debugging-port=0`;
   const commandLinePath=path.join(PREFLIGHT,`chrome-command-line-${client.name}.txt`);
@@ -204,15 +208,72 @@ function physicalDisplay(client){
   return{width:Number(match[1]),height:Number(match[2]),raw:raw.trim()};
 }
 
+function decodeXml(value=''){
+  return value.replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+}
+
+function parseAndroidUiHierarchy(xml){
+  const nodes=[];
+  for(const match of xml.matchAll(/<node\b([^>]*)>/g)){
+    const attributes={};
+    for(const attribute of match[1].matchAll(/([\w-]+)="([^"]*)"/g))attributes[attribute[1]]=decodeXml(attribute[2]);
+    const bounds=String(attributes.bounds||'').match(/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/);
+    if(!bounds)continue;
+    const left=Number(bounds[1]),top=Number(bounds[2]),right=Number(bounds[3]),bottom=Number(bounds[4]);
+    nodes.push({...attributes,left,top,right,bottom,width:right-left,height:bottom-top});
+  }
+  return nodes;
+}
+
+function androidUiHierarchy(client){
+  const remote=`/sdcard/cp32-window-${client.name}.xml`;
+  adb(client,'shell','uiautomator','dump','--compressed',remote);
+  const xml=adb(client,'exec-out','cat',remote);
+  if(!xml.includes('<hierarchy'))throw new Error(`${client.name}_ANDROID_UI_HIERARCHY_INVALID:${xml.slice(0,300)}`);
+  record(`last-ui-hierarchy-${client.name}.xml`,xml);
+  return{xml,nodes:parseAndroidUiHierarchy(xml)};
+}
+
+function knownChromeBlocker(nodes){
+  const ids=new Set([
+    `${ANDROID_PACKAGE}:id/negative_button`,
+    'com.android.permissioncontroller:id/permission_deny_button',
+    'com.google.android.permissioncontroller:id/permission_deny_button',
+  ]);
+  return nodes.find(node=>ids.has(node['resource-id'])&&node.width>0&&node.height>0)||null;
+}
+
+async function androidWebContentFrame(client){
+  let last=[];
+  return waitUntil(async()=>{
+    const hierarchy=androidUiHierarchy(client);last=hierarchy.nodes;
+    const blocker=knownChromeBlocker(last);
+    if(blocker){
+      const x=Math.round((blocker.left+blocker.right)/2),y=Math.round((blocker.top+blocker.bottom)/2);
+      const detail={client:client.name,resourceId:blocker['resource-id'],text:blocker.text||blocker['content-desc']||'',x,y,bounds:[blocker.left,blocker.top,blocker.right,blocker.bottom]};
+      timeline('chrome-surface-blocker-dismissed',detail);record(`last-chrome-blocker-${client.name}.json`,detail);
+      adb(client,'shell','input','tap',String(x),String(y));
+      return false;
+    }
+    const webviews=last.filter(node=>node.class==='android.webkit.WebView'&&node.package===ANDROID_PACKAGE&&node.width>0&&node.height>0).sort((a,b)=>b.width*b.height-a.width*a.height);
+    if(!webviews.length)return false;
+    const view=webviews[0],display=physicalDisplay(client);
+    if(view.left<0||view.top<0||view.right>display.width||view.bottom>display.height)return false;
+    return{left:view.left,top:view.top,right:view.right,bottom:view.bottom,width:view.width,height:view.height,display,resourceId:view['resource-id']||null};
+  },{timeout:20000,interval:250,label:`${client.name}_ANDROID_WEB_CONTENT_FRAME`}).catch(error=>{
+    const summary=last.map(node=>({class:node.class,package:node.package,resourceId:node['resource-id'],text:node.text,bounds:[node.left,node.top,node.right,node.bottom]}));
+    throw new Error(`${client.name}_ANDROID_WEB_CONTENT_FRAME_FAILED:last=${JSON.stringify(summary)}:cause=${String(error)}`);
+  });
+}
+
 async function tapGeometry(client,geometry,label='target'){
   if(!geometry?.visible||geometry.disabled||geometry.pointerEvents==='none')throw new Error(`${client.name}_ANDROID_TARGET_UNAVAILABLE:${label}:${JSON.stringify(geometry)}`);
-  const display=physicalDisplay(client),metrics=geometry.metrics||{};
-  const screenWidth=Number(metrics.screenWidth||metrics.innerWidth||1),screenHeight=Number(metrics.screenHeight||metrics.outerHeight||metrics.innerHeight||1);
-  const scaleX=display.width/screenWidth,scaleY=display.height/screenHeight;
-  const contentTopCss=Math.max(0,Number(metrics.screenY||0)+Math.max(0,Number(metrics.outerHeight||screenHeight)-Number(metrics.innerHeight||screenHeight)));
-  const x=Math.max(1,Math.min(display.width-2,Math.round((Number(geometry.x)+Number(geometry.w)/2+Number(metrics.screenX||0))*scaleX)));
-  const y=Math.max(1,Math.min(display.height-2,Math.round((Number(geometry.y)+Number(geometry.h)/2+contentTopCss)*scaleY)));
-  const rec={client:client.name,label,text:geometry.text,x,y,display,metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h}};
+  const contentFrame=await androidWebContentFrame(client),display=contentFrame.display,metrics=geometry.metrics||{};
+  const viewportWidth=Number(metrics.innerWidth||metrics.visualViewport?.width||1),viewportHeight=Number(metrics.innerHeight||metrics.visualViewport?.height||1);
+  const scaleX=contentFrame.width/viewportWidth,scaleY=contentFrame.height/viewportHeight;
+  const x=Math.max(contentFrame.left+1,Math.min(contentFrame.right-2,Math.round(contentFrame.left+(Number(geometry.x)+Number(geometry.w)/2)*scaleX)));
+  const y=Math.max(contentFrame.top+1,Math.min(contentFrame.bottom-2,Math.round(contentFrame.top+(Number(geometry.y)+Number(geometry.h)/2)*scaleY)));
+  const rec={client:client.name,label,text:geometry.text,x,y,display,contentFrame,scale:{x:scaleX,y:scaleY},metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h}};
   timeline('adb-touch',rec);record(`last-touch-${client.name}.json`,rec);
   adb(client,'shell','input','tap',String(x),String(y));
   await sleep(180);
