@@ -22,68 +22,9 @@ on:
       - 'package-lock.json'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch-authoritative-revision:
-    if: github.event_name == 'pull_request' && github.head_ref == 'diagnose/android-lifecycle-32624812975'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: diagnose/android-lifecycle-32624812975
-          fetch-depth: 1
-      - name: Patch canonical revision idempotency and push branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='Publication order is not canonical mutation order.'
-          if marker in s:
-              print('AUTHORITATIVE_REVISION_PATCH_ALREADY_PRESENT')
-              raise SystemExit(0)
-          old="        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));\n        onlineAuthoritativeRevision=force?currentRevision:currentRevision+1;\n        game.networkRevision = onlineAuthoritativeRevision;\n        const revision = onlineAuthoritativeRevision;\n        // Transport availability cannot veto an already committed host mutation. Advance the\n        // canonical revision first; onlineSafeSend may fail and the same immutable revision is\n        // then retained by the single reliable-state retry owner below."
-          new="\n".join([
-              "        // Publication order is not canonical mutation order. A resend of the same",
-              "        // canonical state must reuse its committed revision, even when it comes through the",
-              "        // ordinary publication path rather than a force/recovery path. Compare against the",
-              "        // last immutable PVP canonical packet while ignoring transport revision metadata.",
-              "        const previousCanonicalState=!bossOnline&&typeof p2p?.__reliableStatePacket?.state===\"string\"",
-              "          ? p2p.__reliableStatePacket.state",
-              "          : null;",
-              "        const currentCanonicalState=bossOnline?null:serializeOnlineGame();",
-              "        const canonicalChanged=bossOnline",
-              "          ? !force",
-              "          : previousCanonicalState===null",
-              "            ? !force",
-              "            : !onlineSnapshotEquivalentForInput(previousCanonicalState,currentCanonicalState);",
-              "        const currentRevision=Math.max(Number(onlineAuthoritativeRevision||0),Number(game.networkRevision||0));",
-              "        onlineAuthoritativeRevision=canonicalChanged?currentRevision+1:currentRevision;",
-              "        game.networkRevision = onlineAuthoritativeRevision;",
-              "        const revision = onlineAuthoritativeRevision;",
-              "        // Transport availability cannot veto an already committed host mutation. When the",
-              "        // canonical state actually changed, advance the revision before delivery; otherwise",
-              "        // retain the existing revision so retries/resends cannot manufacture canonical history.",
-          ])
-          count=s.count(old)
-          if count != 1:
-              raise SystemExit(f'AUTHORITATIVE_REVISION_PATCH_TARGET_COUNT:{count}')
-          p.write_text(s.replace(old,new,1),encoding='utf-8')
-          PY
-          if git diff --quiet -- index.html; then
-            exit 0
-          fi
-          git diff --check
-          grep -q 'Publication order is not canonical mutation order' index.html
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
-          git commit -m 'Reuse authoritative revision for unchanged resends'
-          git push origin HEAD:diagnose/android-lifecycle-32624812975
-
   real-relay:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
