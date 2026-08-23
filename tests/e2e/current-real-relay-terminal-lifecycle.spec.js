@@ -132,9 +132,10 @@ async function tapAggressiveAction(page) {
   await chosen.scrollIntoViewIfNeeded();
   await expect(chosen).toBeVisible({ timeout: 30000 });
   await expect(chosen).toBeEnabled();
+  const chosenLabel = ((await chosen.textContent()) || '').replace(/\s+/g, ' ').trim();
   await chosen.tap();
   await resolveInteraction(page);
-  return ((await chosen.textContent().catch(()=>''))||'').replace(/\s+/g,' ').trim();
+  return chosenLabel;
 }
 
 async function waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest,timeout=60000){
@@ -281,7 +282,9 @@ test('full online match terminal teardown leaves a clean second-session start on
     for (let i = 0; i < 4; i++) {
       const next = await terminalOrActor(host, guest);
       expect(next.terminal, 'second session should expose normal action ownership').toBe(false);
+      const [beforeHost,beforeGuest] = await Promise.all([battleState(host.page), battleState(guest.page)]);
       await tapAggressiveAction(next.actor.page);
+      await waitCanonicalActionCommit(host, guest, beforeHost, beforeGuest);
     }
     await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
     expect(host.errors).toEqual([]);
