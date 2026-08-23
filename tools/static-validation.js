@@ -26,5 +26,8 @@ check('DUPLICATE_ROLE_GUARDS_REMOVED',!indexText.includes('applyingRemoteAction'
 check('DUPLICATE_PENDING_STATE_REMOVED',!indexText.includes('onlinePendingCommand')&&!indexText.includes('p2p.pendingActionId'),'one pending command owner');
 check('LEGACY_RENDER_ACTION_ALIAS_REMOVED',!indexText.includes('function renderActions('),'action panel has one convergence owner');
 check('SESSION_TIMER_FALLBACK_REMOVED',!/sessionScope\?\.(?:setTimeout|setInterval|requestAnimationFrame)[^\n;]*\|\|\s*window\.TimerManager/.test(indexText),'online session work has no global timer fallback');
+check('CROSS_PHASE_COIN_SCOPE_EXPLICIT',indexText.includes('"online-coin-presentation",{phase:"SESSION"}')&&indexText.includes('document.querySelector(".online-coin-overlay")?.remove()'),'start presentation crosses phases under the session scope and has synchronous cleanup');
+const actionAuthorityTest=fs.readFileSync('tests/e2e/current-real-relay-action-authority.spec.js','utf8');
+check('ACTION_SURFACE_CANONICAL_REGRESSION',['kind:\'switch\'','kind:\'skill\'','kind:\'overflow-gather\'','timeDeclineOverflow','manualPaymentConfirm'].every(token=>actionAuthorityTest.includes(token)),'switch, damaging skill, target/payment modal and overflow are canonical before/after checks');
 
 fs.mkdirSync('artifacts/results',{recursive:true});fs.writeFileSync('artifacts/results/static-validation.json',JSON.stringify(out,null,2));console.log(JSON.stringify(out,null,2));

@@ -2,7 +2,7 @@ import { test, expect, chromium } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pairByRoomCode, selectFour, waitRemoteCount, startBattle, canonicalBattleState, touchCanonicalAction, waitCanonicalActionCommit } from '../helpers/player-path.js';
+import { pairByRoomCode, selectFour, waitRemoteCount, startBattle, canonicalBattleState, touchCanonicalAction, waitCanonicalActionCommit, resolveInteraction } from '../helpers/player-path.js';
 
 const APP=process.env.CP32_CURRENT_APP_URL||'http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline';
 const OUT=process.env.CP32_REAL_RELAY_ARTIFACTS||'artifacts/real-relay';
@@ -97,12 +97,16 @@ test('switch, target/payment modal, damaging skill and Timeora overflow each com
     expect(skillBefore.turnSerial).toBe(5);expect(skillBefore.actorCard).toBe('dragonfish');
     const skillButton=skillActor.page.locator(LEGAL).filter({hasText:'심해의토네이도'}).first();
     await expect(skillButton).toBeVisible();await skillButton.tap();
-    const target=skillActor.page.locator('.battle-unit-card.targetable:visible').first();await expect(target).toBeVisible();await target.tap();
+    const target=skillActor.page.locator('.battle-unit-card.targetable[data-card-id="timeora"]:visible').first();await expect(target).toBeVisible();await target.tap();
     await expect(skillActor.page.locator('#modal.open #manualPaymentConfirm')).toBeVisible();
     evidence.modal={before:skillBefore,content:await skillActor.page.locator('#modalContent').innerText()};
     await skillActor.page.locator('#closeModal').tap();await expect(skillActor.page.locator('#modal')).not.toHaveClass(/open/);
     await expectUnchangedBattle(skillBefore,skillActor.page);
-    const skillStep=await touchCanonicalAction({host:host.page,guest:guest.page,actor:skillActor.page,label:/심해의토네이도/});
+    const skillBeforeHost=await canonicalBattleState(host.page),skillBeforeGuest=await canonicalBattleState(guest.page);
+    await skillButton.tap();
+    const committedTarget=skillActor.page.locator('.battle-unit-card.targetable[data-card-id="timeora"]:visible').first();await expect(committedTarget).toBeVisible();await committedTarget.tap();
+    await resolveInteraction(skillActor.page);
+    const skillStep=await waitCanonicalActionCommit({host:host.page,guest:guest.page,beforeHost:skillBeforeHost,beforeGuest:skillBeforeGuest});
     expect(skillStep.commit.actionType).toBe('skill');
     expect(skillStep.afterHost.P.hp+skillStep.afterHost.A.hp).toBeLessThan(skillStep.beforeHost.P.hp+skillStep.beforeHost.A.hp);
     evidence.actions.push({serial:5,kind:'skill',actor:skillActor.name,actionId:skillStep.commit.actionId,hpBefore:skillStep.beforeHost.P.hp+skillStep.beforeHost.A.hp,hpAfter:skillStep.afterHost.P.hp+skillStep.afterHost.A.hp});

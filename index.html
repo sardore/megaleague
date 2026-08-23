@@ -28530,6 +28530,7 @@ function bossChooseAIController(fallback,g, t, s, quick = false){
       onlineCoinShownScopes.clear();
       const priorGame = game;
       if (priorGame && (priorGame.mode === "online" || priorGame.bossRaid?.online || priorGame.spectator)) {
+        try { AnimationEngine?.settleInterrupted?.(`session-release:${reason}`,priorGame.battleId||null);AnimationEngine?.clearViewportFx?.(); } catch (error) { window.__megaRecordRecoveredError?.(error,"OnlineRuntime.newSession.AnimationEngine"); }
         try { if (priorGame.battleId) TimerManager?.clearScope?.(priorGame.battleId); } catch (error) { window.__megaRecordRecoveredError?.(error,"OnlineRuntime.newSession.TimerManager"); }
         try { if (priorGame.battleId) InputLockManager?.releaseBattle?.(priorGame.battleId); } catch (error) { window.__megaRecordRecoveredError?.(error,"OnlineRuntime.newSession.InputLockManager"); }
         try { if (priorGame.battleId) ActionTransactionManager?.clearBattle?.(priorGame.battleId); } catch (error) { window.__megaRecordRecoveredError?.(error,"OnlineRuntime.newSession.ActionTransactionManager"); }

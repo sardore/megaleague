@@ -16,7 +16,7 @@
 | battle emote display removal | battle emote presentation owner | IN_BATTLE | timer completion or reliability reset removes the node | `TimerManager` timer is adopted by the active scope; reset removes nodes synchronously |
 | online boss intro timers/listeners/promise | boss intro presentation owner | IN_BATTLE | tracked promise cancellation invokes the intro's single `finish` cleanup | listener removal, node removal, timer cancellation and promise settlement share one cleanup function |
 | authoritative VFX replay RAF | authoritative state admission | IN_BATTLE | phase transition/scope close | scope-owned and identity guarded |
-| animation/VFX promises | animation owners | IN_BATTLE | animation settle + scope phase close | continuation must validate battle/epoch |
+| animation/VFX promises | animation owners | IN_BATTLE | animation settle + scope phase close; application release clears viewport FX | continuation validates battle/epoch and no presentation node survives cleanup |
 | projection request/queued convergence | `ProjectionTransaction`/action convergence | projection epoch | commit-time identity/revision check; queue discard on phase close | projection transaction already drops stale epoch |
 | websocket open/data/close/error | connection binding registry/transport | SESSION/binding | detach binding, retire socket, scope close | four callbacks tracked by binding owner |
 | window/document visibility/page lifecycle | `LifecycleCoordinator` | SESSION | `SessionScope.listen`/close | lifecycle event requests restore; never mutates game/UI directly |

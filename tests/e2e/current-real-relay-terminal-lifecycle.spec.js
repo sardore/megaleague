@@ -82,6 +82,7 @@ async function battleState(page) {
     return {
       winner: game?.winner || null,
       turn: game?.turn || null,
+      actorTeam: game?.order?.[game?.turn]?.[0] || null,
       turnSerial: Number(game?.turnSerial || 0),
       revision: Number(game?.networkRevision || 0),
       eventSequence: Number(game?.eventSequence || 0),
@@ -140,7 +141,7 @@ async function waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest,timeo
   expect(beforeGuest.matchId).toBe(beforeHost.matchId);
   expect(beforeGuest.revision).toBe(beforeHost.revision);
   let last=null;
-  await expect.poll(async()=>{const [h,g]=await Promise.all([battleState(host.page),battleState(guest.page)]);last={h,g};const converged=h.matchId===g.matchId&&h.revision===g.revision&&h.turnSerial===g.turnSerial&&h.P.hp===g.P.hp&&h.A.hp===g.A.hp&&h.energy===g.energy;const changed=h.turnSerial!==beforeHost.turnSerial||h.eventSequence!==beforeHost.eventSequence||h.P.hp!==beforeHost.P.hp||h.A.hp!==beforeHost.A.hp||h.energy!==beforeHost.energy;return converged&&changed&&h.revision===beforeHost.revision+1&&h.committedTransactions===beforeHost.committedTransactions+1&&!h.pendingActionId&&!g.pendingActionId&&!h.pendingTransaction&&!g.pendingTransaction;},{timeout,message:`UI action must produce one canonical commit/revision and converge; last=${JSON.stringify(last)}`}).toBe(true);
+  try{await expect.poll(async()=>{const [h,g]=await Promise.all([battleState(host.page),battleState(guest.page)]);last={h,g};const converged=h.matchId===g.matchId&&h.revision===g.revision&&h.turnSerial===g.turnSerial&&h.P.hp===g.P.hp&&h.A.hp===g.A.hp&&h.energy===g.energy;const changed=h.turnSerial!==beforeHost.turnSerial||h.eventSequence!==beforeHost.eventSequence||h.P.hp!==beforeHost.P.hp||h.A.hp!==beforeHost.A.hp||h.energy!==beforeHost.energy;return converged&&changed&&h.revision===beforeHost.revision+1&&h.committedTransactions===beforeHost.committedTransactions+1&&!h.pendingActionId&&!g.pendingActionId&&!h.pendingTransaction&&!g.pendingTransaction;},{timeout}).toBe(true);}catch(error){throw new Error(`UI action must produce one canonical commit/revision and converge; last=${JSON.stringify(last)}; cause=${String(error)}`);}
   return last;
 }
 
@@ -172,17 +173,18 @@ async function playToTerminal(host, guest, options = {}) {
       return { actions: action, terminal, terminalWhileReceiverOffline, history };
     }
     const state = next.actor === host ? next.hostState : next.guestState;
-    const turn = state.turn;
+    const turn = state.actorTeam;
     const opponent = turn === 'P' ? state.A : turn === 'A' ? state.P : { alive: 4, hp: Infinity };
     const shouldBackground = backgroundFinishingReceiver && (action >= 6 || opponent.alive <= 3 || opponent.hp <= 500);
-    history.push({ action, actor: next.actor.name, turn, opponentAlive: opponent.alive, opponentHp: opponent.hp, backgrounded: shouldBackground });
+    const row={ action, actor: next.actor.name, turn, opponentAlive: opponent.alive, opponentHp: opponent.hp, backgrounded: shouldBackground };
+    history.push(row);
 
     if (shouldBackground) {
       const [beforeHost,beforeGuest]=await Promise.all([battleState(host.page),battleState(guest.page)]);
       await setLifecycle(next.receiver, 'frozen');
       await next.receiver.context.setOffline(true);
       await next.actor.page.waitForTimeout(250);
-      await tapAggressiveAction(next.actor.page);
+      row.clickedLabel=await tapAggressiveAction(next.actor.page);
       await next.actor.page.waitForTimeout(500);
       const actorWhileReceiverOffline = await battleState(next.actor.page);
       if (actorWhileReceiverOffline.winner) terminalWhileReceiverOffline = true;
@@ -190,6 +192,7 @@ async function playToTerminal(host, guest, options = {}) {
       await setLifecycle(next.receiver, 'active');
       await next.receiver.page.bringToFront();
       const committed=await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest,90000);
+      row.revisionAfter=committed.h.revision;row.hpBefore=beforeHost.P.hp+beforeHost.A.hp;row.hpAfter=committed.h.P.hp+committed.h.A.hp;
       const actorAfter=next.actor===host?committed.h:committed.g;
       if (actorAfter.winner) {
         const terminal = await waitTerminalResult(host, guest);
@@ -198,8 +201,9 @@ async function playToTerminal(host, guest, options = {}) {
       await Promise.all([waitBattleReady(host.page), waitBattleReady(guest.page)]);
     } else {
       const [beforeHost,beforeGuest]=await Promise.all([battleState(host.page),battleState(guest.page)]);
-      await tapAggressiveAction(next.actor.page);
-      await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest);
+      row.clickedLabel=await tapAggressiveAction(next.actor.page);
+      const committed=await waitCanonicalActionCommit(host,guest,beforeHost,beforeGuest);
+      row.revisionAfter=committed.h.revision;row.hpBefore=beforeHost.P.hp+beforeHost.A.hp;row.hpAfter=committed.h.P.hp+committed.h.A.hp;
     }
   }
   throw new Error(`TERMINAL_NOT_REACHED_AFTER_${maxActions}_UI_ACTIONS`);
@@ -257,6 +261,7 @@ test('full online match terminal teardown leaves a clean second-session start on
     const firstIdentity = await Promise.all([runtimeIdentity(host.page), runtimeIdentity(guest.page)]);
     const first = await playToTerminal(host, guest, { maxActions: 220 });
     expect(first.actions).toBeGreaterThan(0);
+    expect(first.history.some(row=>row.clickedLabel&&!/에너지\s*모으기|후퇴|교체|대기/.test(row.clickedLabel)&&row.hpAfter<row.hpBefore),'natural battle must include an actual damaging skill commit').toBe(true);
     await resultMenuToSetup(host, guest);
     const idleIdentity = await Promise.all([runtimeIdentity(host.page), runtimeIdentity(guest.page)]);
     expect(idleIdentity[0].state).toBe('IDLE');
@@ -296,6 +301,8 @@ test('full online match terminal teardown leaves a clean second-session start on
     write('terminal-second-session.json', {
       ok: false,
       error: String(error),
+      hostBattle: await battleState(host.page).catch(() => null),
+      guestBattle: await battleState(guest.page).catch(() => null),
       host: await runtimeSummary(host.page).catch(() => null),
       guest: await runtimeSummary(guest.page).catch(() => null),
       hostErrors: host.errors,
@@ -332,6 +339,8 @@ test('terminal result converges when the non-acting peer is frozen and offline a
     write('terminal-background-finish.json', {
       ok: false,
       error: String(error),
+      hostBattle: await battleState(host.page).catch(() => null),
+      guestBattle: await battleState(guest.page).catch(() => null),
       host: await runtimeSummary(host.page).catch(() => null),
       guest: await runtimeSummary(guest.page).catch(() => null),
       hostErrors: host.errors,
