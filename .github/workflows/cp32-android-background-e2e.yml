@@ -19,6 +19,7 @@ jobs:
       CP32_RELAY_ENDPOINT: wss://cp32-online-relay.onrender.com/online
       CP32_CANDIDATE_ORIGIN: https://127.0.0.1:8443
       CP32_ANDROID_CANDIDATE_URL: https://127.0.0.1:8443/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline
+      CP32_CANDIDATE_FILE: index.html
       CP32_ANDROID_CHAOS_SEED: '32624812975'
       CP32_ANDROID_CHAOS_CYCLES: '36'
     steps:
@@ -68,6 +69,17 @@ jobs:
           package-manager-cache: false
       - run: npm install --ignore-scripts --no-audit --no-fund
       - run: npm run validate:static
+      - name: Bind Android candidate to checked-out index
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHA="$(sha256sum index.html | awk '{print $1}')"
+          SIZE="$(wc -c < index.html | tr -d '[:space:]')"
+          [[ "$SHA" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$SIZE" =~ ^[0-9]+$ ]]
+          echo "CP32_CANDIDATE_EXPECTED_SHA=$SHA" >> "$GITHUB_ENV"
+          echo "CP32_CANDIDATE_EXPECTED_SIZE=$SIZE" >> "$GITHUB_ENV"
+          printf '{"file":"index.html","sha256":"%s","size":%s,"gitSha":"%s"}\n' "$SHA" "$SIZE" "$GITHUB_SHA" > artifacts/preflight/android-candidate-source.json
       - name: Generate scoped local TLS identity and trust contract
         shell: bash
         run: |
@@ -132,6 +144,7 @@ jobs:
           set -euo pipefail
           required=(
             artifacts/preflight/artifact-lifecycle-init.json
+            artifacts/preflight/android-candidate-source.json
             artifacts/preflight/key.pem
             artifacts/preflight/cert.pem
             artifacts/preflight/local-tls-contract.json
@@ -164,6 +177,13 @@ jobs:
           if any(row.get('exitCode') != 0 for row in captures): raise SystemExit('DUAL_ANDROID_LOGCAT_CAPTURE_FAILED')
           for side in ('host','guest'):
             if Path(f'artifacts/android/logcat-{side}.txt').stat().st_size == 0: raise SystemExit(f'ANDROID_LOGCAT_EMPTY:{side}')
+          source=json.loads(Path('artifacts/preflight/android-candidate-source.json').read_text())
+          health=json.loads(Path('artifacts/preflight/candidate-server-health.json').read_text())
+          ready=json.loads(Path('artifacts/preflight/candidate-server-ready.json').read_text())
+          if source.get('file') != 'index.html': raise SystemExit('ANDROID_CANDIDATE_FILE_NOT_INDEX')
+          if health.get('file') != 'index.html' or ready.get('file') != 'index.html': raise SystemExit('ANDROID_CANDIDATE_SERVER_FILE_MISMATCH')
+          if health.get('sha') != source.get('sha256') or ready.get('sha') != source.get('sha256'): raise SystemExit('ANDROID_CANDIDATE_SERVER_SHA_MISMATCH')
+          if int(health.get('size',-1)) != int(source.get('size',-2)) or int(ready.get('size',-1)) != int(source.get('size',-2)): raise SystemExit('ANDROID_CANDIDATE_SERVER_SIZE_MISMATCH')
           result=json.loads(Path('artifacts/android/android-result.json').read_text())
           if result.get('ok') is not True: raise SystemExit('DUAL_ANDROID_RUNTIME_RESULT_NOT_PASS')
           seed=json.loads(Path('artifacts/android/chaos-seed.json').read_text())
