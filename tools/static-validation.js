@@ -32,5 +32,7 @@ check('SESSION_TIMER_FALLBACK_REMOVED',!/sessionScope\?\.(?:setTimeout|setInterv
 check('CROSS_PHASE_COIN_SCOPE_EXPLICIT',indexText.includes('"online-coin-presentation",{phase:"SESSION"}')&&indexText.includes('document.querySelector(".online-coin-overlay")?.remove()'),'start presentation crosses phases under the session scope and has synchronous cleanup');
 const actionAuthorityTest=fs.readFileSync('tests/e2e/current-real-relay-action-authority.spec.js','utf8');
 check('ACTION_SURFACE_CANONICAL_REGRESSION',['kind:\'switch\'','kind:\'skill\'','kind:\'overflow-gather\'','timeDeclineOverflow','manualPaymentConfirm'].every(token=>actionAuthorityTest.includes(token)),'switch, damaging skill, target/payment modal and overflow are canonical before/after checks');
+const terminalLifecycleTest=fs.readFileSync('tests/e2e/current-real-relay-terminal-lifecycle.spec.js','utf8');
+check('ACTION_OWNER_CLIENT_NOT_BUTTON_COUNT',terminalLifecycleTest.includes('Number(hc > 0) + Number(gc > 0)')&&!terminalLifecycleTest.includes('hc + gc === 1'),'terminal harness identifies one action-owning client without requiring that client to have only one legal button');
 
 fs.mkdirSync('artifacts/results',{recursive:true});fs.writeFileSync('artifacts/results/static-validation.json',JSON.stringify(out,null,2));console.log(JSON.stringify(out,null,2));

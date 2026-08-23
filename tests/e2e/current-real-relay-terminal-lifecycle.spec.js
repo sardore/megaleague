@@ -107,14 +107,14 @@ async function terminalOrActor(host, guest, timeout = 60000) {
     ]);
     last = { hs, gs, hc, gc };
     if (hs.winner || gs.winner) return 'terminal';
-    if (hc + gc === 1) return 'actor';
+    if (Number(hc > 0) + Number(gc > 0) === 1) return 'actor';
     return 'waiting';
-  }, { timeout, message: `battle must expose exactly one actor or a terminal state; last=${JSON.stringify(last)}` }).not.toBe('waiting');
+  }, { timeout, message: `battle must expose exactly one action-owning client or a terminal state; last=${JSON.stringify(last)}` }).not.toBe('waiting');
   const [hs, gs, hc, gc] = await Promise.all([
     battleState(host.page), battleState(guest.page), visibleActionCount(host.page), visibleActionCount(guest.page),
   ]);
   if (hs.winner || gs.winner) return { terminal: true, hostState: hs, guestState: gs, actor: null, receiver: null };
-  expect(hc + gc, 'exactly one client must own the canonical action surface').toBe(1);
+  expect(Number(hc > 0) + Number(gc > 0), 'exactly one client must own the canonical action surface').toBe(1);
   return hc ? { terminal: false, hostState: hs, guestState: gs, actor: host, receiver: guest } : { terminal: false, hostState: hs, guestState: gs, actor: guest, receiver: host };
 }
 
