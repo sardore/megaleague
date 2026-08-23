@@ -34,6 +34,8 @@ Exact-relay run #58 again passed 17/18 and stopped only when the guest's defeate
 
 After #59 and merged-main exact-relay #60 both passed 18/18, the first deployed Pages + Render run passed 17/18 and failed only in the shared interaction driver. The driver retained a target locator, separately waited for `boundingBox()`, then issued a coordinate touch; live authoritative projection replaced that target DOM during the gap and the coordinate lookup timed out. This was a **HARNESS FAILURE**, not a canonical-state or transport failure. Modal and target interactions now use Playwright's touch `locator.tap()` so the locator is re-resolved atomically against the current rendered projection. Production game code and its authority path are unchanged.
 
+Merged-main exact-relay #62 passed all 18 regressions, while the next deployed Pages + Render run passed 16/18 and both remaining failures ended inside Playwright's `locator.tap()` actionability retry: one projected modal button and one projected battle target were repeatedly detached before Playwright performed the touch. No canonical assertion or runtime error failed. This is a **HARNESS FAILURE** caused by requiring a dynamically projected node to remain attached across Playwright's actionability protocol. The driver now reads the current target's center coordinate in one DOM evaluation and immediately issues a real `page.touchscreen.tap` at that projection coordinate. This changes no production source, state, timer, retry, or authority path.
+
 ## Baseline owners and capabilities
 
 | Owner/function | Reads | Writes | May reject | May retry | May mutate game | May mutate DOM | Cleanup owner | Consolidation decision |
