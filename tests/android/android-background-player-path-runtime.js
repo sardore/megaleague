@@ -86,6 +86,10 @@ async function patchedAndroidWebContentFrame(client){
     };
   })()`);
   const pageUsable=page=>!!page&&page.origin===APP_ORIGIN&&page.visibility==='visible'&&(page.ready==='complete'||page.ready==='interactive')&&page.hasGame&&page.hasRuntime&&page.hasInput&&page.hasPanel&&page.innerWidth>0&&page.innerHeight>0;
+  const visualSize=page=>({
+    width:Number(page?.visualViewport?.width||page?.innerWidth||0),
+    height:Number(page?.visualViewport?.height||page?.innerHeight||0),
+  });
   const close=(a,b,tolerance=1)=>Math.abs(Number(a||0)-Number(b||0))<=tolerance;
   const viewportStable=(before,after)=>{
     if(!before||!after)return false;
@@ -104,14 +108,17 @@ async function patchedAndroidWebContentFrame(client){
     const candidates=(insetSurfaces.length?insetSurfaces:surfaces).sort((a,b)=>b.width*b.height-a.width*a.height);
     const surface=candidates[0];
     if(!surface)return null;
-    const scale=surface.width/Number(page.innerWidth||1);
-    const expectedHeight=Math.round(Number(page.innerHeight||0)*scale);
-    const inferredTop=surface.bottom-expectedHeight;
-    if(!Number.isFinite(scale)||scale<=0||expectedHeight<=0||inferredTop<surface.top||inferredTop>=surface.bottom)return null;
+    const viewport=visualSize(page);
+    const scale=surface.width/Number(viewport.width||1);
     const toolbarIds=/(?:home_button|location_bar|toolbar_buttons|tab_switcher_button|menu_button)$/;
     const toolbarBottom=nodes.filter(node=>node.package===ANDROID_PACKAGE&&toolbarIds.test(String(node['resource-id']||''))&&node.width>0&&node.height>0).reduce((value,node)=>Math.max(value,node.bottom),0);
+    const keyboardTop=nodes.filter(node=>node.package===ANDROID_PACKAGE&&/(?:keyboard_accessory|bar_items_view)$/.test(String(node['resource-id']||''))&&node.width>0&&node.height>0&&node.top>(toolbarBottom||0)).reduce((value,node)=>Math.min(value,node.top),Infinity);
+    const availableBottom=Number.isFinite(keyboardTop)?keyboardTop:surface.bottom;
+    const expectedHeight=Math.round(Number(viewport.height||0)*scale);
+    const inferredTop=availableBottom-expectedHeight;
+    if(!Number.isFinite(scale)||scale<=0||expectedHeight<=0||inferredTop<surface.top||inferredTop>=availableBottom)return null;
     if(toolbarBottom&&Math.abs(toolbarBottom-inferredTop)>96)return null;
-    const derived={left:surface.left,top:inferredTop,right:surface.right,bottom:surface.bottom,width:surface.width,height:expectedHeight,display:currentDisplay,resourceId:'derived:chrome-surface-cdp-viewport',verifiedAt:now(),pageMetrics:page,calibrationSource:'chrome-surface-cdp',surface:{left:surface.left,top:surface.top,right:surface.right,bottom:surface.bottom,width:surface.width,height:surface.height},toolbarBottom:toolbarBottom||null};
+    const derived={left:surface.left,top:inferredTop,right:surface.right,bottom:availableBottom,width:surface.width,height:expectedHeight,display:currentDisplay,resourceId:'derived:chrome-surface-cdp-visual-viewport',verifiedAt:now(),pageMetrics:page,calibrationSource:'chrome-surface-cdp-visual-viewport',surface:{left:surface.left,top:surface.top,right:surface.right,bottom:surface.bottom,width:surface.width,height:surface.height},toolbarBottom:toolbarBottom||null,keyboardTop:Number.isFinite(keyboardTop)?keyboardTop:null};
     return derived;
   };
 
@@ -154,10 +161,11 @@ async function patchedAndroidWebContentFrame(client){
     }
     if(!verified)verified=deriveFromChromeSurface(last,currentDisplay,page);
     if(!verified)return false;
-    const scaleX=verified.width/Number(page.innerWidth||1),scaleY=verified.height/Number(page.innerHeight||1);
+    const viewport=visualSize(page);
+    const scaleX=verified.width/Number(viewport.width||1),scaleY=verified.height/Number(viewport.height||1);
     const relativeScaleError=Math.abs(scaleX-scaleY)/Math.max(scaleX,scaleY,1e-9);
     if(relativeScaleError>0.08)return false;
-    verified.scaleCheck={x:scaleX,y:scaleY,relativeError:relativeScaleError};
+    verified.scaleCheck={x:scaleX,y:scaleY,relativeError:relativeScaleError,viewport};
     client.verifiedContentFrame=verified;
     timeline('android-web-content-frame-calibrated',{client:client.name,verified});
     record(`last-web-content-frame-calibrated-${client.name}.json`,verified);
@@ -171,8 +179,29 @@ async function patchedAndroidWebContentFrame(client){
 const frameReplacement=patchedAndroidWebContentFrame.toString().replace('patchedAndroidWebContentFrame','androidWebContentFrame')+'\n\n';
 const framePatched=blockerPatched.slice(0,frameStart)+frameReplacement+blockerPatched.slice(frameEnd);
 
-const start=framePatched.indexOf('async function selectedDeck(client)');
-const end=framePatched.indexOf('async function state(client,{full=false}={}){');
+const tapStart=framePatched.indexOf("async function tapGeometry(client,geometry,label='target'){");
+const tapEnd=framePatched.indexOf('async function tap(client,selector,index=0,options={}){');
+if(tapStart<0||tapEnd<0||tapEnd<=tapStart)throw new Error(`ANDROID_RUNTIME_TAP_PATCH_ANCHOR_MISSING:${JSON.stringify({tapStart,tapEnd})}`);
+
+async function patchedTapGeometry(client,geometry,label='target'){
+  if(!geometry?.visible||geometry.disabled||geometry.pointerEvents==='none')throw new Error(`${client.name}_ANDROID_TARGET_UNAVAILABLE:${label}:${JSON.stringify(geometry)}`);
+  const contentFrame=await androidWebContentFrame(client),display=contentFrame.display,metrics=geometry.metrics||{};
+  const viewportWidth=Number(metrics.visualViewport?.width||metrics.innerWidth||1),viewportHeight=Number(metrics.visualViewport?.height||metrics.innerHeight||1);
+  const scaleX=contentFrame.width/viewportWidth,scaleY=contentFrame.height/viewportHeight;
+  const x=Math.max(contentFrame.left+1,Math.min(contentFrame.right-2,Math.round(contentFrame.left+(Number(geometry.x)+Number(geometry.w)/2)*scaleX)));
+  const y=Math.max(contentFrame.top+1,Math.min(contentFrame.bottom-2,Math.round(contentFrame.top+(Number(geometry.y)+Number(geometry.h)/2)*scaleY)));
+  const rec={client:client.name,label,text:geometry.text,x,y,display,contentFrame,scale:{x:scaleX,y:scaleY},viewport:{width:viewportWidth,height:viewportHeight,source:metrics.visualViewport?'visualViewport':'layoutViewport'},metrics,geometry:{x:geometry.x,y:geometry.y,w:geometry.w,h:geometry.h}};
+  timeline('adb-touch',rec);record(`last-touch-${client.name}.json`,rec);
+  adb(client,'shell','input','tap',String(x),String(y));
+  await sleep(180);
+  return rec;
+}
+
+const tapReplacement=patchedTapGeometry.toString().replace('patchedTapGeometry','tapGeometry')+'\n\n';
+const tapPatched=framePatched.slice(0,tapStart)+tapReplacement+framePatched.slice(tapEnd);
+
+const start=tapPatched.indexOf('async function selectedDeck(client)');
+const end=tapPatched.indexOf('async function state(client,{full=false}={}){');
 if(start<0||end<0||end<=start)throw new Error(`ANDROID_RUNTIME_DECK_PATCH_ANCHOR_MISSING:${JSON.stringify({start,end})}`);
 
 async function patchedSelectedDeck(client){
@@ -207,7 +236,7 @@ const replacement=[
   patchedSelectDeck.toString().replace('patchedSelectDeck','selectDeck'),
 ].join('\n\n')+'\n\n';
 
-const transformed=framePatched.slice(0,start)+replacement+framePatched.slice(end);
+const transformed=tapPatched.slice(0,start)+replacement+tapPatched.slice(end);
 fs.writeFileSync(generatedPath,transformed);
 process.once('exit',()=>{try{fs.unlinkSync(generatedPath);}catch{}});
 await import(`${pathToFileURL(generatedPath).href}?runtimeDeck=${Date.now()}`);
