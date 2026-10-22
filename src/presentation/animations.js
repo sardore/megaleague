@@ -1,4 +1,7 @@
-import { bossPlayVisuals } from "../features/boss-raid.js";
+import { timePlayClockRotationOverlay } from "./clock-mirror.js";
+import { bossPlayTimeStrikeFx } from "../features/boss-raid.js";
+import { TimerManager } from "../runtime/timers.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_presentation_animations = {
   HorizonStrikeSequenceOwner: undefined,
@@ -10,7 +13,7 @@ import { actionSkillHasEffect, state_engine_entities } from "../engine/entities.
 import { playFoxStrikeVisual } from "../features/foxious.js";
 import { playGenociderVisual } from "../features/genocider.js";
 import { playJcVisual } from "../features/summons.js";
-import { timeCommitPendingTurnAdvance, timeMarkTimeline, timePlayClockRotationOverlay, timePlayHyperVisual, timePlayRecallVisual, timeSetInputLock, timeTrackVisualTimers, state_features_timeora } from "../features/timeora.js";
+import { timeCommitPendingTurnAdvance, timeMarkTimeline, timePlayHyperVisual, timePlayRecallVisual, timeSetInputLock, timeTrackVisualTimers, state_features_timeora } from "../features/timeora.js";
 import { battlefieldCardForUid, playInstantUnitPopup, positionFx, showCombatNotice, visualNode, state_presentation_coordinates } from "./coordinates.js";
 import { systems } from "../runtime/systems.js";
 import { afterAction, scheduleAI } from "../ui/action-choices.js";
@@ -28,7 +31,7 @@ export function initializePresentationAnimations() {
       record.phases.push(item);
       return item;
     };
-    const wait = ms => new Promise(resolve => systems.TimerManager.setTimeout(resolve, ms));
+    const wait = ms => new Promise(resolve => TimerManager.setTimeout(resolve, ms));
     const animate = async (node, frames, options) => {
       if (!node) return;
       if (typeof node.animate === "function") {
@@ -62,7 +65,7 @@ export function initializePresentationAnimations() {
       };
       const immediate = attempt();
       if (immediate) return Promise.resolve(immediate);
-      return new Promise(resolve => systems.TimerManager.requestAnimationFrame(() => resolve(attempt())));
+      return new Promise(resolve => TimerManager.requestAnimationFrame(() => resolve(attempt())));
     };
     const fail = (event, reason) => {
       const failure = {
@@ -643,13 +646,13 @@ export function playVisualsCoreBase() {
   let events = state_ui_battle_state.visualEvents.splice(0),
     notices = events.filter(v => v.type === "combatNotice");
   if (false) {
-    notices.forEach((v, i) => systems.TimerManager.setTimeout(() => showCombatNotice(v), i * 90));
+    notices.forEach((v, i) => TimerManager.setTimeout(() => showCombatNotice(v), i * 90));
     events.forEach((v, i) => playInstantUnitPopup(v, i * 90));
     state_ui_battle_state.visualHoldMs = 0;
     return;
   }
   state_ui_battle_state.visualHoldMs = events.some(v => v.type === "mutualEnergyTrade") ? 2300 : events.some(v => v.type === "eruptionFx") ? 2200 : events.some(v => v.type === "huveEarthquake") ? 2100 : events.some(v => v.type === "mysticBurst") ? 1900 : 0;
-  events.forEach((v, i) => systems.TimerManager.setTimeout(() => {
+  events.forEach((v, i) => TimerManager.setTimeout(() => {
     let arena = document.querySelector(".arena");
     if (v.type === "combatNotice") {
       showCombatNotice(v);
@@ -674,7 +677,7 @@ export function playVisualsCoreBase() {
       arena.classList.remove("eruption-shake");
       void arena.offsetWidth;
       arena.classList.add("eruption-shake");
-      systems.TimerManager.setTimeout(() => arena.classList.remove("eruption-shake"), 1250);
+      TimerManager.setTimeout(() => arena.classList.remove("eruption-shake"), 1250);
       let label = visualNode(arena, "skill-fx-label eruption-label", v.skillName, 1250);
       positionFx(label, from);
       label?.style.setProperty("--fx-color", v.boosted ? "#fff06a" : "#ff6a24");
@@ -716,7 +719,7 @@ export function playVisualsCoreBase() {
         if (ash) ash.style.animationDelay = `${420 + k * 75}ms`;
       }
       if (v.boosted) {
-        systems.TimerManager.setTimeout(() => {
+        TimerManager.setTimeout(() => {
           let surge = visualNode(arena, "eruption-surge", "", 1050);
           positionFx(surge, to);
           visualNode(targetEl, "float-num eruption-boost-text", "강화 분화!", 1050);
@@ -814,7 +817,7 @@ export function playVisualsCoreBase() {
       let label = visualNode(arena, "skill-fx-label", v.skillName, 820);
       positionFx(label, from);
       label?.style.setProperty("--fx-color", color);
-      systems.TimerManager.setTimeout(() => {
+      TimerManager.setTimeout(() => {
         if (v.kind === "projectile" || v.targetUid && v.kind === "magic") {
           let p = visualNode(arena, "skill-fx-projectile", "", 500);
           if (p) {
@@ -904,7 +907,7 @@ export function playVisualsCoreBase() {
         arena.classList.remove("groundzero-shake");
         void arena.offsetWidth;
         arena.classList.add("groundzero-shake");
-        systems.TimerManager.setTimeout(() => arena.classList.remove("groundzero-shake"), 760);
+        TimerManager.setTimeout(() => arena.classList.remove("groundzero-shake"), 760);
         const core = visualNode(arena, "tox-gz-core", "", 1200);
         positionFx(core, to);
         for (let r = 0; r < 3; r++) {
@@ -934,7 +937,7 @@ export function playVisualsCoreBase() {
             link?.style.setProperty("--beam-angle", `${Math.atan2(dy, dx)}rad`);
             const burn = visualNode(arena, "tox-gz-burn", "", 1750);
             positionFx(burn, second);
-            systems.TimerManager.setTimeout(() => visualNode(secondEl, "float-num status-pop", "화상 4", 1000), 320);
+            TimerManager.setTimeout(() => visualNode(secondEl, "float-num status-pop", "화상 4", 1000), 320);
           }
         }
         return;
@@ -950,13 +953,13 @@ export function playVisualsCoreBase() {
           mote?.style.setProperty("--mote-size", `${7 + k % 3 * 3}px`);
           mote?.style.setProperty("--delay", `${k * 32}ms`);
         }
-        systems.TimerManager.setTimeout(() => {
+        TimerManager.setTimeout(() => {
           const core = visualNode(arena, "eterna-burst-core", "", 1050);
           positionFx(core, to);
           const ring = visualNode(arena, "eterna-burst-ring", "", 1050);
           positionFx(ring, to);
         }, 420);
-        systems.TimerManager.setTimeout(() => {
+        TimerManager.setTimeout(() => {
           for (const result of v.healResults || []) {
             const allyEl = state_presentation_coordinates.battleEntityElement(result.uid);
             if (!allyEl) continue;
@@ -971,7 +974,7 @@ export function playVisualsCoreBase() {
               stream?.style.setProperty("--delay", `${q * 65}ms`);
               stream?.style.setProperty("--travel-time", `${650 + q * 40}ms`);
             }
-            systems.TimerManager.setTimeout(() => {
+            TimerManager.setTimeout(() => {
               const arr = visualNode(arena, "eterna-heal-arrival", "", 900);
               positionFx(arr, dest);
               visualNode(allyEl, "float-num heal", `+${Math.round(result.amount || 0)}`, 900);
@@ -979,7 +982,7 @@ export function playVisualsCoreBase() {
           }
           if (v.rTargetUid) {
             const rEl = state_presentation_coordinates.battleEntityElement(v.rTargetUid);
-            if (rEl) systems.TimerManager.setTimeout(() => visualNode(rEl, "float-num status-pop", "R +1", 900), 780);
+            if (rEl) TimerManager.setTimeout(() => visualNode(rEl, "float-num status-pop", "R +1", 900), 780);
           }
         }, 520);
         return;
@@ -991,7 +994,7 @@ export function playVisualsCoreBase() {
         targetEl?.classList.remove("abigate-target-vibrate");
         void targetEl?.offsetWidth;
         targetEl?.classList.add("abigate-target-vibrate");
-        systems.TimerManager.setTimeout(() => {
+        TimerManager.setTimeout(() => {
           arena.classList.remove("abigate-infrasound-shake");
           targetEl?.classList.remove("abigate-target-vibrate");
         }, 900);
@@ -1024,7 +1027,7 @@ export function playVisualsCoreBase() {
             m?.style.setProperty("--mote-y", `${k === 1 ? -42 : 26}px`);
             m?.style.setProperty("--delay", `${240 + k * 50}ms`);
           });
-          systems.TimerManager.setTimeout(() => {
+          TimerManager.setTimeout(() => {
             const ring = visualNode(arena, "abigate-poison-ring", "", 1250);
             positionFx(ring, to);
             visualNode(targetEl, "float-num status-pop", "독", 900);
@@ -1050,7 +1053,7 @@ export function playVisualsCoreBase() {
       let fx = document.createElement("div");
       fx.className = "bloom-field-fx";
       arena?.appendChild(fx);
-      systems.TimerManager.setTimeout(() => fx.remove(), 1100);
+      TimerManager.setTimeout(() => fx.remove(), 1100);
       return;
     }
     if (v.type === "huveEarthquake") {
@@ -1098,7 +1101,7 @@ export function playVisualsCoreBase() {
       });
       if (v.extraR) visualNode(target, "float-num damage", `+${30 * v.extraR}D`, 900);
       if (v.extraW) visualNode(el, `float-num ${v.healBlocked ? "direct-hp" : "heal"}`, v.healBlocked ? "회복 봉인" : `HP +${v.healed}`, 900);
-      (v.rolls || []).forEach((r, j) => systems.TimerManager.setTimeout(() => visualNode(target, "float-num status-pop", r.ok ? `${state_engine_entities.STATUS[r.status]} 2` : "무효", 900), j * 110));
+      (v.rolls || []).forEach((r, j) => TimerManager.setTimeout(() => visualNode(target, "float-num status-pop", r.ok ? `${state_engine_entities.STATUS[r.status]} 2` : "무효", 900), j * 110));
       return;
     }
     if (v.type === "mutualEnergyTrade") {
@@ -1117,7 +1120,7 @@ export function playVisualsCoreBase() {
       dropRocks(targetPoint, targetRocks);
       dropRocks(actorPoint, selfRocks, 17);
       visualNode(target, "float-num energy-break", `에너지 ${v.amount} 제거`, 1000);
-      systems.TimerManager.setTimeout(() => {
+      TimerManager.setTimeout(() => {
         let crackAt = point => {
           let crack = visualNode(arena, "hube-smack-hp-crack", "", 900);
           crack?.style.setProperty("--fx-left", `${point.left}px`);
@@ -1142,14 +1145,17 @@ export function playVisualsCoreBase() {
         void el.offsetWidth;
         el.classList.add("hit-flash");
       }
-      systems.TimerManager.setTimeout(() => f.remove(), 1000);
+      TimerManager.setTimeout(() => f.remove(), 1000);
       return;
     }
     playInstantUnitPopup(v);
   }, i * 130));
 }
-export function playVisualsCanonical() {
+export function playVisuals() {
   const visualGame = state_ui_battle_state.game;
+  const raidStrikes = state_ui_battle_state.visualEvents.filter(v => v?.type === "bossTimeStrikeFx");
+  state_ui_battle_state.visualEvents = state_ui_battle_state.visualEvents.filter(v => v?.type !== "bossTimeStrikeFx");
+  raidStrikes.forEach((v, i) => TimerManager.setTimeout(() => bossPlayTimeStrikeFx(v), i * 100));
   // Canonical visual dispatcher: custom event families are peeled once, then the base renderer runs once.
   const clocks = [],
     hypers = [],
@@ -1174,15 +1180,15 @@ export function playVisualsCanonical() {
       });else if (jcTypes.has(v?.type)) jc.push(v);else rest.push(v);
     }
     state_ui_battle_state.visualEvents = rest;
-    geno.forEach((v, i) => systems.TimerManager.setTimeout(() => playGenociderVisual(v), i * 90));
+    geno.forEach((v, i) => TimerManager.setTimeout(() => playGenociderVisual(v), i * 90));
     for (const e of elixian) {
       const fx = document.createElement("div");
       fx.className = "elixian-pulse-fx";
       document.body.appendChild(fx);
-      systems.TimerManager.setTimeout(() => fx.remove(), 760);
+      TimerManager.setTimeout(() => fx.remove(), 760);
     }
-    fox.forEach((v, i) => systems.TimerManager.setTimeout(() => playFoxStrikeVisual(v), i * 70));
-    jc.forEach((v, i) => systems.TimerManager.setTimeout(() => playJcVisual(v), i * 70));
+    fox.forEach((v, i) => TimerManager.setTimeout(() => playFoxStrikeVisual(v), i * 70));
+    jc.forEach((v, i) => TimerManager.setTimeout(() => playJcVisual(v), i * 70));
     const r = playVisualsCoreBase();
     if (geno.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 1050);
     if (fox.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 1100);
@@ -1219,8 +1225,6 @@ export function playVisualsCanonical() {
       }
     });
   }
+  if (raidStrikes.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 620);
   return tracked.result?.r;
-}
-export function playVisuals(...args) {
-  return bossPlayVisuals.apply(this, args);
 }

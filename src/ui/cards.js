@@ -1,4 +1,6 @@
-import { bossCardTooltipHTML } from "../features/boss-raid.js";
+import { raidCardForUnit, formatRaidCardTooltip } from "../features/boss-raid.js";
+import { TimerManager } from "../runtime/timers.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_ui_cards = {
   CARD_EMOJI_MAP: undefined,
@@ -12,7 +14,6 @@ import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
 import { timeClockMiniHTML } from "../features/timeora.js";
-import { systems } from "../runtime/systems.js";
 import { combatInt, effectsHTML, energyHTML, storeHTML, state_ui_battle_state } from "./battle-state.js";
 export function initializeUiCards() {
   state_ui_cards.CARD_EMOJI_MAP = {
@@ -128,7 +129,11 @@ export function unitLocation(g, uid) {
   }
   return null;
 }
-export function cardTooltipHTMLCore(c, u = null) {
+export function cardTooltipHTML(c, u = null) {
+  if (u?.bossRed) c = {
+    ...raidCardForUnit(u),
+    id: "timeora"
+  };
   if (!c) return "";
   const liveUnit = u?.presentationOnly ? null : u;
   let location = liveUnit ? unitLocation(state_ui_battle_state.game, liveUnit.uid) : null,
@@ -152,10 +157,7 @@ export function cardTooltipHTMLCore(c, u = null) {
       clock = u && state_ui_battle_state.game && findUnit(state_ui_battle_state.game, u.uid) === u ? timeClockMiniHTML(u, state_ui_battle_state.game) : "";
     html = html.replace('</div><div class="card-info-section"><b>특성</b>', `</div>${clock}${dragon}<div class="card-info-section"><b>특성</b>`);
   }
-  return html;
-}
-export function cardTooltipHTML(...args) {
-  return bossCardTooltipHTML.apply(this, args);
+  return formatRaidCardTooltip(html, u);
 }
 export function ensureCardTooltip() {
   if (state_ui_cards.cardTooltipState.element) return state_ui_cards.cardTooltipState.element;
@@ -216,10 +218,10 @@ export function showCardTooltip(anchor, pinned = false) {
   tip.classList.add("open");
   tip.classList.toggle("pinned", pinned);
   anchor.classList.add("card-tooltip-open");
-  systems.TimerManager.requestAnimationFrame(() => positionCardTooltip(anchor));
+  TimerManager.requestAnimationFrame(() => positionCardTooltip(anchor));
 }
 export function hideCardTooltip(clearState = true) {
-  systems.TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
+  TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
   state_ui_cards.cardTooltipState.longPressTimer = 0;
   state_ui_cards.cardTooltipState.anchor?.classList.remove("card-tooltip-open");
   let tip = state_ui_cards.cardTooltipState.element;
@@ -274,12 +276,12 @@ export function installCardTooltipInteractions() {
     if (e.pointerType === "mouse" || e.target.closest?.("button, input, select, textarea, a")) return;
     let cardEl = e.target.closest?.("[data-info-card]");
     if (!cardEl) return;
-    systems.TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
+    TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
     state_ui_cards.cardTooltipState.pointerId = e.pointerId;
     state_ui_cards.cardTooltipState.startX = e.clientX;
     state_ui_cards.cardTooltipState.startY = e.clientY;
     state_ui_cards.cardTooltipState.longPressFired = false;
-    state_ui_cards.cardTooltipState.longPressTimer = systems.TimerManager.setTimeout(() => {
+    state_ui_cards.cardTooltipState.longPressTimer = TimerManager.setTimeout(() => {
       state_ui_cards.cardTooltipState.longPressFired = true;
       state_ui_cards.cardTooltipState.suppressClickUntil = Date.now() + 900;
       state_ui_cards.cardTooltipState.suppressCard = cardEl;
@@ -290,13 +292,13 @@ export function installCardTooltipInteractions() {
   document.addEventListener("pointermove", e => {
     if (e.pointerId !== state_ui_cards.cardTooltipState.pointerId || !state_ui_cards.cardTooltipState.longPressTimer) return;
     if (Math.hypot(e.clientX - state_ui_cards.cardTooltipState.startX, e.clientY - state_ui_cards.cardTooltipState.startY) > 11) {
-      systems.TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
+      TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
       state_ui_cards.cardTooltipState.longPressTimer = 0;
     }
   }, true);
   const endPress = e => {
     if (e.pointerId !== state_ui_cards.cardTooltipState.pointerId) return;
-    systems.TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
+    TimerManager.clear(state_ui_cards.cardTooltipState.longPressTimer);
     state_ui_cards.cardTooltipState.longPressTimer = 0;
     state_ui_cards.cardTooltipState.pointerId = null;
   };

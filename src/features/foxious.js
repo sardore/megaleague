@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_features_foxious = {
   FOXIOUS_CARD: undefined,
@@ -7,8 +8,7 @@ import { state_catalog_cards } from "../catalog/cards.js";
 import { enemyTargets, unitAt } from "../engine/actions.js";
 import { dealDamage, queueVisual, traitsActive } from "../engine/combat.js";
 import { canPayAction, costTokens, status, transformedSkillReq } from "../engine/energy.js";
-import { actionSkillHasEffect, cardHasCapability, clone, firstSkillByEffect, firstSkillByTag, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect } from "../engine/entities.js";
-import { policySlots, PASS } from "../engine/policies.js";
+import { cardHasCapability, clone, firstSkillByEffect, firstSkillByTag, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect } from "../engine/entities.js";
 import { pointForUid } from "./summons.js";
 import { registerOnlineConnectionRoute } from "../online/connection.js";
 import { state_online_lobby } from "../online/lobby.js";
@@ -38,95 +38,6 @@ export function initializeFeaturesFoxious() {
     W: "B",
     B: "R",
     R: "W"
-  };
-  policySlots.legal5 = {
-    transform(currentActions, g, t, s) {
-      let actions = currentActions,
-        u = unitAt(g, t, s);
-      if (!u || u.dead || !firstSkillByEffect(u, "foxStrike")) return actions;
-      actions = actions.filter(a => !actionSkillHasEffect(a, "foxStrike"));
-      if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal") || u.skillSeals?.[skillIdByEffect(u, "foxStrike")]) return actions;
-      const targets = enemyTargets(g, t),
-        single = foxSingleCost(u);
-      if (canPayAction(g, t, u, single)) for (const target of targets) actions.push({
-        type: "skill",
-        skill: skillIdByEffectGlobal("foxStrike"),
-        strikeMode: "single",
-        costOverride: single,
-        target,
-        label: `스트라이크 · 단일 ${single}`
-      });
-      if (canPayAction(g, t, u, "**")) for (const target of targets) actions.push({
-        type: "skill",
-        skill: skillIdByEffectGlobal("foxStrike"),
-        strikeMode: "double",
-        costOverride: "**",
-        target,
-        label: `스트라이크 · **`
-      });
-      return actions;
-    }
-  };
-  policySlots.effect4 = function (g, actor, target, e, skill, ctx) {
-    if (e.type !== "foxStrike") return PASS;
-    const action = ctx?.action || {},
-      paid = ctx?.paid || [],
-      counts = foxPaidCounts(paid),
-      cur = actor.strikeSingleColor || null;
-    const enhanced = action.strikeMode === "double" && !!cur && (counts[cur] || 0) >= 2 - 1e-6;
-    const amount = enhanced ? 140 : 80;
-    const dealt = dealDamage(g, actor, target, {
-      amount
-    }, skill, ctx?.sim);
-    const basis = cur || action.strikeBaseColor || ["R", "W", "B"].find(c => (counts[c] || 0) >= 1 - 1e-6) || null;
-    let next = null;
-    if (basis && state_features_foxious.FOX_CYCLE[basis]) {
-      next = state_features_foxious.FOX_CYCLE[basis];
-      actor.strikeSingleColor = next;
-    }
-    actor.strikeUses++;
-    actor.lastTarget = target?.uid || null;
-    log(g, `${actor.name}: 스트라이크 ${enhanced ? "강화 " : ""}→ ${dealt}D${next ? ` · 다음 단일 코스트 ${next}` : ""}.`);
-    queueVisual(g, {
-      type: "foxStrikeFx",
-      uid: actor.uid,
-      targetUid: target?.uid || null,
-      enhanced,
-      mode: action.strikeMode,
-      usedColor: basis,
-      amount: dealt,
-      rawAmount: amount,
-      next
-    });
-    return dealt;
-  };
-  policySlots.effect5 = function (g, actor, target, e, skill, ctx) {
-    if (!(e.type === "foxStrike" && !!firstSkillByTag(actor, "copy") && skillRefHasEffect(ctx?.action?.copySkill, "foxStrike"))) return PASS;
-    const paid = ctx.paid || [];
-    const paidColors = paid.filter(x => x && "RWB".includes(x.c) && Number(x.a) > 0).map(x => x.c);
-    let basis = actor.memoryStrikeSingleColor;
-    if (!basis) basis = paidColors.length ? g.rng.pick(paidColors) : null;
-    const amount = actor.memoryStrikeUses === 0 ? 90 : 80;
-    const dealt = dealDamage(g, actor, target, {
-      amount
-    }, skill, ctx.sim);
-    const next = basis && state_features_foxious.FOX_CYCLE[basis] ? state_features_foxious.FOX_CYCLE[basis] : null;
-    if (next) actor.memoryStrikeSingleColor = next;
-    actor.memoryStrikeUses++;
-    actor.lastTarget = target?.uid || null;
-    log(g, `${actor.name}: 드래곤메모리 스트라이크 → ${dealt}D${basis ? ` · 기준색 ${basis}` : ""}${next ? ` · 다음 기본 코스트 ${next}` : ""}.`);
-    queueVisual(g, {
-      type: "foxStrikeFx",
-      uid: actor.uid,
-      targetUid: target?.uid || null,
-      enhanced: false,
-      mode: "single",
-      usedColor: basis,
-      amount: dealt,
-      rawAmount: amount,
-      next
-    });
-    return dealt;
   };
   registerOnlineConnectionRoute("coinToss", "online-coin", handleOnlineCoinTossPacket, 40);
 
@@ -236,7 +147,7 @@ export function playFoxStrikeVisual(v) {
     streak.style.setProperty("--strike-a", palette[0]);
     streak.style.setProperty("--strike-b", palette[1]);
   }
-  systems.TimerManager.setTimeout(() => {
+  TimerManager.setTimeout(() => {
     const count = v.enhanced ? 34 : 20;
     const power = v.enhanced ? 1.55 : 1;
     for (let i = 0; i < count; i++) {
@@ -347,4 +258,90 @@ export function handleOnlineCoinTossPacket(msg) {
     scheduleOnlineStartReplayRequest("coin-toss-start-pending", 1);
   }
   return true;
+}
+export function listStrikeActions(g, t, s) {
+  let actions = [],
+    u = unitAt(g, t, s);
+  if (!u || u.dead || !firstSkillByEffect(u, "foxStrike")) return actions;
+  if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal") || u.skillSeals?.[skillIdByEffect(u, "foxStrike")]) return actions;
+  const targets = enemyTargets(g, t),
+    single = foxSingleCost(u);
+  if (canPayAction(g, t, u, single)) for (const target of targets) actions.push({
+    type: "skill",
+    skill: skillIdByEffectGlobal("foxStrike"),
+    strikeMode: "single",
+    costOverride: single,
+    target,
+    label: `스트라이크 · 단일 ${single}`
+  });
+  if (canPayAction(g, t, u, "**")) for (const target of targets) actions.push({
+    type: "skill",
+    skill: skillIdByEffectGlobal("foxStrike"),
+    strikeMode: "double",
+    costOverride: "**",
+    target,
+    label: `스트라이크 · **`
+  });
+  return actions;
+}
+export function applyStrikeEffect(g, actor, target, e, skill, ctx) {
+  if (firstSkillByTag(actor, "copy") && skillRefHasEffect(ctx?.action?.copySkill, "foxStrike")) return applyMemoryStrikeEffect(g, actor, target, e, skill, ctx);
+  const action = ctx?.action || {},
+    paid = ctx?.paid || [],
+    counts = foxPaidCounts(paid),
+    cur = actor.strikeSingleColor || null;
+  const enhanced = action.strikeMode === "double" && !!cur && (counts[cur] || 0) >= 2 - 1e-6;
+  const amount = enhanced ? 140 : 80;
+  const dealt = dealDamage(g, actor, target, {
+    amount
+  }, skill, ctx?.sim);
+  const basis = cur || action.strikeBaseColor || ["R", "W", "B"].find(c => (counts[c] || 0) >= 1 - 1e-6) || null;
+  let next = null;
+  if (basis && state_features_foxious.FOX_CYCLE[basis]) {
+    next = state_features_foxious.FOX_CYCLE[basis];
+    actor.strikeSingleColor = next;
+  }
+  actor.strikeUses++;
+  actor.lastTarget = target?.uid || null;
+  log(g, `${actor.name}: 스트라이크 ${enhanced ? "강화 " : ""}→ ${dealt}D${next ? ` · 다음 단일 코스트 ${next}` : ""}.`);
+  queueVisual(g, {
+    type: "foxStrikeFx",
+    uid: actor.uid,
+    targetUid: target?.uid || null,
+    enhanced,
+    mode: action.strikeMode,
+    usedColor: basis,
+    amount: dealt,
+    rawAmount: amount,
+    next
+  });
+  return dealt;
+}
+export function applyMemoryStrikeEffect(g, actor, target, e, skill, ctx) {
+  if (!(e.type === "foxStrike" && !!firstSkillByTag(actor, "copy") && skillRefHasEffect(ctx?.action?.copySkill, "foxStrike"))) return;
+  const paid = ctx.paid || [];
+  const paidColors = paid.filter(x => x && "RWB".includes(x.c) && Number(x.a) > 0).map(x => x.c);
+  let basis = actor.memoryStrikeSingleColor;
+  if (!basis) basis = paidColors.length ? g.rng.pick(paidColors) : null;
+  const amount = actor.memoryStrikeUses === 0 ? 90 : 80;
+  const dealt = dealDamage(g, actor, target, {
+    amount
+  }, skill, ctx.sim);
+  const next = basis && state_features_foxious.FOX_CYCLE[basis] ? state_features_foxious.FOX_CYCLE[basis] : null;
+  if (next) actor.memoryStrikeSingleColor = next;
+  actor.memoryStrikeUses++;
+  actor.lastTarget = target?.uid || null;
+  log(g, `${actor.name}: 드래곤메모리 스트라이크 → ${dealt}D${basis ? ` · 기준색 ${basis}` : ""}${next ? ` · 다음 기본 코스트 ${next}` : ""}.`);
+  queueVisual(g, {
+    type: "foxStrikeFx",
+    uid: actor.uid,
+    targetUid: target?.uid || null,
+    enhanced: false,
+    mode: "single",
+    usedColor: basis,
+    amount: dealt,
+    rawAmount: amount,
+    next
+  });
+  return dealt;
 }

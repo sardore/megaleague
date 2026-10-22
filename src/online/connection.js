@@ -1,4 +1,6 @@
-import { bossShowEnd } from "../features/boss-raid.js";
+import { deferRaidResult } from "../features/boss-raid.js";
+import { TimerManager } from "../runtime/timers.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_online_connection = {
   onlineVisualPacketSerial: undefined,
@@ -634,8 +636,8 @@ export function showEndCore() {
   }
 }
 export function showEnd(...args) {
-  const fallback = () => bossShowEnd.apply(this, args);
-  if (typeof state_runtime_state.StateFactory === "undefined" || typeof state_runtime_entities.BattleEventEngine === "undefined") return fallback();
+  if (deferRaidResult()) return;
+  if (typeof state_runtime_state.StateFactory === "undefined" || typeof state_runtime_entities.BattleEventEngine === "undefined") return showEndCore();
   const g = typeof state_runtime_config.currentGame === "function" ? state_runtime_config.currentGame() : null;
   const onlineBattle = g?.mode === "online" || g?.bossRaid?.online;
   if (!onlineBattle) {
@@ -655,11 +657,11 @@ export function showEnd(...args) {
       });
     }
   }
-  const result = fallback();
+  const result = showEndCore();
   if (!onlineBattle) {
     if (typeof state_runtime_presentation.AnimationEngine !== "undefined") state_runtime_presentation.AnimationEngine.clearViewportFx();
     if (g?.battleId) {
-      state_runtime_config.TimerManager.clearScope(g.battleId);
+      TimerManager.clearScope(g.battleId);
       state_runtime_input.InputLockManager.releaseBattle(g.battleId);
     }
   }

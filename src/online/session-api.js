@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 import { sessionRuntime } from "./session-model.js";
 import { TransportAdapter } from "./socket.js";
 import { setEndpoint } from "./session-config.js";
@@ -152,7 +153,7 @@ export function initializeOnlineSessionApi() {
       state_ui_battle_state.pendingSkill = null;
       if (typeof state_runtime_presentation.AnimationEngine !== "undefined") state_runtime_presentation.AnimationEngine.clearViewportFx();
       if (g.battleId) {
-        state_runtime_config.TimerManager.clearScope(g.battleId);
+        TimerManager.clearScope(g.battleId);
         state_runtime_input.InputLockManager.releaseBattle(g.battleId);
       }
       if (detail.project === false) return true;

@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 import { unitAt } from "./actions.js";
 import { energyStore, normalizeStore, status, totalEnergy, triggerEnergyGainResult } from "./energy.js";
 import { card, cardHasCapability } from "./entities.js";
@@ -27,7 +28,7 @@ export function initializeEngineEnergyNormalization() {
   scheduleClean = () => {
     if (scheduled) return;
     scheduled = true;
-    systems.TimerManager.requestAnimationFrame(() => {
+    TimerManager.requestAnimationFrame(() => {
       scheduled = false;
       cleanTransientDom();
     });

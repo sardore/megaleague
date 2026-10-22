@@ -1,4 +1,5 @@
-import { bossAiReason } from "../features/boss-raid.js";
+import { raidActionReason } from "../features/boss-raid.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_ai_search = {
   AI_SKILL_PROFILE_SCORERS: undefined
@@ -519,7 +520,9 @@ export function chooseAICore(g, t, s, quick = false) {
   }
   return a;
 }
-export function aiReasonCore(g, t, s, a) {
+export function aiReason(g, t, s, a) {
+  const raidReason = raidActionReason(g, t, s, a);
+  if (raidReason) return raidReason;
   let u = unitAt(g, t, s);
   if (reactiveEnergyRule(u) && actionSkillHasEffect(a, "genociderDisplosion")) return `추가 B ${energyAmountText(a.displosionExtraB || 0)} 소비 후 최대 HP·회복·처형 가능성을 비교해 디스플로전을 선택했다.`;
   if (reactiveEnergyRule(u) && actionSkillHasEffect(a, "genociderSlashClaw")) return `B를 유지한 체급과 2타 처형 가능성을 비교해 슬래시클로를 선택했다.`;
@@ -533,7 +536,5 @@ export function aiReasonCore(g, t, s, a) {
   let tar = a.target ? unitAt(g, a.target.team, a.target.slot) : null;
   return `${tar?.name || "필드"}에 대한 처치·보호·예약 효과를 비교해 ${sk?.name || a.label}을 선택했다.`;
 }
-export function aiReason(...args) {
-  return bossAiReason.apply(this, args);
-}
+
 // UI

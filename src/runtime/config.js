@@ -8,8 +8,7 @@ export const state_runtime_config = {
   currentGame: undefined,
   GameConfig: undefined,
   IdFactory: undefined,
-  EventBus: undefined,
-  TimerManager: undefined
+  EventBus: undefined
 };
 import { systems } from "./systems.js";
 import { state_ui_battle_state } from "../ui/battle-state.js";
@@ -132,5 +131,4 @@ export function initializeRuntimeConfig() {
       }
     });
   })();
-  state_runtime_config.TimerManager = systems.TimerManager;
 }

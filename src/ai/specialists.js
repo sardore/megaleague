@@ -1,4 +1,4 @@
-import { bossActionHeuristic } from "../features/boss-raid.js";
+import { raidActionBonus } from "../features/boss-raid.js";
 import { actionHeuristicCore, chooseAICore } from "./search.js";
 import { activeAbigate, isNonAttackSkill } from "../app/controls.js";
 import { legalActions, other, unitAt, state_engine_actions } from "../engine/actions.js";
@@ -27,14 +27,14 @@ export function initializeAiSpecialists() {
 
   /* ===== 온라인 탭 복귀 복구·채팅·동전 면 구분·폭시어스 리워크 ===== */
 }
-export function actionHeuristicSpecialist(g, t, s, a) {
+export function actionHeuristic(g, t, s, a) {
   const oldTimeGame = state_engine_actions.timeTraitGame;
   state_engine_actions.timeTraitGame = g;
   try {
     let score = actionHeuristicCore(g, t, s, a),
       u = unitAt(g, t, s),
       target = a?.target ? unitAt(g, a.target.team, a.target.slot) : null;
-    if (!u || a?.type !== "skill") return score;
+    if (!u || a?.type !== "skill") return score + raidActionBonus(g, t, s, a);
     if (actionSkillHasEffect(a, "suctionPad") && target) {
       const allied = teamOf(g, target) === t,
         setup = cardHasCapability(u, "switchLockTrait") && canPayAction(g, t, u, "R*") ? 45 : 22;
@@ -142,13 +142,10 @@ export function actionHeuristicSpecialist(g, t, s, a) {
         if (pred.aligned && !pred.beforeAligned) score += timeTeamOf(g, x) !== t ? value : -value * .65;
       }
     }
-    return score;
+    return score + raidActionBonus(g, t, s, a);
   } finally {
     state_engine_actions.timeTraitGame = oldTimeGame;
   }
-}
-export function actionHeuristic(...args) {
-  return bossActionHeuristic.apply(this, args);
 }
 export function chooseAISpecialist(g, t, s, quick = false) {
   const oldTimeGame = state_engine_actions.timeTraitGame;

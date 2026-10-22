@@ -13,13 +13,11 @@ import { initializePresentationCoordinates } from './presentation/coordinates.js
 import { initializePresentationAnimations } from './presentation/animations.js';
 import { initializeUiDeck } from './ui/deck.js';
 import { initializeUiSetup } from './ui/setup.js';
-import { initializeUiPayment } from './ui/payment.js';
 import { initializeUiTargeting } from './ui/targeting.js';
 import { initializeUiActionPanel } from './ui/action-panel.js';
 import { initializeOnlineConnection } from './online/connection.js';
 import { initializeUiResults } from './ui/results.js';
 import { initializeAppControls } from './app/controls.js';
-import { initializeFeaturesCharacterRules } from './features/character-rules.js';
 import { initializeFeaturesSummons } from './features/summons.js';
 import { initializeOnlineEmotes } from './online/emotes.js';
 import { initializeFeaturesFoxious } from './features/foxious.js';
@@ -36,10 +34,8 @@ import { initializeFeaturesTimeora } from './features/timeora.js';
 import { initializePresentationIntroductions } from './presentation/introductions.js';
 import { initializeAiSpecialists } from './ai/specialists.js';
 import { initializeOnlineChat } from './online/chat.js';
-import { initializePresentationClockMirror } from './presentation/clock-mirror.js';
 import { initializeFeaturesSpectators } from './features/spectators.js';
 import { initializeFeaturesBossRaid } from './features/boss-raid.js';
-import { initializePresentationClockSaturation } from './presentation/clock-saturation.js';
 import { initializeUiEnergyOverflow } from './ui/energy-overflow.js';
 import { initializeUiInteractions } from './ui/interactions.js';
 import { initializeEngineEnergyNormalization } from './engine/energy-normalization.js';
@@ -71,13 +67,11 @@ export function initializeApplication() {
   initializePresentationAnimations();
   initializeUiDeck();
   initializeUiSetup();
-  initializeUiPayment();
   initializeUiTargeting();
   initializeUiActionPanel();
   initializeOnlineConnection();
   initializeUiResults();
   initializeAppControls();
-  initializeFeaturesCharacterRules();
   initializeFeaturesSummons();
   initializeOnlineEmotes();
   initializeFeaturesFoxious();
@@ -91,13 +85,10 @@ export function initializeApplication() {
   initializeOnlineCommands();
   initializeOnlineSnapshots();
   initializeFeaturesTimeora();
-  initializePresentationIntroductions();
   initializeAiSpecialists();
   initializeOnlineChat();
-  initializePresentationClockMirror();
   initializeFeaturesSpectators();
   initializeFeaturesBossRaid();
-  initializePresentationClockSaturation();
   initializeUiEnergyOverflow();
   initializeUiInteractions();
   initializeEngineEnergyNormalization();
@@ -113,4 +104,5 @@ export function initializeApplication() {
   initializeOnlineSession();
   initializeOnlineSync();
   initializeRuntimePresentation();
+  initializePresentationIntroductions();
 }

@@ -1,3 +1,4 @@
+import { TimerManager } from "./timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_runtime_presentation = {
   AnimationEngine: undefined,
@@ -8,7 +9,6 @@ export const state_runtime_presentation = {
   g: undefined
 };
 import { state_engine_entities } from "../engine/entities.js";
-import { policySlots } from "../engine/policies.js";
 import { state_features_timeora } from "../features/timeora.js";
 import { state_online_commands } from "../online/commands.js";
 import { registerOnlineConnectionRoute, state_online_connection } from "../online/connection.js";
@@ -53,7 +53,7 @@ export function initializeRuntimePresentation() {
         });
       });
       const timeout = new Promise(resolve => {
-        fallback = state_runtime_config.TimerManager.setTimeout(() => resolve({
+        fallback = TimerManager.setTimeout(() => resolve({
           fallback: true
         }), options.timeoutMs || state_runtime_config.GameConfig.animationFallbackMs, {
           scope: g?.battleId,
@@ -73,7 +73,7 @@ export function initializeRuntimePresentation() {
       })), timeout, interrupted]).then(result => {
         return result;
       }).finally(() => {
-        state_runtime_config.TimerManager.clear(fallback);
+        TimerManager.clear(fallback);
         pending.delete(id);
         state_runtime_input.InputLockManager.unlock(token);
         if (g?.pendingAnimation?.id === id) g.pendingAnimation = null;
@@ -94,7 +94,7 @@ export function initializeRuntimePresentation() {
     };
     const unmountViewportFx = node => {
       const timer = viewportFxTimers.get(node);
-      if (timer) state_runtime_config.TimerManager.clear(timer);
+      if (timer) TimerManager.clear(timer);
       viewportFxTimers.delete(node);
       node?.remove?.();
       return true;
@@ -110,7 +110,7 @@ export function initializeRuntimePresentation() {
       node.dataset.viewportFx = "true";
       viewportLayer().appendChild(node);
       const ttl = Math.max(250, Number(options.ttlMs) || state_runtime_config.GameConfig.animationFallbackMs);
-      const timer = state_runtime_config.TimerManager.setTimeout(() => unmountViewportFx(node), ttl, {
+      const timer = TimerManager.setTimeout(() => unmountViewportFx(node), ttl, {
         scope: state_runtime_config.currentGame()?.battleId,
         reason: options.reason || "viewport-fx-fallback"
       });
@@ -143,7 +143,7 @@ export function initializeRuntimePresentation() {
     };
     const cancelBattle = id => {
       settleInterrupted("battle-cancel", id);
-      state_runtime_config.TimerManager.clearScope(id);
+      TimerManager.clearScope(id);
       clearViewportFx();
     };
     return Object.freeze({
@@ -191,7 +191,7 @@ export function initializeRuntimePresentation() {
       node.className = `float-num ${kind}`;
       node.textContent = String(text);
       layer.appendChild(node);
-      state_runtime_config.TimerManager.setTimeout(() => node.remove(), 1100, {
+      TimerManager.setTimeout(() => node.remove(), 1100, {
         scope: state_runtime_config.currentGame()?.battleId,
         reason: "effect-popup"
       });
@@ -203,16 +203,6 @@ export function initializeRuntimePresentation() {
       popup
     });
   })();
-  if (typeof render === "function") {
-    policySlots.render12 = {
-      transform(currentResult) {
-        const result = currentResult;
-        state_runtime_state.StateFactory.updateActive(state_runtime_config.currentGame());
-        state_runtime_presentation.BattleRenderer.decorateDom();
-        return result;
-      }
-    };
-  }
   state_ui_action_panel.ActionRenderEngine.registerDecorator("core-r48", 1000, () => {
     state_runtime_input.InputLockManager.reconcileLegacyClock("render-actions");
     const g = state_runtime_config.currentGame(),
@@ -382,7 +372,6 @@ export function initializeRuntimePresentation() {
     OnlineTransportEngine: state_online_transport.OnlineTransportEngine,
     AnimationEngine: state_runtime_presentation.AnimationEngine,
     InputLockManager: state_runtime_input.InputLockManager,
-    TimerManager: state_runtime_config.TimerManager,
     EventBus: state_runtime_config.EventBus,
     BattleRenderer: state_runtime_presentation.BattleRenderer,
     LifecycleManager: state_runtime_presentation.LifecycleManager,

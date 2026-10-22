@@ -444,7 +444,7 @@ export function grandVisualOwner(g) {
   if (g?.fieldEffect?.type !== "grand") return null;
   return g.fieldEffect.team === localTeamFor(g) ? "P" : "A";
 }
-export function renderCore() {
+export function renderBattleBoard() {
   if (typeof systems.ActionFaultInjector === "object") {
     try {
       systems.ActionFaultInjector.hit("render-before");

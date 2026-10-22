@@ -1,4 +1,6 @@
-import { bossCard } from "../features/boss-raid.js";
+import { raidCardForUnit } from "../features/boss-raid.js";
+import { TimerManager } from "../runtime/timers.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_engine_entities = {
   STATUS: undefined,
@@ -552,13 +554,12 @@ export function syncCardRegistry() {
   }
   state_engine_entities.CARD_REGISTRY_SIGNATURE = signature;
 }
-export function cardCore(u) {
+export function card(u) {
+  const raidCard = raidCardForUnit(u);
+  if (raidCard) return raidCard;
   syncCardRegistry();
   const id = typeof u === "string" ? u : u?.card ?? u?.id;
   return state_engine_entities.CARD_REGISTRY.get(id) || state_engine_entities.UNKNOWN_CARD;
-}
-export function card(...args) {
-  return bossCard.apply(this, args);
 }
 export function skillsOf(ref) {
   const def = card(ref);
@@ -767,7 +768,7 @@ export function isPlusStarChoiceForCard(choice, deck, cardId, team = "P") {
 export function newGame(pDeck, aDeck, opt = {}) {
   const old = typeof state_runtime_config.currentGame === "function" ? state_runtime_config.currentGame() : null;
   if (typeof state_runtime_state.StateFactory !== "undefined" && old?.battleId) {
-    state_runtime_config.TimerManager.clearScope(old.battleId);
+    TimerManager.clearScope(old.battleId);
     state_runtime_input.InputLockManager.releaseBattle(old.battleId);
     state_runtime_transactions.ActionTransactionManager.clearBattle(old.battleId);
   }

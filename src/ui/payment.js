@@ -1,12 +1,23 @@
+import { state_runtime_presentation } from "../runtime/presentation.js";
+import { state_runtime_state } from "../runtime/state.js";
+import { paintChoiceTarget } from "./interactions.js";
+import { timeClockVisualSaturation } from "../presentation/clock-saturation.js";
+import { renderRaidBattleStatus } from "../features/boss-raid.js";
+import { specDecorateBattle } from "../features/spectators.js";
+import { syncOnlineChatUI } from "../online/chat.js";
+import { ensureOnlineLeaveButton } from "../online/transport.js";
+import { renderAromaField, scrubUserFacingUndefined } from "../features/elixian.js";
+import { renderSummonZones } from "../features/summons.js";
+import { timeUpdateSuppressedTeamAttribute, timeSuppressedUidSet, timeSyncSuppressionVisuals } from "../features/timeora.js";
+import { state_engine_actions, other, unitAt } from "../engine/actions.js";
+import { renderBattleBoard, grandVisualOwner } from "./setup.js";
 import { activeAbigate, isNonAttackSkill, resolvedSkillForAction, setBattleLogOpen } from "../app/controls.js";
 import { effectiveSkillCost, state_catalog_cards } from "../catalog/cards.js";
-import { other, unitAt } from "../engine/actions.js";
 import { findUnit } from "../engine/combat.js";
 import { lifeRainHealPool } from "../engine/effects.js";
 import { allEnergy, energyStore, findPaymentPlan, reqAcceptsCounts, spendPaymentPlan, switchCost, transformedSkillReq } from "../engine/energy.js";
 import { actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, skillDefHasEffect, skillOf } from "../engine/entities.js";
 import { execute } from "../engine/execution.js";
-import { policySlots, projectBattle } from "../engine/policies.js";
 import { colorAmount, enumerateDiscardSpecs } from "../features/character-rules.js";
 import { state_features_dragon_memory } from "../features/dragon-memory.js";
 import { openFoxStrikeChoice } from "../features/foxious.js";
@@ -16,9 +27,29 @@ import { systems } from "../runtime/systems.js";
 import { afterAction, openMysticExtras, openTargetEnergyInteraction } from "./action-choices.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "./battle-state.js";
 import { openChoice } from "./results.js";
-import { grandVisualOwner } from "./setup.js";
-export function render(...args) {
-  return projectBattle.apply(this, args);
+export function render() {
+  const current = state_ui_battle_state.game;
+  timeUpdateSuppressedTeamAttribute(current, timeSuppressedUidSet(current));
+  const previous = state_engine_actions.timeTraitGame;
+  state_engine_actions.timeTraitGame = current;
+  try {
+    syncGrandFieldBackground(current);
+    renderBattleBoard();
+    renderSummonZones();
+    renderAromaField();
+    scrubUserFacingUndefined();
+    ensureOnlineLeaveButton();
+    timeSyncSuppressionVisuals(current);
+    syncOnlineChatUI();
+    if (current?.mode === "spectator") specDecorateBattle();
+    renderRaidBattleStatus();
+    timeClockVisualSaturation.sync();
+    paintChoiceTarget();
+    state_runtime_state.StateFactory.updateActive(current);
+    state_runtime_presentation.BattleRenderer.decorateDom();
+  } finally {
+    state_engine_actions.timeTraitGame = previous;
+  }
 }
 export function syncGrandFieldBackground(g) {
   let arena = document.querySelector(".arena");
@@ -35,13 +66,6 @@ export function syncGrandFieldBackground(g) {
     document.querySelector(good)?.classList.add("grand-benefit");
     document.querySelector(bad)?.classList.add("grand-penalty");
   }
-}
-export function initializeUiPayment() {
-  policySlots.render1 = {
-    enter() {
-      syncGrandFieldBackground(state_ui_battle_state.game);
-    }
-  };
 }
 export function renderLog() {
   let box = state_ui_battle_state.$("#log");

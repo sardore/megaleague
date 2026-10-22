@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_ui_invaders = {
   invaderPortalIndex: undefined
@@ -99,13 +100,13 @@ export function initializeUiInvaders() {
       return;
     }
     systems.__genociderSeasonIntroPlayed = true;
-    systems.TimerManager.requestAnimationFrame(() => systems.TimerManager.requestAnimationFrame(() => intro.classList.add("intro-running")));
-    const normalTimer = systems.TimerManager.setTimeout(finishGenociderSeasonIntro, 5900);
-    const safetyTimer = systems.TimerManager.setTimeout(finishGenociderSeasonIntro, 8200);
+    TimerManager.requestAnimationFrame(() => TimerManager.requestAnimationFrame(() => intro.classList.add("intro-running")));
+    const normalTimer = TimerManager.setTimeout(finishGenociderSeasonIntro, 5900);
+    const safetyTimer = TimerManager.setTimeout(finishGenociderSeasonIntro, 8200);
     intro.addEventListener("transitionend", () => {
       if (intro.dataset.finished === "1") {
-        systems.TimerManager.clear(normalTimer);
-        systems.TimerManager.clear(safetyTimer);
+        TimerManager.clear(normalTimer);
+        TimerManager.clear(safetyTimer);
       }
     }, {
       once: true
@@ -229,5 +230,5 @@ export function finishGenociderSeasonIntro() {
   if (!intro || intro.dataset.finished === "1") return;
   intro.dataset.finished = "1";
   intro.classList.add("intro-ending");
-  systems.TimerManager.setTimeout(() => intro.remove(), 1020);
+  TimerManager.setTimeout(() => intro.remove(), 1020);
 }

@@ -1,4 +1,7 @@
-import { bossTimeClockMiniHTML, bossTimeColorForTeam, bossTimeThemeForTeam } from "./boss-raid.js";
+import { state_runtime_input } from "../runtime/input.js";
+import { raidClockHTML } from "../features/boss-raid.js";
+import { TimerManager } from "../runtime/timers.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_features_timeora = {
   TIMEORA_CARD: undefined,
@@ -17,11 +20,9 @@ import { memoryOptions, naturalColors } from "../engine/effects.js";
 import { canPayAction, energyStore, energyValue, findPaymentPlan, normalizeStore, status, totalEnergy, transformedSkillReq, triggerEnergyGainResult } from "../engine/energy.js";
 import { RNG, actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, firstSkillByTag, skillDefHasEffect, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillIdByTag, skillOf, state_engine_entities } from "../engine/entities.js";
 import { advanceDualOrEnd, endTurn, execute } from "../engine/execution.js";
-import { policySlots, PASS } from "../engine/policies.js";
 import { dmBattleInstanceId, dmMemoryAction, dmTargetRefs } from "./dragon-memory.js";
 import { copiedSkillAllowed } from "./elixian.js";
 import { executeCharacterAction } from "./support.js";
-import { state_online_commands } from "../online/commands.js";
 import { log, queueCombatNotice } from "../presentation/audio.js";
 import { state_presentation_coordinates } from "../presentation/coordinates.js";
 import { timeSyncContinuousTraitStates } from "../presentation/introductions.js";
@@ -64,76 +65,6 @@ export function initializeFeaturesTimeora() {
   state_features_timeora.timeVisualChain = Promise.resolve();
   state_features_timeora.timeVisualSerial = 0;
   state_features_timeora.timeClockTraitSuppression = new TimeClockTraitSuppressionPolicy();
-  policySlots.legal8 = {
-    enter(g) {
-      const oldGame = state_engine_actions.timeTraitGame;
-      state_engine_actions.timeTraitGame = g;
-      return oldGame;
-    },
-    leave(oldGame) {
-      state_engine_actions.timeTraitGame = oldGame;
-    },
-    transform(currentActions, g, t, s) {
-      let actions = currentActions;
-      const u = unitAt(g, t, s);
-      if (!u || u.dead) return actions;
-      if (!!firstSkillByTag(u, "copy") && u.memoryUsed) actions = actions.filter(a => !(a.type === "skill" && actionSkillHasTag(a, "copy")));
-      if (!cardHasCapability(u, "timeControl") || u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
-      actions = actions.filter(a => !(a.type === "skill" && (actionSkillHasEffect(a, "timeRecall") || actionSkillHasEffect(a, "hyperClock"))));
-      if (!u.skillSeals?.[skillIdByEffect(u, "timeRecall")] && !u.usedOnce?.[skillIdByEffect(u, "timeRecall")] && canPayAction(g, t, u, "**")) {
-        for (const team of [t, other(t)]) for (let i = 0; i < 2; i++) {
-          const target = unitAt(g, team, i);
-          if (target && !target.dead) actions.push({
-            type: "skill",
-            skill: skillIdByEffectGlobal("timeRecall"),
-            target: {
-              team,
-              slot: i,
-              uid: target.uid
-            },
-            label: `타임리콜 → ${target.name}`
-          });
-        }
-      }
-      const hcCost = status(u, "traitSeal") ? "***" : "WWorB*";
-      if (!u.skillSeals?.[skillIdByEffect(u, "hyperClock")] && canPayAction(g, t, u, hcCost)) {
-        const reason = timeHyperReason(u);
-        for (const target of enemyTargets(g, t)) actions.push({
-          type: "skill",
-          skill: skillIdByEffectGlobal("hyperClock"),
-          target,
-          costOverride: hcCost,
-          displayCost: hcCost,
-          timeHyperReason: reason,
-          label: `하이퍼클락 ${reason ? "160D" : "100D"}`
-        });
-      }
-      return actions;
-    }
-  };
-  policySlots.effect8 = function (g, actor, target, e, skill, ctx = {}) {
-    if (e?.type === "timeRecall") return timeApplyRecall(g, actor, target, skill, ctx);
-    if (e?.type === "hyperClock") {
-      const reason = ctx?.action?.timeHyperReason || actor?._timeHyperReason || timeHyperReason(actor);
-      const amount = reason ? 160 : 100;
-      if (reason === "traitSeal") log(g, `${actor.name}: 특성봉인으로 하이퍼클락이 *** 160D 강화됨. 적 특성은 정상 작동.`, "turn");else if (reason === "clockAlignment") log(g, `${actor.name}: 운명의 시계 정렬로 하이퍼클락이 160D 강화됨. 이번 공격 처리 동안 시계 주인 외 특성 정지.`, "turn");
-      const dealt = dealDamage(g, actor, target, {
-        amount
-      }, skill, ctx.sim);
-      if (typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && !ctx.sim) state_ui_battle_state.visualEvents.push({
-        type: "hyperClockFx",
-        uid: actor.uid,
-        targetUid: target?.uid || null,
-        team: timeTeamOf(g, actor),
-        enhanced: !!reason,
-        reason,
-        amount: dealt,
-        rawAmount: amount
-      });
-      return dealt;
-    }
-    return PASS;
-  };
   for (const eventName of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "touchstart", "touchend", "keydown", "keyup", "keypress", "wheel", "input", "change", "submit", "dragstart", "contextmenu"]) {
     document.addEventListener(eventName, e => {
       if (!state_features_timeora.timeInputLocked) return;
@@ -218,53 +149,7 @@ export function initializeFeaturesTimeora() {
       return true;
     }
   });
-  policySlots.legal9 = {
-    transform(currentActions, g, t, s) {
-      let actions = currentActions,
-        actor = unitAt(g, t, s);
-      actions = actions.filter(a => !(a?.type === "skill" && actionSkillHasTag(a, "copy")));
-      if (!actor || actor.dead || !firstSkillByTag(actor, "copy") || actor.memoryUsed || actor.scheduledAction || actor.skillSeals?.[skillIdByTag(actor, "copy")] || status(actor, "freeze") || status(actor, "skillSeal")) return actions;
-      for (const option of memoryOptions(g, t, actor)) {
-        if (!copiedSkillAllowed(actor, option.skill)) continue;
-        for (const cost of option.costVariants || [option.cost]) {
-          const plan = findPaymentPlan(g, t, actor, cost);
-          if (!plan) continue;
-          const targets = dmTargetRefs(g, t, s, actor, option.skill);
-          for (const target of targets) {
-            const targetKey = target ? `${target.team}:${target.slot}:${target.uid || "slot"}` : "none";
-            const actionId = `memory:${dmBattleInstanceId(g)}:${g.turnSerial}:${actor.uid}:${option.unit.uid}:${option.skill.id}:${cost}:${targetKey}`;
-            actions.push({
-              ...dmMemoryAction(g, t, s, actor, option, cost, target, actionId),
-              paymentPlan: {
-                ...plan
-              }
-            });
-          }
-        }
-      }
-      return actions;
-    }
-  };
   state_ui_action_panel.ActionRenderEngine.registerDecorator("timeora", 400, () => decorateTimeoraActions());
-  policySlots.render6 = {
-    enter() {
-      const current = typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null;
-      timeUpdateSuppressedTeamAttribute(current, timeSuppressedUidSet(current));
-      const old = state_engine_actions.timeTraitGame;
-      state_engine_actions.timeTraitGame = current;
-      return {
-        old,
-        current
-      };
-    },
-    leave(token) {
-      state_engine_actions.timeTraitGame = token?.old ?? null;
-    },
-    transform(result, token) {
-      timeSyncSuppressionVisuals(token?.current || null);
-      return result;
-    }
-  };
 }
 export function timeMarkTimeline(g, type, payload = {}) {
   if (!g) return null;
@@ -639,7 +524,10 @@ export function timeApplyRecall(g, actor, target, skill, ctx) {
     type: "timeRecallFx",
     uid: actor.uid,
     targetUid: target.uid,
-    team: timeTeamOf(g, actor),
+    team: g.bossRaid && actor.bossRed ? "__bossRed" : timeTeamOf(g, actor),
+    ...(g.bossRaid && actor.bossRed ? {
+      bossRed: true
+    } : {}),
     turnsAgo
   });
   return swing;
@@ -649,32 +537,10 @@ export function timePotentialReactors(g, actor, paidGuess = 1, t = null, s = nul
   return timeFieldTimeoras(g).filter(x => timeShouldClockReact(g, x, actor, t, s));
 }
 export function timeSetInputLock(on, holdBusy = true) {
-  const manager = systems.InputLockManager;
-  if (manager?.setClockLock) return manager.setClockLock(!!on, {
+  return state_runtime_input.InputLockManager.setClockLock(!!on, {
     holdBusy,
     owner: "timeSetInputLock"
   });
-  // Bootstrap fallback: this path only exists while the final owner has not loaded yet.
-  state_features_timeora.timeInputLocked = !!on;
-  document.body.classList.toggle("time-input-locked", state_features_timeora.timeInputLocked);
-  for (const root of [document.querySelector(".app"), document.querySelector("#modal")]) {
-    if (!root) continue;
-    try {
-      root.inert = state_features_timeora.timeInputLocked;
-    } catch (error) {
-      systems.__megaRecordRecoveredError(error, "timeSetInputLock:bootstrap");
-    }
-    root.setAttribute("aria-hidden", state_features_timeora.timeInputLocked ? "true" : "false");
-  }
-  if (on && holdBusy && typeof state_ui_battle_state.busy !== "undefined") {
-    if (!state_ui_battle_state.busy) state_features_timeora.timeInputLockBusyOwned = true;
-    state_ui_battle_state.busy = true;
-  }
-  if (!on && state_features_timeora.timeInputLockBusyOwned) {
-    state_features_timeora.timeInputLockBusyOwned = false;
-    if (!state_online_commands.OnlineActionAdmissionOwner.hasPending()) state_ui_battle_state.busy = false;
-  }
-  return state_features_timeora.timeInputLocked;
 }
 export function executeTimeAction(g, t, s, a, opt = {}) {
   const actor = unitAt(g, t, s);
@@ -1082,7 +948,8 @@ export function timeOpenGatherOverflow(a, choice, peek) {
     })
   });
 }
-export function timeClockMiniHTMLCore(u, g) {
+export function timeClockMiniHTML(u, g) {
+  if (u?.bossRed) return raidClockHTML(u, g);
   const team = timeTeamOf(g, u),
     local = localTeamFor(g),
     theme = team === local ? "gold" : "blue",
@@ -1093,9 +960,6 @@ export function timeClockMiniHTMLCore(u, g) {
   const state = stopped ? stopReason === "traitSeal" ? "정지 · 특성봉인" : "정지 · 상대 시계 정렬" : cancelled ? "동시 정렬 · 효과 상쇄" : aligned ? "정렬 · 자신 외 전원 특성 정지" : "비정렬";
   const stateClass = stopped ? "stopped" : cancelled ? "cancelled" : aligned ? "aligned" : "";
   return `<div class="time-mini-clock-wrap ${stopped ? "clock-stopped-wrap" : ""}"><div class="time-mini-clock ${theme}${stopped ? " clock-stopped" : ""}${cancelled ? " clock-cancelled" : ""}"><span class="time-clock-hand hour" style="transform:translateX(-50%) rotate(${timeNormDeg(u.timeHourDeg)}deg)"></span><span class="time-clock-hand minute" style="transform:translateX(-50%) rotate(${timeNormDeg(u.timeMinuteDeg)}deg)"></span><span class="time-clock-pin"></span><span class="time-clock-word">Time</span></div><div><b>Time</b><br><span>시침 ${timeNormDeg(u.timeHourDeg)}° · 분침 ${timeNormDeg(u.timeMinuteDeg)}°</span><br><span class="time-mini-state ${stateClass}">${state}</span></div></div>`;
-}
-export function timeClockMiniHTML(...args) {
-  return bossTimeClockMiniHTML.apply(this, args);
 }
 export function decorateTimeoraActions() {
   if (!state_ui_battle_state.game) return;
@@ -1150,17 +1014,13 @@ export function timeSyncSuppressionVisuals(g = typeof state_ui_battle_state.game
   });
   return uids;
 }
-export function timeColorForTeamCore(g, t) {
+export function timeColorForTeam(g, t) {
+  if (g?.bossRaid && (t === "A" || t === "__bossRed")) return "#ff4058";
   return t === localTeamFor(g) ? "#ffd558" : "#58bfff";
 }
-export function timeColorForTeam(...args) {
-  return bossTimeColorForTeam.apply(this, args);
-}
-export function timeThemeForTeamCore(g, t) {
+export function timeThemeForTeam(g, t) {
+  if (g?.bossRaid && (t === "A" || t === "__bossRed")) return "red";
   return t === localTeamFor(g) ? "gold" : "blue";
-}
-export function timeThemeForTeam(...args) {
-  return bossTimeThemeForTeam.apply(this, args);
 }
 export function timeClockFaceNode(theme, beforeHour, beforeMinute) {
   const face = document.createElement('div');
@@ -1205,10 +1065,10 @@ export function timeJitterHand(el, base, duration = 720) {
   }).finished.catch(() => {});
 }
 export function timeTrackVisualTimers(fn) {
-  return systems.TimerManager.captureTimeouts(fn);
+  return TimerManager.captureTimeouts(fn);
 }
 export function timeNextFrame() {
-  return new Promise(r => systems.TimerManager.requestAnimationFrame(() => systems.TimerManager.requestAnimationFrame(r)));
+  return new Promise(r => TimerManager.requestAnimationFrame(() => TimerManager.requestAnimationFrame(r)));
 }
 export async function timeWaitNamedAnimation(node, name, fallbackMs = 1000) {
   await timeNextFrame();
@@ -1219,10 +1079,7 @@ export async function timeWaitNamedAnimation(node, name, fallbackMs = 1000) {
     await Promise.allSettled(list.map(a => a.finished.catch(() => {})));
     return;
   }
-  await new Promise(r => systems.TimerManager.setTimeout(r, fallbackMs));
-}
-export async function timePlayClockRotationOverlay(clockEvents) {
-  return systems.__timeClockOverlayImpl?.(clockEvents);
+  await new Promise(r => TimerManager.setTimeout(r, fallbackMs));
 }
 export async function timePlayHyperVisual(v) {
   const arena = document.querySelector('.arena'),
@@ -1285,3 +1142,92 @@ export function timePlayRecallVisual(v) {
 }
 
 /* 시작 연출 canonical owner: exact-once Horizon, monotonic timing, 약 4초. */
+
+export function listClockSkillActions(g, t, s) {
+  let actions = [];
+  const u = unitAt(g, t, s);
+  if (!u || u.dead) return actions;
+  if (!cardHasCapability(u, "timeControl") || u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
+  if (!u.skillSeals?.[skillIdByEffect(u, "timeRecall")] && !u.usedOnce?.[skillIdByEffect(u, "timeRecall")] && canPayAction(g, t, u, "**")) {
+    for (const team of [t, other(t)]) for (let i = 0; i < 2; i++) {
+      const target = unitAt(g, team, i);
+      if (target && !target.dead) actions.push({
+        type: "skill",
+        skill: skillIdByEffectGlobal("timeRecall"),
+        target: {
+          team,
+          slot: i,
+          uid: target.uid
+        },
+        label: `타임리콜 → ${target.name}`
+      });
+    }
+  }
+  const hcCost = status(u, "traitSeal") ? "***" : "WWorB*";
+  if (!u.skillSeals?.[skillIdByEffect(u, "hyperClock")] && canPayAction(g, t, u, hcCost)) {
+    const reason = timeHyperReason(u);
+    for (const target of enemyTargets(g, t)) actions.push({
+      type: "skill",
+      skill: skillIdByEffectGlobal("hyperClock"),
+      target,
+      costOverride: hcCost,
+      displayCost: hcCost,
+      timeHyperReason: reason,
+      label: `하이퍼클락 ${reason ? "160D" : "100D"}`
+    });
+  }
+  return actions;
+}
+export { timePlayClockRotationOverlay } from "../presentation/clock-mirror.js";
+export function applyClockEffect(g, actor, target, e, skill, ctx = {}) {
+  if (e.type === "timeRecall") return timeApplyRecall(g, actor, target, skill, ctx);
+  const reason = ctx.action?.timeHyperReason || actor._timeHyperReason || timeHyperReason(actor);
+  const raw = reason ? 160 : 100;
+  const guarded = !!(g.bossRaid && actor.bossRed && g.bossRaid.hyperGuard > 0);
+  const amount = guarded ? Math.max(0, raw - 60) : raw;
+  if (guarded) {
+    g.bossRaid.hyperGuard--;
+    log(g, "레이드 보상 · 시간 방벽: 하이퍼클락 " + raw + "D → " + amount + "D.", "turn");
+  } else if (reason === "traitSeal") log(g, actor.name + ": 특성봉인으로 하이퍼클락이 *** 160D 강화됨. 적 특성은 정상 작동.", "turn");else if (reason === "clockAlignment") log(g, actor.name + ": 운명의 시계 정렬로 하이퍼클락이 160D 강화됨. 이번 공격 처리 동안 시계 주인 외 특성 정지.", "turn");
+  const dealt = dealDamage(g, actor, target, {
+    amount
+  }, skill, ctx.sim);
+  if (g === state_ui_battle_state.game && !ctx.sim) state_ui_battle_state.visualEvents.push({
+    type: "hyperClockFx",
+    uid: actor.uid,
+    targetUid: target?.uid || null,
+    team: g.bossRaid && actor.bossRed ? "__bossRed" : timeTeamOf(g, actor),
+    ...(g.bossRaid && actor.bossRed ? {
+      bossRed: true
+    } : {}),
+    enhanced: !!reason,
+    reason,
+    amount: dealt,
+    rawAmount: raw
+  });
+  return dealt;
+}
+export function listMemoryActions(g, t, s) {
+  let actions = [],
+    actor = unitAt(g, t, s);
+  if (!actor || actor.dead || !firstSkillByTag(actor, "copy") || actor.memoryUsed || actor.scheduledAction || actor.skillSeals?.[skillIdByTag(actor, "copy")] || status(actor, "freeze") || status(actor, "skillSeal")) return actions;
+  for (const option of memoryOptions(g, t, actor)) {
+    if (!copiedSkillAllowed(actor, option.skill)) continue;
+    for (const cost of option.costVariants || [option.cost]) {
+      const plan = findPaymentPlan(g, t, actor, cost);
+      if (!plan) continue;
+      const targets = dmTargetRefs(g, t, s, actor, option.skill);
+      for (const target of targets) {
+        const targetKey = target ? `${target.team}:${target.slot}:${target.uid || "slot"}` : "none";
+        const actionId = `memory:${dmBattleInstanceId(g)}:${g.turnSerial}:${actor.uid}:${option.unit.uid}:${option.skill.id}:${cost}:${targetKey}`;
+        actions.push({
+          ...dmMemoryAction(g, t, s, actor, option, cost, target, actionId),
+          paymentPlan: {
+            ...plan
+          }
+        });
+      }
+    }
+  }
+  return actions;
+}

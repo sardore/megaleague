@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_ui_battle_state = {
   $: undefined,
@@ -81,7 +82,7 @@ export function initializeUiBattleState() {
   })();
 }
 export function clearLocalAutoTurnTimer(reason = "clear") {
-  if (state_ui_battle_state.localAutoTurnTimerId) systems.TimerManager.clear(state_ui_battle_state.localAutoTurnTimerId);
+  if (state_ui_battle_state.localAutoTurnTimerId) TimerManager.clear(state_ui_battle_state.localAutoTurnTimerId);
   state_ui_battle_state.localAutoTurnTimerId = 0;
   if (state_ui_battle_state.localAutoTurnOwner) state_ui_battle_state.localAutoTurnOwner.clearedReason = String(reason);
   state_ui_battle_state.localAutoTurnOwner = null;
@@ -98,7 +99,7 @@ export function scheduleLocalAutoTurnTimer(kind, delay, callback) {
     scheduledAt: Date.now()
   };
   state_ui_battle_state.localAutoTurnOwner = owner;
-  state_ui_battle_state.localAutoTurnTimerId = systems.TimerManager.setTimeout(() => {
+  state_ui_battle_state.localAutoTurnTimerId = TimerManager.setTimeout(() => {
     if (state_ui_battle_state.localAutoTurnOwner !== owner) return;
     state_ui_battle_state.localAutoTurnTimerId = 0;
     state_ui_battle_state.localAutoTurnOwner = null;

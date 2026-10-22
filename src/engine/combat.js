@@ -1,4 +1,5 @@
-import { bossCheckDeath, bossQueueSkillVisual } from "../features/boss-raid.js";
+import { onRaidUnitDefeated } from "../features/boss-raid.js";
+
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_engine_combat = {
   CRITICAL_DAMAGE_MULTIPLIER: undefined,
@@ -189,14 +190,18 @@ export function ignoresCombatStatChanges(actor, target, g = state_engine_actions
 }
 // Stored modifiers and continuous traits contribute to the same stat value.
 // Consumers choose whether changes apply once, before either stat is evaluated.
-export function combatStats(g, unit, { ignoreChanges = false, defenseModMultiplier = 1 } = {}) {
+export function combatStats(g, unit, {
+  ignoreChanges = false,
+  defenseModMultiplier = 1
+} = {}) {
   const traitBound = cardHasCapability(unit, "baseDefenseTraitBound");
   const baseDefense = traitBound && (ignoreChanges || !traitsActive(unit, g)) ? 0 : Number(unit.baseDefense || 0);
-  if (ignoreChanges) return { attack: 0, defense: baseDefense };
+  if (ignoreChanges) return {
+    attack: 0,
+    defense: baseDefense
+  };
   const team = g && teamOf(g, unit);
-  const aura = team ? Math.max(0, ...g.teams[team].field
-    .filter(source => source && !source.dead && traitsActive(source, g))
-    .map(source => Number(cardCapability(source, "defenseAura", 0)))) : 0;
+  const aura = team ? Math.max(0, ...g.teams[team].field.filter(source => source && !source.dead && traitsActive(source, g)).map(source => Number(cardCapability(source, "defenseAura", 0)))) : 0;
   const penalty = unit.aromaDamagePenalty && !(traitsActive(unit, g) && card(unit).statDecreaseImmune) ? 10 : 0;
   return {
     attack: Number(unit.attackMod || 0),
@@ -206,7 +211,9 @@ export function combatStats(g, unit, { ignoreChanges = false, defenseModMultipli
 export function rawDamage(effect, actor, target, skill, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   let n = effect.amount,
     statIgnored = ignoresCombatStatChanges(actor, target, g);
-  if (!effect.ignoreAttackMod) n += combatStats(g, actor, { ignoreChanges: statIgnored }).attack;
+  if (!effect.ignoreAttackMod) n += combatStats(g, actor, {
+    ignoreChanges: statIgnored
+  }).attack;
   if (effect.noShieldBonus && !actor.shield) n += effect.noShieldBonus;
   if (effect.ifTargetGathered && target.lastAction === "gather") n += effect.ifTargetGathered;
   if (effect.lastEnergyBonus && totalEnergy(actor) < 0.01) n += effect.lastEnergyBonus;
@@ -220,7 +227,10 @@ export function effectiveDefense(actor, target, effect, crit, g = state_engine_a
   const statIgnored = ignoresCombatStatChanges(actor, target, g),
     cap = effect?.defCap ?? 999,
     modMultiplier = Number(effect?.defenseModMultiplier ?? 1);
-  return Math.min(cap, combatStats(g, target, { ignoreChanges: statIgnored, defenseModMultiplier: modMultiplier }).defense);
+  return Math.min(cap, combatStats(g, target, {
+    ignoreChanges: statIgnored,
+    defenseModMultiplier: modMultiplier
+  }).defense);
 }
 export function sweetProtection(g, actor, target) {
   let tt = teamOf(g, target);
@@ -289,7 +299,7 @@ export function clearOwnedField(g, u, reason = "전장을 떠남") {
   }
   syncAromaCombatFlags(g);
 }
-export function checkDeathCore(g, u, killer) {
+export function checkDeath(g, u, killer) {
   const wasDead = !!u?.dead,
     team = u ? teamOf(g, u) : null,
     fieldSlot = team ? g.teams[team].field.findIndex(x => x?.uid === u.uid) : -1;
@@ -324,9 +334,7 @@ export function checkDeathCore(g, u, killer) {
     }
   }
   syncAromaCombatFlags(g);
-}
-export function checkDeath(...args) {
-  return bossCheckDeath.apply(this, args);
+  if (u && !wasDead && u.dead) onRaidUnitDefeated(g, u);
 }
 export function queueVisual(g, u, type, amount, meta = {}) {
   if (u && typeof u === "object" && u.type && type == null) {
@@ -374,7 +382,15 @@ export function skillVisualKind(skill, effects = []) {
   if (/지진|강타|돌진|스매시|충돌|박치기|깨물|이빨|격돌/.test(text)) return "impact";
   return types.some(x => ["damage", "proportionalDamage", "firstBurst", "rampage", "firestorm"].includes(x)) ? "impact" : "magic";
 }
-export function queueSkillVisualCore(g, actor, target, skill, effects = []) {
+export function queueSkillVisual(g, actor, target, skill, effects = []) {
+  if (g?.bossRaid && skillDefHasEffect(skill, "bossTimeStrike")) {
+    queueVisual(g, {
+      type: "bossTimeStrikeFx",
+      uid: actor.uid,
+      targetUid: target?.uid || null
+    });
+    return;
+  }
   if (typeof state_ui_battle_state.game === "undefined" || g !== state_ui_battle_state.game || !actor || !skill) return;
   if (["lifeRain", "horizonStrike", "lunaShard", "leafBlade", "startSequence"].some(type => skillDefHasEffect(skill, type))) return;
   if (skill.vfxTheme) {
@@ -406,9 +422,6 @@ export function queueSkillVisualCore(g, actor, target, skill, effects = []) {
     skillName: skill.name,
     kind
   });
-}
-export function queueSkillVisual(...args) {
-  return bossQueueSkillVisual.apply(this, args);
 }
 export function queueBloomVisual(g, enemies, evaded) {
   if (typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game) {

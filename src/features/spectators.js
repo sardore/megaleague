@@ -1,5 +1,5 @@
+import { TimerManager } from "../runtime/timers.js";
 import { aliveUnits } from "../engine/energy.js";
-import { policySlots } from "../engine/policies.js";
 import { state_features_genocider } from "./genocider.js";
 import { state_online_commands } from "../online/commands.js";
 import { cloneOnlineVisualEvents, onlineRulesPayload, serializeOnlineGame } from "../online/connection.js";
@@ -46,13 +46,6 @@ export function initializeFeaturesSpectators() {
       return `viewer-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     }
   })();
-  policySlots.render8 = {
-    transform(currentResult) {
-      const result = currentResult;
-      if (spectatorState.watching && state_ui_battle_state.game?.mode === "spectator") specDecorateBattle();
-      return result;
-    }
-  };
   systems.__megaSpectatorR18 = {
     interceptShowEnd() {
       if (spectatorState.watching && state_ui_battle_state.game?.mode === "spectator") {
@@ -65,7 +58,7 @@ export function initializeFeaturesSpectators() {
       if (specIsHostMatch() && Array.isArray(visuals) && visuals.length) spectatorState.pendingVisuals.push(...cloneOnlineVisualEvents(visuals));
     },
     afterAuthoritativeState() {
-      if (specIsHostMatch()) systems.TimerManager.setTimeout(() => specBroadcastSnapshot(true), 0);
+      if (specIsHostMatch()) TimerManager.setTimeout(() => specBroadcastSnapshot(true), 0);
     },
     version: SPEC_VERSION,
     compat: SPEC_COMPAT,
@@ -456,16 +449,16 @@ export async function specStartHostBroadcast() {
   state_ui_deck.p2p.spectatorStartedAt ||= specNow();
   spectatorState.mode = "host";
   await specEnsureHub();
-  systems.TimerManager.clear(spectatorState.announceTimer);
-  systems.TimerManager.clear(spectatorState.snapshotTimer);
-  spectatorState.announceTimer = systems.TimerManager.setInterval(specBroadcastAnnounce, 1450);
-  spectatorState.snapshotTimer = systems.TimerManager.setInterval(() => specBroadcastSnapshot(false), 420);
+  TimerManager.clear(spectatorState.announceTimer);
+  TimerManager.clear(spectatorState.snapshotTimer);
+  spectatorState.announceTimer = TimerManager.setInterval(specBroadcastAnnounce, 1450);
+  spectatorState.snapshotTimer = TimerManager.setInterval(() => specBroadcastSnapshot(false), 420);
   specBroadcastAnnounce();
 }
 function specStopHostBroadcast() {
-  systems.TimerManager.clear(spectatorState.announceTimer);
+  TimerManager.clear(spectatorState.announceTimer);
   spectatorState.announceTimer = null;
-  systems.TimerManager.clear(spectatorState.snapshotTimer);
+  TimerManager.clear(spectatorState.snapshotTimer);
   spectatorState.snapshotTimer = null;
   spectatorState.watchers.clear();
   spectatorState.lastHostSignature = "";
@@ -490,9 +483,9 @@ function specDebug() {
 function specCloseSession(options = {}) {
   if (specIsHostMatch()) specBroadcastSnapshot(true);
   specStopHostBroadcast();
-  systems.TimerManager.clear(spectatorState.browseTimer);
+  TimerManager.clear(spectatorState.browseTimer);
   spectatorState.browseTimer = null;
-  systems.TimerManager.clear(spectatorState.requestTimer);
+  TimerManager.clear(spectatorState.requestTimer);
   spectatorState.requestTimer = null;
   specCloseHub();
   spectatorState.matches.clear();
@@ -606,8 +599,8 @@ async function specOpenLobby(options = {}) {
   const status = document.getElementById("spectatorHubStatus");
   if (status) status.textContent = ok ? "공개 관전 허브 연결 완료 · 경기 검색 중" : "관전 허브 연결 실패 · 네트워크를 확인하세요.";
   specSendBrowseProbe();
-  systems.TimerManager.clear(spectatorState.browseTimer);
-  spectatorState.browseTimer = systems.TimerManager.setInterval(() => {
+  TimerManager.clear(spectatorState.browseTimer);
+  spectatorState.browseTimer = TimerManager.setInterval(() => {
     specRenderMatchList();
     specSendBrowseProbe();
   }, 1800);
@@ -652,13 +645,13 @@ function specBeginWatching(rec) {
     sourceOrder: Object.entries(rec.sources || {}),
     sourceIndex: 0
   };
-  systems.TimerManager.clear(spectatorState.browseTimer);
+  TimerManager.clear(spectatorState.browseTimer);
   spectatorState.browseTimer = null;
   document.getElementById("modalContent").innerHTML = `<h2>경기 연결 중</h2><div class="matchmaking-box"><b id="spectatorConnectStatus">호스트에게 관전 요청 중…</b><div class="matchmaking-time">LIVE</div><button id="spectatorCancelWatch">취소</button></div>`;
   document.getElementById("spectatorCancelWatch").onclick = specLeaveWatching;
   specSendWatchRequest();
-  systems.TimerManager.clear(spectatorState.requestTimer);
-  spectatorState.requestTimer = systems.TimerManager.setInterval(() => {
+  TimerManager.clear(spectatorState.requestTimer);
+  spectatorState.requestTimer = TimerManager.setInterval(() => {
     if (!spectatorState.watching) return;
     const elapsed = specNow() - spectatorState.watching.startedAt;
     if (!spectatorState.watching.received && elapsed > 5200 && spectatorState.watching.sourceOrder?.length > 1) {
@@ -704,7 +697,7 @@ function specEnsureBar() {
   if (viewButton) viewButton.textContent = specViewButtonLabel();
   return bar;
 }
-function specDecorateBattle(data = null) {
+export function specDecorateBattle(data = null) {
   if (!spectatorState.watching) return;
   document.body.classList.add("spectator-mode");
   const bar = specEnsureBar();
@@ -777,7 +770,7 @@ function specLeaveWatching() {
       }, peerId);
     }
   }
-  systems.TimerManager.clear(spectatorState.requestTimer);
+  TimerManager.clear(spectatorState.requestTimer);
   spectatorState.requestTimer = null;
   spectatorState.watching = null;
   spectatorState.mode = "idle";

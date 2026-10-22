@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 import { sessionRuntime } from "./session-model.js";
 import { beginSession } from "./cleanup.js";
 import { systems } from "../runtime/systems.js";
@@ -66,7 +67,7 @@ export function initializeOnlineSpectatorTransport() {
       }
       const session = sessionRuntime.activeSession;
       if (!session.transport?.ready) {
-        const ready = await Promise.race([session.relayReadyPromise, new Promise(resolve => systems.TimerManager.setTimeout(() => resolve(false), 10_000))]);
+        const ready = await Promise.race([session.relayReadyPromise, new Promise(resolve => TimerManager.setTimeout(() => resolve(false), 10_000))]);
         if (!ready) return null;
       }
       return facade;

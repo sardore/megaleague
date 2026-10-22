@@ -10,7 +10,10 @@ export class VisualDelivery {
   publish(revision, visuals) {
     if (visuals.length) {
       const id = `${this.matchId}:${revision}:${++this.serial}`;
-      this.outgoing.set(id, { id, visuals });
+      this.outgoing.set(id, {
+        id,
+        visuals
+      });
     }
     return [...this.outgoing.values()];
   }
@@ -18,8 +21,10 @@ export class VisualDelivery {
     for (const id of ids) this.outgoing.delete(id);
   }
   batches(message) {
-    return Array.isArray(message.visualBatches) ? message.visualBatches :
-      message.visualPacketId ? [{ id: message.visualPacketId, visuals: message.visuals || [] }] : [];
+    return Array.isArray(message.visualBatches) ? message.visualBatches : message.visualPacketId ? [{
+      id: message.visualPacketId,
+      visuals: message.visuals || []
+    }] : [];
   }
   unseen(message) {
     return this.batches(message).filter(batch => batch?.id && !this.received.has(batch.id));

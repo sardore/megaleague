@@ -8,8 +8,7 @@ import { enemyTargets, other, unitAt } from "../engine/actions.js";
 import { afterBodyHpChange, applyStatus, checkDeath, dealDamage, heal, queueVisual, teamOf, traitsActive } from "../engine/combat.js";
 import { addHpProtectionBarrier, memoryOptions } from "../engine/effects.js";
 import { allEnergy, canPayAction, gainEnergy, status } from "../engine/energy.js";
-import { actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillDefHasEffect, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
-import { policySlots, PASS } from "../engine/policies.js";
+import { card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillDefHasEffect, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
 import { dmChooseMemoryOption, dmCostLabel, dmLocalTurn } from "./dragon-memory.js";
 import { log, normalizeGameNumberText } from "../presentation/audio.js";
 import { combatInt, state_ui_battle_state } from "../ui/battle-state.js";
@@ -41,213 +40,6 @@ export function initializeFeaturesElixian() {
   state_ui_cards.CARD_EMOJI_MAP.elixian = ["🦋", "💗"];
   state_features_elixian.silvraeMemorySkill = state_catalog_cards.CARDS.find(c => c.id === "silvrae")?.skills.find(s => skillDefHasTag(s, "copy"));
   if (state_features_elixian.silvraeMemorySkill) state_features_elixian.silvraeMemorySkill.desc = "후열에 있는 드래곤의 기술을 복사한다.";
-  policySlots.legal6 = {
-    transform(currentActions, g, t, s) {
-      let actions = currentActions,
-        u = unitAt(g, t, s);
-      if (!u || u.dead) return actions;
-      actions = actions.filter(a => !(a.type === "skill" && (actionSkillHasTag(a, "copy") || actionSkillHasEffect(a, "elixianShiningWind") || actionSkillHasEffect(a, "elixianAromaField") || actionSkillHasEffect(a, "elixianMultiArrow") || actionSkillHasEffect(a, "elixianLastGift"))));
-      if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
-      const memorySkill = firstSkillByTag(u, "copy");
-      if (memorySkill && !u.skillSeals?.[memorySkill.id]) {
-        for (const op of memoryOptions(g, t, u)) appendCopiedSkillActions(actions, g, t, s, u, memorySkill.id, op, memorySkill.name);
-      }
-      if (!cardHasCapability(u, "resonanceTrait")) return actions;
-      const shining = firstSkillByEffect(u, "elixianShiningWind"),
-        aroma = firstSkillByEffect(u, "elixianAromaField"),
-        multi = firstSkillByEffect(u, "elixianMultiArrow"),
-        gift = firstSkillByEffect(u, "elixianLastGift");
-      if (shining && !u.skillSeals?.[shining.id]) {
-        for (const paidColor of ["R", "B"]) if (canPayAction(g, t, u, paidColor)) actions.push({
-          type: "skill",
-          skill: shining.id,
-          costOverride: paidColor,
-          displayCost: "RorB",
-          target: {
-            team: t,
-            slot: s,
-            uid: u.uid
-          },
-          label: shining.name
-        });
-      }
-      if (aroma && !u.skillSeals?.[aroma.id] && canPayAction(g, t, u, aroma.cost)) actions.push({
-        type: "skill",
-        skill: aroma.id,
-        target: {
-          team: t,
-          slot: s,
-          uid: u.uid
-        },
-        label: aroma.name
-      });
-      if (multi && !u.skillSeals?.[multi.id] && canPayAction(g, t, u, multi.cost)) for (const target of enemyTargets(g, t)) actions.push({
-        type: "skill",
-        skill: multi.id,
-        target,
-        label: multi.name
-      });
-      if (gift && !u.skillSeals?.[gift.id] && canPayAction(g, t, u, gift.cost)) for (const target of g.teams[t].field.map((x, i) => x && !x.dead && x.uid !== u.uid ? {
-        team: t,
-        slot: i,
-        uid: x.uid
-      } : null).filter(Boolean)) actions.push({
-        type: "skill",
-        skill: gift.id,
-        target,
-        label: `${gift.name} → ${unitAt(g, target.team, target.slot).name}`
-      });
-      return actions;
-    }
-  };
-  policySlots.effect6 = function (g, actor, target, e, skill, ctx) {
-    const t = ctx?.team || teamOf(g, actor);
-    if (e.type === "elixianShiningWind") {
-      let healing = 0,
-        barriers = 0;
-      for (const ally of g.teams[t].field || []) {
-        if (!ally || ally.dead) continue;
-        const adjusted = status(ally, "healSeal") ? 0 : elixianHealAmount(g, ally, 20);
-        const got = heal(g, ally, 20, actor, {
-            reason: "shining-wind",
-            effectId: skill?.id || "shiningWind",
-            sim: ctx?.sim
-          }),
-          overflow = Math.max(0, adjusted - got);
-        healing += got;
-        if (overflow > 0) barriers += addHpProtectionBarrier(g, ally, overflow, actor.uid, "elixian");
-      }
-      gainEnergy(g, actor, "W", .5);
-      log(g, `${actor.name}: 샤이닝윈드 · 아군 전체 회복 ${healing}, HP 보호막 ${barriers}, W½ 획득.`);
-      queueVisual(g, {
-        type: "elixianPulseFx",
-        uid: actor.uid,
-        shining: true
-      });
-      return healing;
-    }
-    if (e.type === "elixianAromaField") {
-      for (const ally of g.teams[t].field || []) {
-        if (!ally || ally.dead) continue;
-        const decreaseImmune = traitsActive(ally) && card(ally).statDecreaseImmune;
-        ally.attackMod = decreaseImmune ? Math.max(0, Number(ally.attackMod || 0)) : 0;
-        ally.defenseMod = decreaseImmune ? Math.max(0, Number(ally.defenseMod || 0)) : 0;
-        ally.defense = ally.baseDefense + ally.defenseMod;
-      }
-      if (g.fieldEffect) log(g, `기존 필드 효과가 아로마필드로 교체됨.`);
-      g.fieldEffect = {
-        type: "aroma",
-        ownerUid: actor.uid,
-        team: t,
-        serial: (g.fieldSerial || 0) + 1
-      };
-      g.fieldSerial = g.fieldEffect.serial;
-      syncAromaCombatFlags(g);
-      log(g, `${actor.name}: 아로마필드 전개 · 자기 진영 회복 +10, 상대 회복 -10, 상대 방어 -10.`);
-      queueVisual(g, {
-        type: "elixianPulseFx",
-        uid: actor.uid,
-        aroma: true
-      });
-      return 0;
-    }
-    if (e.type === "elixianMultiArrow") {
-      const readGrade = (unit, role) => {
-        const raw = card(unit)?.grade;
-        const match = String(raw ?? "").trim().match(/^(\d+(?:\.\d+)?)\s*☆?$/);
-        const value = match ? Number(match[1]) : NaN;
-        if (!Number.isFinite(value)) {
-          const detail = {
-            role,
-            entityId: unit?.entityId || unit?.uid || null,
-            cardId: unit?.card || null,
-            rawGrade: raw
-          };
-          const error = new Error(`Invalid ${role} grade: ${String(raw)}`);
-          error.code = "INVALID_CARD_GRADE";
-          error.gradeValidationDetail = detail;
-          throw error;
-        }
-        return value;
-      };
-      const actorGrade = readGrade(actor, "actor");
-      const targetGrade = readGrade(target, "target");
-      const hits = targetGrade > actorGrade ? 2 : 3;
-      const dealt = dealDamage(g, actor, target, {
-        amount: 20,
-        hits
-      }, skill, ctx?.sim);
-      actor.lastTarget = target?.uid || null;
-      log(g, `${actor.name}: 멀티애로 ${hits}회 별도 공격 판정, 총 ${dealt}D.`);
-      return dealt;
-    }
-    if (e.type === "elixianLastGift") {
-      for (const enemy of g.teams[other(t)].field || []) {
-        if (!enemy || enemy.dead) continue;
-        applyStatus(g, enemy, "freeze", 1, actor);
-        applyStatus(g, enemy, "paralyze", 1, actor);
-      }
-      const stock = Math.max(0, combatInt(actor.hp));
-      let got = 0;
-      if (!status(target, "healSeal")) {
-        const old = target.hp;
-        got = Math.max(0, Math.min(stock, target.maxHp - target.hp));
-        target.hp += got;
-        afterBodyHpChange(g, target, old);
-        state_engine_entities.GenericBattleStatisticsOwner.recordHealing(g, {
-          source: actor,
-          target,
-          requestedAmount: stock,
-          actualAppliedAmount: got,
-          reason: "last-gift",
-          effectId: "elixianLastGift",
-          sim: !!ctx?.sim
-        });
-        log(g, `${target.name}: 라스트기프트로 HP ${got} 이전 회복.`, "heal");
-        queueVisual(g, target, "heal", got);
-      } else log(g, `${target.name}: 회복봉인으로 라스트기프트 HP 이전 실패.`);
-      actor.hp = 0;
-      log(g, `${actor.name}: 남은 HP ${stock}을 넘기고 스스로 퇴장.`);
-      checkDeath(g, actor, null);
-      queueVisual(g, {
-        type: "elixianPulseFx",
-        uid: actor.uid,
-        targetUid: target?.uid || null,
-        lastGift: true
-      });
-      return got;
-    }
-    return PASS;
-  };
-  policySlots.after1 = (result, meta, g, actor, target, e) => {
-    if (e?.type === "grandField") syncAromaCombatFlags(g);
-  };
-  policySlots.render3 = {
-    transform(currentResult) {
-      const r = currentResult;
-      document.querySelectorAll(".side.aroma-benefit,.side.aroma-penalty").forEach(x => x.classList.remove("aroma-benefit", "aroma-penalty"));
-      if (state_ui_battle_state.game?.fieldEffect?.type !== "aroma") document.getElementById("arenaAromaFx")?.remove();
-      if (!state_ui_battle_state.game) return r;
-      syncAromaCombatFlags(state_ui_battle_state.game);
-      if (state_ui_battle_state.game.fieldEffect?.type === "aroma") {
-        const goodDisplay = displaySideFor(state_ui_battle_state.game, state_ui_battle_state.game.fieldEffect.team),
-          badDisplay = displaySideFor(state_ui_battle_state.game, other(state_ui_battle_state.game.fieldEffect.team));
-        installAromaLayer(document.querySelector(`.${goodDisplay}-side`), true);
-        installAromaLayer(document.querySelector(`.${badDisplay}-side`), false);
-        installArenaAromaEffect(goodDisplay);
-        const hint = state_ui_battle_state.$("#actionHint");
-        if (hint && !state_ui_battle_state.pendingSkill) hint.textContent = `아로마필드: ${state_ui_battle_state.game.fieldEffect.team === "P" ? "플레이어" : "AI"} 진영 회복 +10 · 상대 회복 -10 / 방어 -10`;
-      }
-      return r;
-    }
-  };
-  policySlots.render4 = {
-    transform(currentResult) {
-      const result = currentResult;
-      scrubUserFacingUndefined();
-      return result;
-    }
-  };
 
   /* 드래곤메모리 실행 경로와 효과 알림 대상 추적 최종 패치 */
 }
@@ -436,4 +228,191 @@ export function scrubUserFacingUndefined(root = document.body) {
       if (el.hasAttribute(attr)) el.setAttribute(attr, normalizeGameNumberText(el.getAttribute(attr)));
     }
   });
+}
+export function listResonanceActions(g, t, s) {
+  let actions = [],
+    u = unitAt(g, t, s);
+  if (!u || u.dead) return actions;
+  if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
+  if (!cardHasCapability(u, "resonanceTrait")) return actions;
+  const shining = firstSkillByEffect(u, "elixianShiningWind"),
+    aroma = firstSkillByEffect(u, "elixianAromaField"),
+    multi = firstSkillByEffect(u, "elixianMultiArrow"),
+    gift = firstSkillByEffect(u, "elixianLastGift");
+  if (shining && !u.skillSeals?.[shining.id]) {
+    for (const paidColor of ["R", "B"]) if (canPayAction(g, t, u, paidColor)) actions.push({
+      type: "skill",
+      skill: shining.id,
+      costOverride: paidColor,
+      displayCost: "RorB",
+      target: {
+        team: t,
+        slot: s,
+        uid: u.uid
+      },
+      label: shining.name
+    });
+  }
+  if (aroma && !u.skillSeals?.[aroma.id] && canPayAction(g, t, u, aroma.cost)) actions.push({
+    type: "skill",
+    skill: aroma.id,
+    target: {
+      team: t,
+      slot: s,
+      uid: u.uid
+    },
+    label: aroma.name
+  });
+  if (multi && !u.skillSeals?.[multi.id] && canPayAction(g, t, u, multi.cost)) for (const target of enemyTargets(g, t)) actions.push({
+    type: "skill",
+    skill: multi.id,
+    target,
+    label: multi.name
+  });
+  if (gift && !u.skillSeals?.[gift.id] && canPayAction(g, t, u, gift.cost)) for (const target of g.teams[t].field.map((x, i) => x && !x.dead && x.uid !== u.uid ? {
+    team: t,
+    slot: i,
+    uid: x.uid
+  } : null).filter(Boolean)) actions.push({
+    type: "skill",
+    skill: gift.id,
+    target,
+    label: `${gift.name} → ${unitAt(g, target.team, target.slot).name}`
+  });
+  return actions;
+}
+export function applyResonanceEffect(g, actor, target, e, skill, ctx) {
+  const t = ctx?.team || teamOf(g, actor);
+  if (e.type === "elixianShiningWind") {
+    let healing = 0,
+      barriers = 0;
+    for (const ally of g.teams[t].field || []) {
+      if (!ally || ally.dead) continue;
+      const adjusted = status(ally, "healSeal") ? 0 : elixianHealAmount(g, ally, 20);
+      const got = heal(g, ally, 20, actor, {
+          reason: "shining-wind",
+          effectId: skill?.id || "shiningWind",
+          sim: ctx?.sim
+        }),
+        overflow = Math.max(0, adjusted - got);
+      healing += got;
+      if (overflow > 0) barriers += addHpProtectionBarrier(g, ally, overflow, actor.uid, "elixian");
+    }
+    gainEnergy(g, actor, "W", .5);
+    log(g, `${actor.name}: 샤이닝윈드 · 아군 전체 회복 ${healing}, HP 보호막 ${barriers}, W½ 획득.`);
+    queueVisual(g, {
+      type: "elixianPulseFx",
+      uid: actor.uid,
+      shining: true
+    });
+    return healing;
+  }
+  if (e.type === "elixianAromaField") {
+    for (const ally of g.teams[t].field || []) {
+      if (!ally || ally.dead) continue;
+      const decreaseImmune = traitsActive(ally) && card(ally).statDecreaseImmune;
+      ally.attackMod = decreaseImmune ? Math.max(0, Number(ally.attackMod || 0)) : 0;
+      ally.defenseMod = decreaseImmune ? Math.max(0, Number(ally.defenseMod || 0)) : 0;
+      ally.defense = ally.baseDefense + ally.defenseMod;
+    }
+    if (g.fieldEffect) log(g, `기존 필드 효과가 아로마필드로 교체됨.`);
+    g.fieldEffect = {
+      type: "aroma",
+      ownerUid: actor.uid,
+      team: t,
+      serial: (g.fieldSerial || 0) + 1
+    };
+    g.fieldSerial = g.fieldEffect.serial;
+    syncAromaCombatFlags(g);
+    log(g, `${actor.name}: 아로마필드 전개 · 자기 진영 회복 +10, 상대 회복 -10, 상대 방어 -10.`);
+    queueVisual(g, {
+      type: "elixianPulseFx",
+      uid: actor.uid,
+      aroma: true
+    });
+    return 0;
+  }
+  if (e.type === "elixianMultiArrow") {
+    const readGrade = (unit, role) => {
+      const raw = card(unit)?.grade;
+      const match = String(raw ?? "").trim().match(/^(\d+(?:\.\d+)?)\s*☆?$/);
+      const value = match ? Number(match[1]) : NaN;
+      if (!Number.isFinite(value)) {
+        const detail = {
+          role,
+          entityId: unit?.entityId || unit?.uid || null,
+          cardId: unit?.card || null,
+          rawGrade: raw
+        };
+        const error = new Error(`Invalid ${role} grade: ${String(raw)}`);
+        error.code = "INVALID_CARD_GRADE";
+        error.gradeValidationDetail = detail;
+        throw error;
+      }
+      return value;
+    };
+    const actorGrade = readGrade(actor, "actor");
+    const targetGrade = readGrade(target, "target");
+    const hits = targetGrade > actorGrade ? 2 : 3;
+    const dealt = dealDamage(g, actor, target, {
+      amount: 20,
+      hits
+    }, skill, ctx?.sim);
+    actor.lastTarget = target?.uid || null;
+    log(g, `${actor.name}: 멀티애로 ${hits}회 별도 공격 판정, 총 ${dealt}D.`);
+    return dealt;
+  }
+  if (e.type === "elixianLastGift") {
+    for (const enemy of g.teams[other(t)].field || []) {
+      if (!enemy || enemy.dead) continue;
+      applyStatus(g, enemy, "freeze", 1, actor);
+      applyStatus(g, enemy, "paralyze", 1, actor);
+    }
+    const stock = Math.max(0, combatInt(actor.hp));
+    let got = 0;
+    if (!status(target, "healSeal")) {
+      const old = target.hp;
+      got = Math.max(0, Math.min(stock, target.maxHp - target.hp));
+      target.hp += got;
+      afterBodyHpChange(g, target, old);
+      state_engine_entities.GenericBattleStatisticsOwner.recordHealing(g, {
+        source: actor,
+        target,
+        requestedAmount: stock,
+        actualAppliedAmount: got,
+        reason: "last-gift",
+        effectId: "elixianLastGift",
+        sim: !!ctx?.sim
+      });
+      log(g, `${target.name}: 라스트기프트로 HP ${got} 이전 회복.`, "heal");
+      queueVisual(g, target, "heal", got);
+    } else log(g, `${target.name}: 회복봉인으로 라스트기프트 HP 이전 실패.`);
+    actor.hp = 0;
+    log(g, `${actor.name}: 남은 HP ${stock}을 넘기고 스스로 퇴장.`);
+    checkDeath(g, actor, null);
+    queueVisual(g, {
+      type: "elixianPulseFx",
+      uid: actor.uid,
+      targetUid: target?.uid || null,
+      lastGift: true
+    });
+    return got;
+  }
+  return;
+}
+export function renderAromaField() {
+  document.querySelectorAll(".side.aroma-benefit,.side.aroma-penalty").forEach(x => x.classList.remove("aroma-benefit", "aroma-penalty"));
+  if (state_ui_battle_state.game?.fieldEffect?.type !== "aroma") document.getElementById("arenaAromaFx")?.remove();
+  if (!state_ui_battle_state.game) return;
+  syncAromaCombatFlags(state_ui_battle_state.game);
+  if (state_ui_battle_state.game.fieldEffect?.type === "aroma") {
+    const goodDisplay = displaySideFor(state_ui_battle_state.game, state_ui_battle_state.game.fieldEffect.team),
+      badDisplay = displaySideFor(state_ui_battle_state.game, other(state_ui_battle_state.game.fieldEffect.team));
+    installAromaLayer(document.querySelector(`.${goodDisplay}-side`), true);
+    installAromaLayer(document.querySelector(`.${badDisplay}-side`), false);
+    installArenaAromaEffect(goodDisplay);
+    const hint = state_ui_battle_state.$("#actionHint");
+    if (hint && !state_ui_battle_state.pendingSkill) hint.textContent = `아로마필드: ${state_ui_battle_state.game.fieldEffect.team === "P" ? "플레이어" : "AI"} 진영 회복 +10 · 상대 회복 -10 / 방어 -10`;
+  }
+  return;
 }
