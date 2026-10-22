@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'assets/**'
+      - 'src/**'
       - 'tests/e2e/current-real-relay*.spec.js'
       - 'tests/helpers/**'
       - '.github/workflows/cp32-production-e2e.yml'

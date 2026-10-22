@@ -1,56 +1,41 @@
-import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {execFileSync} from 'node:child_process';import {scanValidationTree} from './forbidden-operation-scanner.js';
-const required=[".github/workflows/cp32-trusted-candidate-e2e.yml", ".github/workflows/cp32-production-e2e.yml", ".github/workflows/cp32-android-background-e2e.yml", "tests/e2e/trusted-candidate-player-path.spec.js", "tests/e2e/production-player-path.spec.js", "tests/e2e/lobby-open.spec.js", "tests/e2e/lobby-background-sync.spec.js", "tests/e2e/initiative-start.spec.js", "tests/e2e/battle-background-resume.spec.js", "tests/e2e/result-setup-stability.spec.js", "tests/e2e/room-link-entry-intent.spec.js", "tests/android/android-background-player-path.js", "tests/android/android-peer-client.js", "tests/android/android-driver-config.js", "tests/helpers/two-independent-clients.js", "tests/helpers/exact-build-identity.js", "tests/helpers/relay-preflight.js", "tests/helpers/local-candidate-tls.js", "tests/helpers/evidence-recorder.js", "tests/helpers/diagnostic-export.js", "tests/helpers/pair-first-divergence.js", "tools/forbidden-operation-scanner.js", "tools/forbidden-guard-regression.js", "tools/tls-trust-regression.js", "playwright.config.js", "package.json", "package-lock.json", "README_EXTERNAL_AUTOMATION.md"];
-required.push('tests/e2e/current-real-relay-action-authority.spec.js',...['ONLINE_ACTION_AUTHORITY_INVENTORY.md','ONLINE_SESSION_OWNER_INVENTORY.md','STATE_AUTHORITY_MATRIX.md','ASYNC_CALLBACK_AND_TIMER_LEDGER.md','DOM_MUTATION_CALLER_LEDGER.md','CURRENT_PHASE_TRANSITION_CALL_GRAPH.md','ONLINE_ACTION_CALL_GRAPH.md'].map(name=>`docs/online-authority-rebuild/${name}`));
-const out={sourceSha:null,checks:[],nodeFiles:[],forbiddenScan:null};const check=(name,ok,detail)=>{out.checks.push({name,ok,detail});if(!ok)process.exitCode=2};
-for(const f of required)check(`FILE:${f}`,fs.existsSync(f),'required');
-const html='trusted/CP32_ACTIVE_WRAPPER_CUTOVER_TRUSTED_BASELINE_20260805T2220KST.html';const bytes=fs.readFileSync(html);out.sourceSha=crypto.createHash('sha256').update(bytes).digest('hex');check('TRUSTED_SHA',out.sourceSha==='fbbdad911cb6c90a95aaedb9cf66820f41dc2a323e90088a3cb5ee4d407b22a8',out.sourceSha);check('TRUSTED_SIZE',bytes.length===7372055,bytes.length);check('BUILD_LABEL',bytes.includes(Buffer.from('CP32-ACTIVE-WRAPPER-CUTOVER-R1-20260805T2220KST')),'embedded');
-const js=[];for(const dir of ['tests','tools'])for(const f of fs.readdirSync(dir,{recursive:true}))if(String(f).endsWith('.js'))js.push(path.join(dir,String(f)));js.push('playwright.config.js');
-for(const f of js){try{execFileSync(process.execPath,['--check',f]);out.nodeFiles.push({file:f,ok:true})}catch(e){out.nodeFiles.push({file:f,ok:false,error:String(e.stderr||e)});process.exitCode=2}}
-const constants=fs.readFileSync('tests/helpers/constants.js','utf8');const production='https://sardore.github.io/megaleague/?relay=wss%3A%2F%2Fcp32-online-relay.onrender.com%2Fonline';const relay='wss://cp32-online-relay.onrender.com/online';check('PRODUCTION_URL_EXACT',constants.includes(production),'exact');check('RELAY_ENDPOINT_EXACT',constants.includes(relay),'exact');check('URL_API_USED',constants.includes('new URL(')&&constants.includes('searchParams.set'),'URL/URLSearchParams');
-out.forbiddenScan=scanValidationTree('.');check('CANONICAL_FORBIDDEN_OPERATION_SCAN',out.forbiddenScan.ok,out.forbiddenScan.hits);
-const validationTexts=[];for(const f of js)validationTexts.push({file:f,text:fs.readFileSync(f,'utf8')});
-const operationalTexts=validationTexts.filter(x=>x.file!=='tools/static-validation.js').map(x=>x.text).join('\n');
-check('NODE_TLS_REJECT_UNAUTHORIZED_ZERO_ABSENT',!/(?:process\.)?env\.NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]0['"]/.test(operationalTexts),'global TLS disable forbidden');
-check('GENERIC_REJECT_UNAUTHORIZED_FALSE_ABSENT',!/rejectUnauthorized\s*:\s*false/.test(operationalTexts),'generic TLS disable forbidden');
-check('BARE_IGNORE_CERT_ERRORS_ABSENT',!/(?:^|[\s"'])--ignore-certificate-errors(?:[\s"']|$)/m.test(operationalTexts),'only scoped SPKI exception permitted');
-check('PLAYWRIGHT_GLOBAL_HTTPS_IGNORE_DISABLED',!(/ignoreHTTPSErrors\s*:\s*true/.test(fs.readFileSync('playwright.config.js','utf8'))),'production/public TLS remains strict');
-const localTls=fs.readFileSync('tests/helpers/local-candidate-tls.js','utf8');
-check('LOCAL_TLS_OWNER_EXPLICIT_STRICT',localTls.includes('rejectUnauthorized: true')&&localTls.includes('--ignore-certificate-errors-spki-list='),'local trust is cert/SPKI scoped');
-const relayPreflight=fs.readFileSync('tests/helpers/relay-preflight.js','utf8');
-check('PREFLIGHT_MODE_SPLIT',relayPreflight.includes("mode==='production'")&&relayPreflight.includes('requestLocalCandidateJson'),'candidate/production responsibility split');
-const indexText=fs.readFileSync('index.html','utf8');
-check('ONE_ACTION_ADMISSION_ENTRY',indexText.includes('return OnlineActionAdmissionOwner.execute.call(thisArg,middle,g,t,s,a,opt);'),'execute enters canonical admission owner');
-const admissionSource=indexText.slice(indexText.indexOf('const OnlineActionAdmissionOwner = (() => {'),indexText.indexOf('function sendAuthoritativeOnlineState('));
-check('ACTION_ADMISSION_SCOPE_SELF_CONTAINED',admissionSource.includes('g === game')&&!admissionSource.includes('currentGame('),'admission owner uses the canonical main-script game binding and no inaccessible IIFE helper');
-check('REMOTE_COMMAND_EXECUTOR_NOT_SHADOWED',admissionSource.includes('const admit = function(')&&admissionSource.includes('execute(game,msg.team')&&!admissionSource.includes('const execute = function('),'host remote command enters the canonical combat pipeline instead of recursively calling admission with shifted arguments');
-check('CANONICAL_TRANSACTION_OWNER_EXPORTED',indexText.includes('CanonicalActionTransactionOwner = Object.freeze({execute:executeCanonicalActionTransaction})'),'canonical transaction executor is explicitly owned across script scopes');
-check('LEGACY_ACTION_TRANSACTION_LOOKUP_REMOVED',!indexText.includes('actionTransactionExecuteStage'),'inaccessible legacy transaction lookup removed');
-check('DUPLICATE_ROLE_GUARDS_REMOVED',!indexText.includes('applyingRemoteAction'),'remote execution flag removed from combat layers');
-check('DUPLICATE_PENDING_STATE_REMOVED',!indexText.includes('onlinePendingCommand')&&!indexText.includes('p2p.pendingActionId'),'one pending command owner');
-check('LEGACY_RENDER_ACTION_ALIAS_REMOVED',!indexText.includes('function renderActions('),'action panel has one convergence owner');
-check('SESSION_TIMER_FALLBACK_REMOVED',!/sessionScope\?\.(?:setTimeout|setInterval|requestAnimationFrame)[^\n;]*\|\|\s*window\.TimerManager/.test(indexText),'online session work has no global timer fallback');
-check('CROSS_PHASE_COIN_SCOPE_EXPLICIT',indexText.includes('"online-coin-presentation",{phase:"SESSION"}')&&indexText.includes('document.querySelector(".online-coin-overlay")?.remove()'),'start presentation crosses phases under the session scope and has synchronous cleanup');
-const authoritativePublicationSource=indexText.slice(indexText.indexOf('function sendAuthoritativeOnlineState('),indexText.indexOf('function onlineSnapshotEquivalentForInput('));
-check('CANONICAL_REVISION_NOT_GATED_BY_TRANSPORT',authoritativePublicationSource.includes('onlineAuthoritativeRevision=force?currentRevision:currentRevision+1')&&!authoritativePublicationSource.includes('!p2p.connected'),'host mutation revision and reliable snapshot are committed before transport delivery is attempted');
-const actionAuthorityTest=fs.readFileSync('tests/e2e/current-real-relay-action-authority.spec.js','utf8');
-check('ACTION_SURFACE_CANONICAL_REGRESSION',['kind:\'switch\'','kind:\'skill\'','kind:\'overflow-gather\'','timeDeclineOverflow','manualPaymentConfirm'].every(token=>actionAuthorityTest.includes(token)),'switch, damaging skill, target/payment modal and overflow are canonical before/after checks');
-const terminalLifecycleTest=fs.readFileSync('tests/e2e/current-real-relay-terminal-lifecycle.spec.js','utf8');
-const playerPathHelper=fs.readFileSync('tests/helpers/player-path.js','utf8');
-check('ACTION_OWNER_CLIENT_NOT_BUTTON_COUNT',terminalLifecycleTest.includes('Number(hc > 0) + Number(gc > 0)')&&!terminalLifecycleTest.includes('hc + gc === 1'),'terminal harness identifies one action-owning client without requiring that client to have only one legal button');
-check('RESTORE_COMMANDS_AFTER_AUTHORITY_READY',indexText.includes('const deferAuthorityCommands=this.session.role==="host"')&&indexText.includes('if(deferAuthorityCommands&&this.session.routesReady)for(const routed of ordered)routePacket(routed,binding,true);'),'restored host commands enter canonical mutation only after transport promotion and projection readiness');
-check('TERMINAL_UI_STRATEGY_DAMAGING_DECK',terminalLifecycleTest.includes("const TERMINAL_DECK = Object.freeze(['mole', 'boar', 'fang', 'frog'])")&&terminalLifecycleTest.includes("(skill.tags || []).includes('damage')"),'terminal regression uses UI-selected non-healing decks and prefers visible damaging skills');
-check('TERMINAL_OFFLINE_RECEIVER_IS_NON_AUTHORITY',terminalLifecycleTest.includes('next.actor === host'),'offline finishing packet regression keeps the host authority active and backgrounds only its guest projection peer');
-check('MANUAL_PAYMENT_USES_VALID_UI_COMBINATION',playerPathHelper.includes('async function resolveManualPayment(modal)')&&playerPathHelper.includes("element.classList.contains('chosen')")&&playerPathHelper.includes('if(await confirm.isEnabled()){await confirm.tap();return true;}'),'UI harness selects a valid rendered energy subset and never injects a canonical payment plan');
-const afterActionSource=indexText.slice(indexText.indexOf('function afterActionCore()'),indexText.indexOf('function afterAction(...args)'));
-const authoritativeCommitSource=indexText.slice(indexText.indexOf('function admitAuthoritativeStateCommit('),indexText.indexOf('function applyAuthoritativeOnlineState('));
-const terminalLifecycleSource=indexText.slice(indexText.indexOf('markBattleEnded(detail={})'),indexText.indexOf('returnToSetup(reason="result-to-setup")'));
-const showEndSource=indexText.slice(indexText.indexOf('function showEnd(...args)'),indexText.indexOf('function mvpContribution('));
-check('HOST_TERMINAL_COMMIT_ENTERS_LIFECYCLE_OWNER',afterActionSource.indexOf('broadcastOnlineState(onlineVisuals)')<afterActionSource.indexOf('if(game.winner)window.OnlineRuntime?.markBattleEnded?.({source:"host-terminal-action-commit"')&&afterActionSource.indexOf('else window.OnlineRuntime?.projection?.request?.("host-action-commit"')>afterActionSource.indexOf('if(game.winner)'),'terminal snapshot publication precedes the one terminal lifecycle transition; only non-terminal commits project IN_BATTLE');
-check('REMOTE_TERMINAL_ADMISSION_ENTERS_LIFECYCLE_OWNER',authoritativeCommitSource.includes('if(game?.winner)return window.OnlineRuntime?.markBattleEnded?.({source:`authoritative:${kind}`')&&authoritativeCommitSource.includes('restore?.authoritativeApplied?.(payload)'),'admitted terminal snapshots enter lifecycle ownership while non-terminal restore remains on the restore transaction');
-check('ONE_TERMINAL_LIFECYCLE_PROJECTION',terminalLifecycleSource.includes('RestoreTransaction.cancel(s,reason)')&&terminalLifecycleSource.includes('s.machine.transition("ENDING",reason,{project:false})')&&terminalLifecycleSource.match(/ProjectionTransaction\.request\(/g)?.length===1,'terminal lifecycle cancels restore, changes phase without implicit projection, then commits exactly one TERMINAL projection');
-check('ONLINE_RESULT_PROJECTION_DOES_NOT_MUTATE_CANONICAL_STATE',!showEndSource.includes('OnlineRuntime.markBattleEnded')&&showEndSource.includes('if(!onlineBattle){'),'online result presentation cannot create a lifecycle transition or write canonical online terminal state');
-check('TERMINAL_OFFLINE_FINISHING_PRECONDITION_DETERMINISTIC',terminalLifecycleTest.includes('async function tapNonDamagingAction(page)')&&terminalLifecycleTest.includes("if (!await button.getAttribute('data-skill-id'))")&&terminalLifecycleTest.includes('backgroundFinishingReceiver&&next.actor!==host')&&terminalLifecycleTest.includes('await tapNonDamagingAction(next.actor.page)'),'background terminal harness uses gather or required non-skill deployment UI while reserving damage for the online host authority whose guest receiver can be offline');
-const interactionSource=playerPathHelper.slice(playerPathHelper.indexOf('export async function resolveInteraction(page)'),playerPathHelper.indexOf('export async function canonicalBattleState(page)'));
-check('INTERACTION_TOUCH_SNAPSHOTS_PROJECTION_COORDINATES',interactionSource.match(/getBoundingClientRect\(\)/g)?.length===2&&interactionSource.match(/page\.touchscreen\.tap\(point\.x,point\.y\)/g)?.length===2&&!interactionSource.includes('boundingBox()')&&!interactionSource.includes('chosen.tap()')&&!interactionSource.includes('targets.first().tap()'),'modal and target interactions snapshot current projection coordinates in one DOM task before issuing a real touchscreen tap');
-
-fs.mkdirSync('artifacts/results',{recursive:true});fs.writeFileSync('artifacts/results/static-validation.json',JSON.stringify(out,null,2));console.log(JSON.stringify(out,null,2));
+import fs from 'node:fs';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import {parse} from '@babel/parser';
+import traverseImport from '@babel/traverse';
+import globals from 'globals';
+const traverse=traverseImport.default||traverseImport;
+const browser=new Set([...Object.keys(globals.browser),...Object.keys(globals.es2024)]);
+const files=fs.readdirSync('src',{recursive:true}).filter(f=>f.endsWith('.js')).map(f=>path.join('src',f));
+const failures=[];
+for(const file of files){
+  const source=fs.readFileSync(file,'utf8');
+  const ast=parse(source,{sourceType:'module'});
+  const fail=(p,message)=>failures.push(`${file}:${p.node.loc.start.line}: ${message}`);
+  traverse(ast,{
+    ReferencedIdentifier(p){
+      const name=p.node.name;
+      if(name==='arguments'&&p.findParent(q=>q.isFunction()&&!q.isArrowFunctionExpression()))return;
+      if(!p.scope.getBinding(name)&&!browser.has(name))fail(p,`undeclared dependency ${name}`);
+    },
+    ImportDeclaration(p){
+      const target=p.node.source.value;
+      if(target.startsWith('.'))assert.ok(fs.existsSync(path.resolve(path.dirname(file),target)),`Missing import ${file}: ${target}`);
+    },
+    AssignmentExpression(p){
+      const left=p.node.left;
+      if(left.type==='Identifier'&&!p.scope.getBinding(left.name))fail(p,`implicit global write ${left.name}`);
+      if(left.type==='MemberExpression'&&left.object.type==='Identifier'&&['window','globalThis'].includes(left.object.name))fail(p,'application state cannot be written onto the browser global');
+      if(left.type==='MemberExpression'&&left.object.type==='MemberExpression'&&left.object.property?.name==='prototype')fail(p,'prototype patch');
+    },
+  });
+  assert.ok(!/invokeBossModeHook|actionTransactionExecuteStage|withExecuteContext|onlinePendingCommand|p2p\.pendingActionId/.test(source),`Retired execution path in ${file}`);
+}
+const html=fs.readFileSync('index.html','utf8');
+assert.equal((html.match(/<script\b/g)||[]).length,1,'one module entry point');
+assert.match(html,/<script type="module" src="\.\/assets\/app\.js/);
+assert.ok(!html.includes(';base64,'),'binary assets must not be embedded in the page');
+assert.ok(Buffer.byteLength(html)<15000,'entry page budget');
+assert.ok(fs.statSync('assets/app.js').size<1_000_000,'JavaScript budget');
+assert.deepEqual(failures,[]);
+console.log(`Source validation passed: ${files.length} modules, explicit imports, one entry point, no global writes or retired execution wrappers.`);

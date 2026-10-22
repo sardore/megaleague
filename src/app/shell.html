@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/>
+<meta content="no-cache" http-equiv="Pragma"/>
+<meta content="0" http-equiv="Expires"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>메가리그</title>
+
+<link rel="stylesheet" href="./assets/app.css">
+</head>
+<body>
+<div aria-hidden="false" class="horizon-startup-intro" id="horizonStartupIntro">
+<div class="horizon-startup-scene"><div class="horizon-startup-sky"></div><div class="horizon-startup-sun"></div><div class="horizon-startup-water"></div><div class="horizon-startup-reflection"></div></div>
+<div class="horizon-startup-title">Horizon</div>
+</div>
+<div class="app">
+<section class="screen active" id="setup">
+<div class="league-select-shell">
+<div class="league-chooser" id="leagueChooser">
+<button aria-pressed="false" class="leagueTab league-banner two" data-league="two"><span class="league-banner-top"><span class="league-mark">II</span><span class="league-banner-name">2☆ 컵</span></span><span class="league-banner-rule">2☆ 캐릭터만으로 4장을 구성하는 경량 리그.</span><span class="league-banner-slots"><span class="league-slot">2☆ ×4</span></span></button>
+<button aria-pressed="false" class="leagueTab league-banner regular" data-league="regular"><span class="league-banner-top"><span class="league-mark">R</span><span class="league-banner-name">정규리그</span></span><span class="league-banner-rule">2☆ 두 장과 3☆ 두 장을 정확히 편성.</span><span class="league-banner-slots"><span class="league-slot">2☆ ×2</span><span class="league-slot">3☆ ×2</span></span></button>
+<button aria-pressed="false" class="leagueTab league-banner comprehensive" data-league="comprehensive"><span class="league-banner-top"><span class="league-mark">Σ</span><span class="league-banner-name">종합리그</span></span><span class="league-banner-rule">두 가지 등급 구성 중 하나를 먼저 고정하고 편성.</span><span class="league-banner-slots"><span class="league-slot">A · 2☆ ×2 + 3☆ + 4☆</span><span class="league-slot">B · 2☆ + 3☆ + 3.5☆ ×2</span></span></button>
+<button aria-pressed="true" class="leagueTab league-banner mega active" data-league="mega"><span class="league-banner-top"><span class="league-mark">M</span><span class="league-banner-name">메가리그</span></span><span class="league-banner-rule">등급 제한 없이 현재 전체 로스터를 사용하는 최상위 리그.</span><span class="league-banner-slots"><span class="league-slot">ALL RARITIES</span></span></button>
+</div>
+<div class="comprehensive-pattern-picker" hidden="" id="comprehensivePatternPicker">
+<button class="composition-choice active" data-composition="2234"><span><strong>구성 A · 2☆ ×2 + 3☆ + 4☆</strong><span>저등급 기반 + 4☆ 핵심 한 장</span></span><span class="composition-pips"><i>2☆ ×2</i><i>3☆</i><i>4☆</i></span></button>
+<button class="composition-choice" data-composition="2335"><span><strong>구성 B · 2☆ + 3☆ + 3.5☆ ×2</strong><span>중간 등급 중심의 균형 조합</span></span><span class="composition-pips"><i>2☆</i><i>3☆</i><i>3.5☆ ×2</i></span></button>
+</div>
+</div>
+<div class="mode-tabs utility-tabs"><button id="aiModeBtn">AI 대 AI 시뮬레이션</button><button id="onlineBtn">온라인 대전</button><button id="menuCodexBtn">카드 도감</button></div>
+<div class="setup-grid">
+<div class="panel">
+<h2 id="deckTitle">
+              메가리그 덱 편성
+              <span class="deck-count" id="deckCount">0 / 4</span>
+</h2>
+<p class="muted" id="deckHelp">리그를 선택하면 해당 규칙에 맞는 캐릭터 풀이 표시됩니다.</p>
+<div class="cards-grid" id="deckCards"></div>
+</div>
+<div class="panel settings">
+<h2>전투 설정</h2>
+<select aria-hidden="true" hidden="" id="leagueMode">
+<option value="two">2☆ 컵</option>
+<option value="regular">정규리그</option>
+<option value="comprehensive">종합리그</option>
+<option selected="" value="mega">메가리그</option>
+</select>
+<label>AI 난이도<select id="difficulty">
+<option value="normal">보통 (2수)</option>
+<option value="hard">어려움 (반복 심화 3~4수)</option>
+</select></label><label>피해 난수
+              <input checked="" class="switch" id="variance" type="checkbox"/></label><label class="developer-seed-control">랜덤 시드<input id="seedInput" placeholder="비우면 무작위" type="text"/></label><label>전투 속도<select id="speed">
+<option value="900">보통</option>
+<option value="400">빠름</option>
+<option value="80">매우 빠름</option>
+</select></label>
+<label>대전 주체<select id="mode">
+<option value="human">플레이어 대 AI</option>
+<option value="aivai">AI 대 AI 자동 전투</option>
+</select></label><button id="randomDeck">무작위 덱</button>
+<button class="primary" disabled="" id="startBtn">전투 시작</button>
+<hr/>
+<h3>빠른 밸런스 검증</h3>
+<label>그룹별 시뮬레이션 수<input id="simCount" max="10000" min="100" step="100" type="number" value="1000"/></label><button id="simBtn">현재 리그 밸런스 검증 · 난수 ON/OFF 실행</button>
+<div class="progress hidden" id="simProgress"><i></i></div>
+<div class="tiny muted" id="simResult"></div>
+</div>
+</div>
+</section>
+<section class="screen" id="game">
+<div class="battle">
+<main class="arena">
+<div class="turnstrip" id="turnStrip"></div>
+<section class="side ai-side">
+<div class="side-head">
+<b>AI 진영</b><span id="aiAlive"></span>
+</div>
+<div class="zone-label">후열</div>
+<div class="bench" id="aiBench"></div>
+<div class="zone-label">필드</div>
+<div class="slots" id="aiSlots"></div>
+</section>
+<section class="side player-side">
+<div class="side-head">
+<b>플레이어 진영</b><span id="playerAlive"></span>
+</div>
+<div class="zone-label">필드</div>
+<div class="slots" id="playerSlots"></div>
+<div class="zone-label">후열</div>
+<div class="bench" id="playerBench"></div>
+</section>
+<div class="actions" id="actions">
+<b id="actionTitle">행동 선택</b>
+<div class="muted tiny" id="actionHint"></div>
+<div class="action-buttons" id="actionButtons"></div>
+</div>
+</main>
+<aside class="panel log-panel" id="logPanel">
+<div class="side-head">
+<b>전투 로그</b><button id="collapseLog">접기</button>
+</div>
+<div class="log" id="log"></div>
+</aside>
+</div>
+</section>
+</div>
+<div class="modal" id="modal">
+<div class="modalbox">
+<button id="closeModal" style="float: right">닫기</button>
+<div id="modalContent"></div>
+</div>
+</div>
+
+<!-- InvaderPortalView R21: shared markup/state, original design preserved -->
+
+<script type="module" src="./assets/app.js"></script>
+</body>
+</html>

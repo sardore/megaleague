@@ -6,6 +6,10 @@ on:
     branches: [ci/real-relay-e2e, main]
     paths:
       - 'index.html'
+      - 'src/**'
+      - 'assets/**'
+      - 'tools/**'
+      - 'tests/unit/**'
       - 'tests/e2e/current-real-relay*.spec.js'
       - '.github/workflows/cp32-current-real-relay-e2e.yml'
       - 'tests/helpers/**'
@@ -15,6 +19,10 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'src/**'
+      - 'assets/**'
+      - 'tools/**'
+      - 'tests/unit/**'
       - 'tests/e2e/current-real-relay*.spec.js'
       - '.github/workflows/cp32-current-real-relay-e2e.yml'
       - 'tests/helpers/**'
@@ -68,31 +76,12 @@ jobs:
           printf '%s\n' "$ACTUAL" | tee artifacts/real-relay/relay-commit.txt
           test "$ACTUAL" = "$CP32_RELAY_SOURCE_SHA"
 
-      - name: Syntax check current application scripts and relay
-        shell: bash
+      - name: Build and validate modular runtime
         run: |
-          set -euo pipefail
+          npm run build
+          npm run validate:static
+          npm test
           node --check relay-src/server.js
-          python3 - <<'PY'
-          from pathlib import Path
-          import re, subprocess, tempfile
-          html=Path('index.html').read_text(encoding='utf-8')
-          scripts=re.findall(r'<script(?:\s[^>]*)?>(.*?)</script>', html, flags=re.I|re.S)
-          if len(scripts) != 12:
-              raise SystemExit(f'INLINE_SCRIPT_COUNT:{len(scripts)}')
-          out=[]
-          for i,s in enumerate(scripts):
-              p=Path(tempfile.gettempdir())/f'cp32-current-inline-{i}.js'
-              p.write_text(s,encoding='utf-8')
-              r=subprocess.run(['node','--check',str(p)],capture_output=True,text=True)
-              out.append({'index':i,'ok':r.returncode==0,'stderr':r.stderr[-2000:]})
-              if r.returncode:
-                  print(r.stderr)
-                  raise SystemExit(f'INLINE_SCRIPT_SYNTAX_FAIL:{i}')
-          import json
-          Path('artifacts/real-relay/inline-script-syntax.json').write_text(json.dumps(out,indent=2)+'\n')
-          print(f'INLINE_SCRIPT_SYNTAX_PASS:{len(scripts)}')
-          PY
 
       - name: Start exact relay source
         shell: bash
