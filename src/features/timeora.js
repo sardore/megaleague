@@ -1,0 +1,1286 @@
+import { bossTimeClockMiniHTML, bossTimeColorForTeam, bossTimeThemeForTeam } from "./boss-raid.js";
+// Owned mutable state. Imported by the subsystem and its explicit consumers.
+export const state_features_timeora = {
+  TIMEORA_CARD: undefined,
+  silvraeTimeoraMemoryCard: undefined,
+  timeInputLocked: undefined,
+  timeInputLockBusyOwned: undefined,
+  timeVisualChain: undefined,
+  timeVisualSerial: undefined,
+  timeClockTraitSuppression: undefined,
+  EnergyOverflowPresentationOwner: undefined
+};
+import { state_catalog_cards } from "../catalog/cards.js";
+import { enemyTargets, other, unitAt, state_engine_actions } from "../engine/actions.js";
+import { dealDamage, findUnit, teamOf, traitsActive } from "../engine/combat.js";
+import { memoryOptions, naturalColors } from "../engine/effects.js";
+import { canPayAction, energyStore, energyValue, findPaymentPlan, normalizeStore, status, totalEnergy, transformedSkillReq, triggerEnergyGainResult } from "../engine/energy.js";
+import { RNG, actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, firstSkillByTag, skillDefHasEffect, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillIdByTag, skillOf, state_engine_entities } from "../engine/entities.js";
+import { advanceDualOrEnd, endTurn, execute } from "../engine/execution.js";
+import { policySlots, PASS } from "../engine/policies.js";
+import { dmBattleInstanceId, dmMemoryAction, dmTargetRefs } from "./dragon-memory.js";
+import { copiedSkillAllowed } from "./elixian.js";
+import { executeCharacterAction } from "./support.js";
+import { state_online_commands } from "../online/commands.js";
+import { log, queueCombatNotice } from "../presentation/audio.js";
+import { state_presentation_coordinates } from "../presentation/coordinates.js";
+import { timeSyncContinuousTraitStates } from "../presentation/introductions.js";
+import { systems } from "../runtime/systems.js";
+import { afterAction } from "../ui/action-choices.js";
+import { state_ui_action_panel } from "../ui/action-panel.js";
+import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
+import { state_ui_cards } from "../ui/cards.js";
+import { registerCardDefinition, state_ui_deck } from "../ui/deck.js";
+import { localTeamFor } from "../ui/setup.js";
+export function initializeFeaturesTimeora() {
+  state_features_timeora.TIMEORA_CARD = state_catalog_cards.C("timeora", "타임오러", 280, "시간 제어·특성 정지 드래곤", "메가리그", "시간 가속: 에너지 모으기 첫 결과를 유지하면 총 1.5E, 버리면 1회 재추첨한다. 타임프로텍트: 필드에 있는 동안 자신과 아군 방어 적용치 +20. 운명의 시계: 지불 코스트를 올림해 1E당 시침 +30°, 타임오러 자신이 기술을 쓰면 분침도 +90°. 바로 전 적 차례의 기술에는 반응하지 않는다. 두 바늘이 일치하거나 180° 반대인 동안 시계 주인 자신을 제외한 양 진영 필드의 모든 특성이 정지한다. 양 진영 시계가 동시에 정렬되면 두 정렬 효과가 서로 상쇄되어 어느 진영의 특성도 정지하지 않으며, 한쪽 정렬이 풀리는 즉시 남은 정렬 효과가 다시 발동한다. 특성봉인 또는 상대 시계 정렬로 정지된 시계는 바늘이 움직이지 않는다.", [state_catalog_cards.S("timeRecall", "타임리콜", "**", "대상 하나의 HP와 상태이상을 그 대상의 2턴 전 자기 차례 시작 시점으로 되돌린다. 실드·추가 HP바·에너지·최대 HP·사용 횟수·시계는 유지한다.", "anyCharacter", [{
+    type: "timeRecall"
+  }], ["support", "rewind"], {
+    nonAttack: true,
+    once: true
+  }), state_catalog_cards.S("hyperClock", "하이퍼클락", "WWorB*", "100D. 특성봉인 상태 또는 시침·분침이 일치/정반대면 160D. 특성봉인 시 코스트는 ***.", "enemy", [{
+    type: "hyperClock"
+  }], ["damage", "clock"])], {
+    grade: "4.5☆",
+    maxEnergy: 4,
+    releaseOrder: 18,
+    tags: ["dragon", "legendary-dragon", "time"],
+    timeProtect: 20,
+    timeAcceleration: true,
+    fateClock: true,
+    timeControl: true
+  });
+  registerCardDefinition(state_features_timeora.TIMEORA_CARD);
+  state_ui_cards.CARD_EMOJI_MAP.timeora = ["⏳️"];
+  state_features_timeora.silvraeTimeoraMemoryCard = state_catalog_cards.CARDS.find(c => c.id === "silvrae");
+  if (state_features_timeora.silvraeTimeoraMemoryCard) {
+    const memorySkill = state_features_timeora.silvraeTimeoraMemoryCard.skills.find(s => skillDefHasTag(s, "copy"));
+    if (memorySkill) memorySkill.desc = "전투 중 1회. 아직 출전하지 않은 후열 드래곤의 첫 번째 기술을 원본과 같은 코스트·대상·효과로 복사한다.";
+  }
+
+  // timeTraitGame declared with core turn state above.
+  state_features_timeora.timeInputLocked = false;
+  state_features_timeora.timeInputLockBusyOwned = false;
+  state_features_timeora.timeVisualChain = Promise.resolve();
+  state_features_timeora.timeVisualSerial = 0;
+  state_features_timeora.timeClockTraitSuppression = new TimeClockTraitSuppressionPolicy();
+  policySlots.legal8 = {
+    enter(g) {
+      const oldGame = state_engine_actions.timeTraitGame;
+      state_engine_actions.timeTraitGame = g;
+      return oldGame;
+    },
+    leave(oldGame) {
+      state_engine_actions.timeTraitGame = oldGame;
+    },
+    transform(currentActions, g, t, s) {
+      let actions = currentActions;
+      const u = unitAt(g, t, s);
+      if (!u || u.dead) return actions;
+      if (!!firstSkillByTag(u, "copy") && u.memoryUsed) actions = actions.filter(a => !(a.type === "skill" && actionSkillHasTag(a, "copy")));
+      if (!cardHasCapability(u, "timeControl") || u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
+      actions = actions.filter(a => !(a.type === "skill" && (actionSkillHasEffect(a, "timeRecall") || actionSkillHasEffect(a, "hyperClock"))));
+      if (!u.skillSeals?.[skillIdByEffect(u, "timeRecall")] && !u.usedOnce?.[skillIdByEffect(u, "timeRecall")] && canPayAction(g, t, u, "**")) {
+        for (const team of [t, other(t)]) for (let i = 0; i < 2; i++) {
+          const target = unitAt(g, team, i);
+          if (target && !target.dead) actions.push({
+            type: "skill",
+            skill: skillIdByEffectGlobal("timeRecall"),
+            target: {
+              team,
+              slot: i,
+              uid: target.uid
+            },
+            label: `타임리콜 → ${target.name}`
+          });
+        }
+      }
+      const hcCost = status(u, "traitSeal") ? "***" : "WWorB*";
+      if (!u.skillSeals?.[skillIdByEffect(u, "hyperClock")] && canPayAction(g, t, u, hcCost)) {
+        const reason = timeHyperReason(u);
+        for (const target of enemyTargets(g, t)) actions.push({
+          type: "skill",
+          skill: skillIdByEffectGlobal("hyperClock"),
+          target,
+          costOverride: hcCost,
+          displayCost: hcCost,
+          timeHyperReason: reason,
+          label: `하이퍼클락 ${reason ? "160D" : "100D"}`
+        });
+      }
+      return actions;
+    }
+  };
+  policySlots.effect8 = function (g, actor, target, e, skill, ctx = {}) {
+    if (e?.type === "timeRecall") return timeApplyRecall(g, actor, target, skill, ctx);
+    if (e?.type === "hyperClock") {
+      const reason = ctx?.action?.timeHyperReason || actor?._timeHyperReason || timeHyperReason(actor);
+      const amount = reason ? 160 : 100;
+      if (reason === "traitSeal") log(g, `${actor.name}: 특성봉인으로 하이퍼클락이 *** 160D 강화됨. 적 특성은 정상 작동.`, "turn");else if (reason === "clockAlignment") log(g, `${actor.name}: 운명의 시계 정렬로 하이퍼클락이 160D 강화됨. 이번 공격 처리 동안 시계 주인 외 특성 정지.`, "turn");
+      const dealt = dealDamage(g, actor, target, {
+        amount
+      }, skill, ctx.sim);
+      if (typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && !ctx.sim) state_ui_battle_state.visualEvents.push({
+        type: "hyperClockFx",
+        uid: actor.uid,
+        targetUid: target?.uid || null,
+        team: timeTeamOf(g, actor),
+        enhanced: !!reason,
+        reason,
+        amount: dealt,
+        rawAmount: amount
+      });
+      return dealt;
+    }
+    return PASS;
+  };
+  for (const eventName of ["pointerdown", "pointerup", "mousedown", "mouseup", "click", "dblclick", "touchstart", "touchend", "keydown", "keyup", "keypress", "wheel", "input", "change", "submit", "dragstart", "contextmenu"]) {
+    document.addEventListener(eventName, e => {
+      if (!state_features_timeora.timeInputLocked) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+    }, true);
+  }
+  state_features_timeora.EnergyOverflowPresentationOwner = Object.freeze({
+    open(model) {
+      const root = state_ui_battle_state.$("#modalContent");
+      if (!root) return false;
+      const incoming = (model?.incoming || []).map((e, index) => ({
+        ...e,
+        index
+      }));
+      const current = (model?.current || []).map((e, index) => ({
+        ...e,
+        index
+      }));
+      const selectedIncoming = new Set(model?.initialKeepIncomingIndices || []);
+      const selectedCurrentDiscard = new Set(model?.initialDiscardCurrentIndices || []);
+      const max = Number(model?.max || 0);
+      root.innerHTML = `<h2>${model?.title || "에너지 교환"}</h2><p>${model?.instructions || "첫 줄에서 <b>보관할 새 에너지</b>를 고르세요. 공간이 부족하면 둘째 줄에서 <b>버릴 보유 에너지</b>를 고르세요. 두 줄의 선택량은 같을 필요가 없습니다."}</p><section class="time-swap-row"><h3>보관할 새 에너지</h3><div id="timeNewEnergy" class="energy time-swap-energy"></div></section><section class="time-swap-row"><h3>버릴 보유 에너지</h3><div id="timeOwnedEnergy" class="energy time-swap-energy"></div></section><div id="timeSwapPreview" class="effect-box"></div><div class="choice-list"><button id="timeSwapConfirm" class="primary">선택 확정</button><button id="timeDiscardNew">새 에너지 모두 버리기</button><button id="timeDiscardCancel">취소</button></div>`;
+      root.dataset.energyOverflowSourceActionId = String(model?.sourceActionIdentity || "");
+      root.dataset.energyOverflowTransactionId = String(model?.pendingTransactionIdentity || "");
+      const newBox = root.querySelector("#timeNewEnergy"),
+        ownedBox = root.querySelector("#timeOwnedEnergy"),
+        preview = root.querySelector("#timeSwapPreview"),
+        confirm = root.querySelector("#timeSwapConfirm");
+      const redraw = () => {
+        newBox.innerHTML = "";
+        ownedBox.innerHTML = "";
+        incoming.forEach((e, index) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = `e ${e.c} time-swap-chip${selectedIncoming.has(index) ? " chosen" : ""}`;
+          b.textContent = `${e.c}${Number(e.a) === .5 ? "½" : ""}`;
+          b.title = selectedIncoming.has(index) ? "보관 선택 해제" : "이 새 에너지 보관";
+          b.onclick = () => {
+            selectedIncoming.has(index) ? selectedIncoming.delete(index) : selectedIncoming.add(index);
+            redraw();
+          };
+          newBox.appendChild(b);
+        });
+        current.forEach((e, index) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = `e ${e.c} time-swap-chip${selectedCurrentDiscard.has(index) ? " chosen" : ""}`;
+          b.textContent = `${e.c}${Number(e.a) === .5 ? "½" : ""}`;
+          b.title = selectedCurrentDiscard.has(index) ? "버리기 선택 해제" : "이 보유 에너지 버리기";
+          b.onclick = () => {
+            selectedCurrentDiscard.has(index) ? selectedCurrentDiscard.delete(index) : selectedCurrentDiscard.add(index);
+            redraw();
+          };
+          ownedBox.appendChild(b);
+        });
+        const kept = incoming.filter((_, index) => selectedIncoming.has(index));
+        const removed = current.filter((_, index) => selectedCurrentDiscard.has(index));
+        const currentTotal = current.reduce((n, e) => n + Number(e?.a || 0), 0);
+        const keptAmount = kept.reduce((n, e) => n + Number(e?.a || 0), 0);
+        const removedAmount = removed.reduce((n, e) => n + Number(e?.a || 0), 0);
+        const finalTotal = currentTotal - removedAmount + keptAmount;
+        const valid = kept.length > 0 && finalTotal <= max + .001;
+        confirm.disabled = !valid;
+        preview.textContent = `현재 ${energyAmountText(currentTotal)}E · 새 에너지 보관 ${kept.map(e => `${e.c}${Number(e.a) === .5 ? "½" : ""}`).join(" + ") || "없음"} · 기존 에너지 버림 ${removed.map(e => `${e.c}${Number(e.a) === .5 ? "½" : ""}`).join(" + ") || "없음"} · 최종 ${energyAmountText(finalTotal)}E / 최대 ${energyAmountText(max)}E${valid ? "" : kept.length ? " · 최대치를 넘습니다. 버릴 보유 에너지를 더 고르세요." : " · 보관할 새 에너지를 하나 이상 고르세요."}`;
+      };
+      confirm.onclick = () => {
+        if (confirm.disabled) return;
+        model?.onConfirm?.({
+          keepIncomingIndices: [...selectedIncoming].sort((a, b) => a - b),
+          discardCurrentIndices: [...selectedCurrentDiscard].sort((a, b) => a - b)
+        });
+      };
+      root.querySelector("#timeDiscardNew").onclick = () => model?.onDropNew?.();
+      root.querySelector("#timeDiscardCancel").onclick = () => {
+        document.getElementById("modal")?.classList.remove("open");
+        model?.onCancel?.();
+      };
+      redraw();
+      state_ui_battle_state.$("#modal").classList.add("open");
+      return true;
+    }
+  });
+  policySlots.legal9 = {
+    transform(currentActions, g, t, s) {
+      let actions = currentActions,
+        actor = unitAt(g, t, s);
+      actions = actions.filter(a => !(a?.type === "skill" && actionSkillHasTag(a, "copy")));
+      if (!actor || actor.dead || !firstSkillByTag(actor, "copy") || actor.memoryUsed || actor.scheduledAction || actor.skillSeals?.[skillIdByTag(actor, "copy")] || status(actor, "freeze") || status(actor, "skillSeal")) return actions;
+      for (const option of memoryOptions(g, t, actor)) {
+        if (!copiedSkillAllowed(actor, option.skill)) continue;
+        for (const cost of option.costVariants || [option.cost]) {
+          const plan = findPaymentPlan(g, t, actor, cost);
+          if (!plan) continue;
+          const targets = dmTargetRefs(g, t, s, actor, option.skill);
+          for (const target of targets) {
+            const targetKey = target ? `${target.team}:${target.slot}:${target.uid || "slot"}` : "none";
+            const actionId = `memory:${dmBattleInstanceId(g)}:${g.turnSerial}:${actor.uid}:${option.unit.uid}:${option.skill.id}:${cost}:${targetKey}`;
+            actions.push({
+              ...dmMemoryAction(g, t, s, actor, option, cost, target, actionId),
+              paymentPlan: {
+                ...plan
+              }
+            });
+          }
+        }
+      }
+      return actions;
+    }
+  };
+  state_ui_action_panel.ActionRenderEngine.registerDecorator("timeora", 400, () => decorateTimeoraActions());
+  policySlots.render6 = {
+    enter() {
+      const current = typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null;
+      timeUpdateSuppressedTeamAttribute(current, timeSuppressedUidSet(current));
+      const old = state_engine_actions.timeTraitGame;
+      state_engine_actions.timeTraitGame = current;
+      return {
+        old,
+        current
+      };
+    },
+    leave(token) {
+      state_engine_actions.timeTraitGame = token?.old ?? null;
+    },
+    transform(result, token) {
+      timeSyncSuppressionVisuals(token?.current || null);
+      return result;
+    }
+  };
+}
+export function timeMarkTimeline(g, type, payload = {}) {
+  if (!g) return null;
+  g.clockTimeline ||= [];
+  const mark = {
+    type,
+    at: performance.now(),
+    turnSerial: Number(g.turnSerial || 0),
+    activeEntityId: g.activeEntityId || unitAt(g, ...(g.order?.[g.turn] || []))?.uid || null,
+    ...payload
+  };
+  g.clockTimeline.push(mark);
+  if (g.clockTimeline.length > 160) g.clockTimeline.splice(0, g.clockTimeline.length - 160);
+  return mark;
+}
+export function timeCommitPendingTurnAdvance(g) {
+  const pending = g?.pendingClockTurnAdvance;
+  if (!pending) return false;
+  delete g.pendingClockTurnAdvance;
+  delete g._timeDeferTurnAdvance;
+  const actor = findUnit(g, pending.actorEntityId) || unitAt(g, pending.teamId, pending.slotIndex);
+  g._timeCommittingTurnAdvance = true;
+  try {
+    if (actor) advanceDualOrEnd(g, pending.teamId, pending.slotIndex, actor, pending.usedSkill, pending.switched);else endTurn(g, pending.teamId, pending.slotIndex, pending.usedSkill);
+  } finally {
+    delete g._timeCommittingTurnAdvance;
+  }
+  if (systems.StateFactory?.updateActive) systems.StateFactory.updateActive(g);
+  timeMarkTimeline(g, "turnAdvanced", {
+    fromTurnSerial: pending.turnSerial,
+    toTurnSerial: Number(g.turnSerial || 0)
+  });
+  timeMarkTimeline(g, "nextActorAssigned", {
+    nextActorEntityId: g.activeEntityId || null,
+    nextTeamId: g.activeTeamId || null
+  });
+  g._timeAwaitingNextAiAction = !!(!g.winner && (g.mode === "human" && g.activeTeamId === "A" || g.mode === "aivai" || g.bossRaid && g.activeTeamId === "A"));
+  return true;
+}
+export function timeNormDeg(n) {
+  n = Number(n) || 0;
+  return (n % 360 + 360) % 360;
+}
+export function timeIsAligned(u) {
+  if (!u || !cardHasCapability(u, "timeControl")) return false;
+  const d = timeNormDeg((u.timeHourDeg || 0) - (u.timeMinuteDeg || 0));
+  return Math.abs(d) < .001 || Math.abs(d - 180) < .001;
+}
+export function timeTeamOf(g, unit) {
+  return unit ? teamOf(g, unit) : null;
+}
+export function timeFieldUnits(g) {
+  return ["P", "A"].flatMap(t => (g?.teams?.[t]?.field || []).filter(Boolean));
+}
+export function timeFieldTimeoras(g, t = null) {
+  const teams = t ? [t] : ["P", "A"];
+  return teams.flatMap(team => (g?.teams?.[team]?.field || []).filter(u => u && !u.dead && cardHasCapability(u, "timeControl")));
+}
+export class TimeClockOwnershipDomain {
+  constructor({
+    id,
+    team,
+    owners,
+    suppressedUnits = [],
+    shared = false,
+    label = "운명의 시계"
+  }) {
+    this.id = String(id || "clock-domain");
+    this.team = team || null;
+    this.shared = !!shared;
+    this.label = label;
+    this.owners = (owners || []).filter(Boolean);
+    this.ownerUids = new Set(this.owners.map(u => String(u.uid)));
+    this.suppressedUnits = (suppressedUnits || []).filter(Boolean);
+    this.suppressedUids = new Set(this.suppressedUnits.map(u => String(u.uid)));
+  }
+  owns(unitOrUid) {
+    const uid = typeof unitOrUid === "object" ? unitOrUid?.uid : unitOrUid;
+    return uid != null && this.ownerUids.has(String(uid));
+  }
+  suppresses(unitOrUid) {
+    const uid = typeof unitOrUid === "object" ? unitOrUid?.uid : unitOrUid;
+    return uid != null && this.suppressedUids.has(String(uid));
+  }
+  representative() {
+    return this.owners[0] || null;
+  }
+}
+export class TimeClockTraitSuppressionPolicy {
+  resolve(g) {
+    if (!g || g.winner) return null;
+    const bossResolver = systems.__redTimeoraBossRaid?.resolveSuppression;
+    if (g.bossRaid && typeof bossResolver === "function") return bossResolver(g);
+
+    /* 보스 IIFE의 지역 함수에 기대지 않고 직렬화되는 공용 시계 상태로 직접 판정한다. */
+    const bossClockState = g?.bossRaid?.sharedClock;
+    const bossClockDelta = bossClockState ? timeNormDeg(Number(bossClockState.hourDeg || 0) - Number(bossClockState.minuteDeg || 0)) : null;
+    const bossClockIsAligned = bossClockDelta != null && (Math.abs(bossClockDelta) < .001 || Math.abs(bossClockDelta - 180) < .001);
+    if (g?.bossRaid && bossClockIsAligned) {
+      const owners = [...(g.teams?.A?.field || []), ...(g.teams?.A?.bench || [])].filter(u => u && !u.dead && cardHasCapability(u, "timeControl") && !Number(u?.statuses?.traitSeal || 0));
+      if (owners.length) return new TimeClockOwnershipDomain({
+        id: `boss-shared-clock:${g.matchId || g.seed || "raid"}`,
+        team: "A",
+        owners,
+        suppressedUnits: (g.teams?.P?.field || []).filter(u => u && !u.dead),
+        shared: true,
+        label: "붉은 공용 시계"
+      });
+    }
+    const playerOwners = timeFieldTimeoras(g, "P").filter(u => !Number(u?.statuses?.traitSeal || 0) && timeIsAligned(u));
+    const enemyOwners = timeFieldTimeoras(g, "A").filter(u => !Number(u?.statuses?.traitSeal || 0) && timeIsAligned(u));
+    if (!playerOwners.length && !enemyOwners.length) return null;
+
+    /* 양쪽이 동시에 정렬되면 두 정렬 효과가 서로 상쇄된다. 이때는 어느 쪽도
+       상대를 정지시키지 않으며 두 시계 모두 계속 반응할 수 있다. */
+    if (playerOwners.length && enemyOwners.length) return null;
+    const owners = playerOwners.length ? playerOwners : enemyOwners;
+    const ownerTeam = playerOwners.length ? "P" : "A";
+    const ownerUids = new Set(owners.map(unit => String(unit.uid)));
+    const suppressedUnits = [...(g.teams?.P?.field || []), ...(g.teams?.A?.field || [])].filter(unit => unit && !unit.dead && !ownerUids.has(String(unit.uid)) && !!String(card(unit)?.trait || "").trim());
+    return new TimeClockOwnershipDomain({
+      id: `unit-clock:${owners.map(u => u.uid).sort().join("+")}`,
+      team: ownerTeam,
+      owners,
+      suppressedUnits,
+      shared: false,
+      label: `${owners[0].name}의 운명의 시계`
+    });
+  }
+  suppresses(g, unit) {
+    const domain = this.resolve(g);
+    return !!domain && domain.suppresses(unit);
+  }
+  traitsActive(g, unit) {
+    return !!unit && !status(unit, "traitSeal") && !this.suppresses(g, unit);
+  }
+}
+export function timeCurrentSuppressionDomain(g) {
+  return state_features_timeora.timeClockTraitSuppression.resolve(g);
+}
+export function timeAlignedOwnersForTeam(g, t) {
+  return timeFieldTimeoras(g, t).filter(u => !Number(u?.statuses?.traitSeal || 0) && timeIsAligned(u));
+}
+export function timeClockAlignmentsCancel(g) {
+  return timeAlignedOwnersForTeam(g, "P").length > 0 && timeAlignedOwnersForTeam(g, "A").length > 0;
+}
+export function timeClockStopReason(g, u) {
+  if (!u || u.dead || !cardHasCapability(u, "timeControl")) return null;
+  if (status(u, "traitSeal")) return "traitSeal";
+  const domain = timeCurrentSuppressionDomain(g);
+  return domain?.suppresses(u) ? "opponentAlignment" : null;
+}
+export function timeStatusClone(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj || {})) if (Number(v) > 0) out[k] = Number(v);
+  return out;
+}
+export function timeRecordTurnStart(g, u) {
+  if (!u || u.dead) return;
+  u.timeRecallHistory ||= [];
+  const stamp = `${g.matchId || g.seed}:${g.turnSerial}:${u.uid}`;
+  if (u.timeRecallHistory.at(-1)?.stamp === stamp) return;
+  u.timeRecallHistory.push({
+    stamp,
+    turnSerial: g.turnSerial,
+    ownTurn: u.turns || 0,
+    hp: combatInt(u.hp),
+    statuses: timeStatusClone(u.statuses),
+    skillSeals: timeStatusClone(u.skillSeals)
+  });
+  if (u.timeRecallHistory.length > 16) u.timeRecallHistory.splice(0, u.timeRecallHistory.length - 16);
+}
+export function timeRecallSnapshot(u) {
+  const h = u?.timeRecallHistory || [];
+  if (!h.length) return {
+    snapshot: {
+      hp: combatInt(u?.hp || 0),
+      statuses: timeStatusClone(u?.statuses),
+      skillSeals: timeStatusClone(u?.skillSeals)
+    },
+    turnsAgo: 0
+  };
+  const index = Math.max(0, h.length - 3);
+  return {
+    snapshot: h[index],
+    turnsAgo: Math.min(2, h.length - 1)
+  };
+}
+export function timeOrderIndexForSlot(g, t, s) {
+  return g?.order?.findIndex(x => x?.[0] === t && Number(x?.[1]) === Number(s)) ?? -1;
+}
+export function timeOrderSlotForUnit(g, u) {
+  const t = timeTeamOf(g, u),
+    s = g?.teams?.[t]?.field?.findIndex(x => x?.uid === u?.uid) ?? -1;
+  return {
+    t,
+    s,
+    index: timeOrderIndexForSlot(g, t, s)
+  };
+}
+export function timeClockReactionDecision(g, timeora, actor, actorTeam = null, actorSlot = null) {
+  if (!timeora || timeora.dead || !cardHasCapability(timeora, "timeControl")) return {
+    ok: false,
+    reason: "inactive"
+  };
+  if (status(timeora, "traitSeal")) return {
+    ok: false,
+    reason: "traitSeal"
+  };
+  const suppressionDomain = timeCurrentSuppressionDomain(g);
+  if (suppressionDomain && suppressionDomain.suppresses(timeora)) return {
+    ok: false,
+    reason: "clockSuppressed"
+  };
+  const timePos = timeOrderSlotForUnit(g, timeora);
+  let at = actorTeam,
+    as = actorSlot;
+  if (at == null || as == null) {
+    const p = timeOrderSlotForUnit(g, actor);
+    at = p.t;
+    as = p.s;
+  }
+  const actorIndex = timeOrderIndexForSlot(g, at, as),
+    tt = timeTeamOf(g, timeora);
+  if (timePos.index >= 0 && actorIndex >= 0 && at && tt && at !== tt) {
+    const previousIndex = (timePos.index - 1 + g.order.length) % g.order.length;
+    if (actorIndex === previousIndex && !(g?.bossRaid && timeora?.bossRed)) return {
+      ok: false,
+      reason: "previousEnemyTurn"
+    };
+  }
+  return {
+    ok: true,
+    reason: "react"
+  };
+}
+export function timeShouldClockReact(g, timeora, actor, actorTeam = null, actorSlot = null) {
+  return timeClockReactionDecision(g, timeora, actor, actorTeam, actorSlot).ok;
+}
+export function timePaidAmountFromAction(g, t, u, a) {
+  const recorded = u?._timePaidRecord;
+  if (recorded && Number(recorded.amount) > 0) return recorded.amount;
+  if (a?.paymentPlan) return Number(a.paymentPlan.R || 0) + Number(a.paymentPlan.W || 0) + Number(a.paymentPlan.B || 0) + Number(a.extraW || 0);
+  const base = card(u)?.skills?.find(x => x.id === a?.skill);
+  const cost = a?.costOverride ?? base?.cost ?? "";
+  return transformedSkillReq(g, t, u, cost).tokens.length + Number(a?.extraW || 0);
+}
+export function timeRotateClocks(g, t, s, actor, paidAmount, sim = false) {
+  const boss = systems.__redTimeoraBossRaid;
+  if (g?.bossRaid && typeof boss?.rotateClocksR36 === "function") return boss.rotateClocksR36(g, t, s, actor, paidAmount, sim);
+  const n = Math.ceil(Math.max(0, Number(paidAmount) || 0) - 1e-9);
+  if (!n) return [];
+  const clocks = [];
+
+  /* 모든 시계의 반응 가능 여부를 회전 시작 시점에 한 번만 스냅샷한다.
+     앞에서 처리된 시계가 정렬을 풀거나 새로 맞추더라도, 같은 행동에 반응 중인
+     뒤쪽 시계의 정지 여부가 중간에 바뀌어서는 안 된다. */
+  const reactionSnapshot = timeFieldTimeoras(g).map(owner => ({
+    owner,
+    decision: timeClockReactionDecision(g, owner, actor, t, s),
+    beforeHour: timeNormDeg(owner.timeHourDeg),
+    beforeMinute: timeNormDeg(owner.timeMinuteDeg)
+  }));
+  for (const snap of reactionSnapshot) {
+    const {
+      owner,
+      decision,
+      beforeHour,
+      beforeMinute
+    } = snap;
+    if (!decision.ok) {
+      if (decision.reason === "previousEnemyTurn") {
+        if (!sim && typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game) log(g, `${owner.name}의 시계: 행동순서상 바로 이전 적 차례의 기술에는 반응하지 않음.`, "turn");
+        clocks.push({
+          uid: owner.uid,
+          team: timeTeamOf(g, owner),
+          beforeHour,
+          beforeMinute,
+          afterHour: beforeHour,
+          afterMinute: beforeMinute,
+          hourDelta: 0,
+          minuteDelta: 0,
+          aligned: timeIsAligned(owner),
+          blocked: true,
+          blockReason: decision.reason
+        });
+      }
+      /* 특성봉인·상대 정렬로 완전히 정지한 시계는 회전 연출 목록에도 넣지 않는다. */
+      continue;
+    }
+    const hourDelta = 30 * n,
+      minuteDelta = owner.uid === actor.uid ? 90 * n : 0;
+    owner.timeHourDeg = timeNormDeg(beforeHour + hourDelta);
+    owner.timeMinuteDeg = timeNormDeg(beforeMinute + minuteDelta);
+    clocks.push({
+      uid: owner.uid,
+      team: timeTeamOf(g, owner),
+      beforeHour,
+      beforeMinute,
+      afterHour: owner.timeHourDeg,
+      afterMinute: owner.timeMinuteDeg,
+      hourDelta,
+      minuteDelta,
+      aligned: timeIsAligned(owner)
+    });
+    log(g, `${owner.name}의 운명의 시계: ${n}E 반응 · 시침 +${hourDelta}°${minuteDelta ? ` · 분침 +${minuteDelta}°` : ""} → ${owner.timeHourDeg}°/${owner.timeMinuteDeg}°${timeIsAligned(owner) ? " · 정렬" : ""}.`, "turn");
+  }
+  if (!sim && typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && clocks.length) {
+    state_ui_battle_state.visualEvents.push({
+      type: "timeClockRotationFx",
+      actionSerial: ++state_features_timeora.timeVisualSerial,
+      actorUid: actor.uid,
+      clocks
+    });
+  }
+  return clocks;
+}
+export function timeHyperReason(u) {
+  if (!u || !cardHasCapability(u, "timeControl")) return null;
+  if (status(u, "traitSeal")) return "traitSeal";
+  if (timeIsAligned(u)) return "clockAlignment";
+  return null;
+}
+export function timeRecallValue(target) {
+  if (!target || target.dead) return 0;
+  const {
+    snapshot
+  } = timeRecallSnapshot(target);
+  const hpDiff = combatInt(snapshot.hp) - combatInt(target.hp);
+  const nowBad = Object.values(target.statuses || {}).reduce((n, v) => n + Number(v || 0), 0) + Object.values(target.skillSeals || {}).reduce((n, v) => n + Number(v || 0), 0);
+  const oldBad = Object.values(snapshot.statuses || {}).reduce((n, v) => n + Number(v || 0), 0) + Object.values(snapshot.skillSeals || {}).reduce((n, v) => n + Number(v || 0), 0);
+  return hpDiff + (nowBad - oldBad) * 16;
+}
+export function timeApplyRecall(g, actor, target, skill, ctx) {
+  if (!target || target.dead) return 0;
+  const {
+    snapshot,
+    turnsAgo
+  } = timeRecallSnapshot(target);
+  const beforeHp = target.hp;
+  const keep = {
+    shield: target.shield,
+    barriers: target.hpProtectionBarriers,
+    energy: target.energy,
+    beastEnergy: target.beastEnergy,
+    riderEnergy: target.riderEnergy,
+    maxHp: target.maxHp
+  };
+  target.hp = Math.max(0, Math.min(target.maxHp, combatInt(snapshot.hp)));
+  target.statuses = timeStatusClone(snapshot.statuses);
+  target.skillSeals = timeStatusClone(snapshot.skillSeals);
+  target.shield = keep.shield;
+  target.hpProtectionBarriers = keep.barriers;
+  target.energy = keep.energy;
+  target.beastEnergy = keep.beastEnergy;
+  target.riderEnergy = keep.riderEnergy;
+  target.maxHp = keep.maxHp;
+  const swing = target.hp - beforeHp;
+  if (swing > 0) state_engine_entities.GenericBattleStatisticsOwner.recordHealing(g, {
+    source: actor,
+    target,
+    requestedAmount: swing,
+    actualAppliedAmount: swing,
+    reason: "time-recall",
+    effectId: "timeRecall",
+    sim: !!ctx?.sim
+  });
+  log(g, `${actor.name}: 타임리콜로 ${target.name}을 ${turnsAgo}턴 전 자기 차례 시작 상태로 복귀 · HP ${combatInt(beforeHp)}→${combatInt(target.hp)}, 상태이상 기록 복원. 실드·추가 HP바·에너지·최대 HP는 유지.`, swing >= 0 ? "heal" : "damage");
+  queueCombatNotice(g, target, `타임리콜 ${turnsAgo}턴`, "effect");
+  if (typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && !ctx?.sim) state_ui_battle_state.visualEvents.push({
+    type: "timeRecallFx",
+    uid: actor.uid,
+    targetUid: target.uid,
+    team: timeTeamOf(g, actor),
+    turnsAgo
+  });
+  return swing;
+}
+export function timePotentialReactors(g, actor, paidGuess = 1, t = null, s = null) {
+  if (!(paidGuess > 0)) return [];
+  return timeFieldTimeoras(g).filter(x => timeShouldClockReact(g, x, actor, t, s));
+}
+export function timeSetInputLock(on, holdBusy = true) {
+  const manager = systems.InputLockManager;
+  if (manager?.setClockLock) return manager.setClockLock(!!on, {
+    holdBusy,
+    owner: "timeSetInputLock"
+  });
+  // Bootstrap fallback: this path only exists while the final owner has not loaded yet.
+  state_features_timeora.timeInputLocked = !!on;
+  document.body.classList.toggle("time-input-locked", state_features_timeora.timeInputLocked);
+  for (const root of [document.querySelector(".app"), document.querySelector("#modal")]) {
+    if (!root) continue;
+    try {
+      root.inert = state_features_timeora.timeInputLocked;
+    } catch (error) {
+      systems.__megaRecordRecoveredError(error, "timeSetInputLock:bootstrap");
+    }
+    root.setAttribute("aria-hidden", state_features_timeora.timeInputLocked ? "true" : "false");
+  }
+  if (on && holdBusy && typeof state_ui_battle_state.busy !== "undefined") {
+    if (!state_ui_battle_state.busy) state_features_timeora.timeInputLockBusyOwned = true;
+    state_ui_battle_state.busy = true;
+  }
+  if (!on && state_features_timeora.timeInputLockBusyOwned) {
+    state_features_timeora.timeInputLockBusyOwned = false;
+    if (!state_online_commands.OnlineActionAdmissionOwner.hasPending()) state_ui_battle_state.busy = false;
+  }
+  return state_features_timeora.timeInputLocked;
+}
+export function executeTimeAction(g, t, s, a, opt = {}) {
+  const actor = unitAt(g, t, s);
+  if (a?.type === "gather" && cardHasCapability(actor, "timeControl")) {
+    const accelerationActive = timeAccelerationIsActive(g, actor);
+    /* 로컬 미리보기와 권위 상태가 어긋나도 기본 1E로 조용히 행동을 소비하지 않는다. */
+    if (a.timeAccelerationChoice && !accelerationActive) return false;
+    if (accelerationActive) return timeExecuteTimeoraGather(g, t, s, actor, a, opt);
+  }
+  if (a?.type === "skill" && actionSkillHasTag(a, "copy") && actor?.memoryUsed) return false;
+  if (a?.type === "skill" && actionSkillHasTag(a, "copy") && a.copySourceUid) {
+    const source = (g.teams[t]?.bench || []).find(x => x?.uid === a.copySourceUid && !x.dead);
+    if (!source) return false;
+  }
+  if (a?.type === "skill" && actionSkillHasEffect(a, "timeRecall") && cardHasCapability(actor, "timeControl") && actor.usedOnce?.[skillIdByEffect(actor, "timeRecall")]) return false;
+  if (g?._timeAwaitingNextAiAction && !opt.sim) {
+    timeMarkTimeline(g, "aiActionSubmitted", {
+      actorEntityId: actor?.entityId || actor?.uid || null,
+      actionType: a?.type || null
+    });
+    g._timeAwaitingNextAiAction = false;
+  }
+  const isSkill = a?.type === "skill";
+  if (!isSkill) return executeCharacterAction(g, t, s, a, opt);
+  if (cardHasCapability(actor, "timeControl") && actionSkillHasEffect(a, "hyperClock")) {
+    const reason = timeHyperReason(actor);
+    a = {
+      ...a,
+      timeHyperReason: reason,
+      costOverride: status(actor, "traitSeal") ? "***" : a.costOverride || "WWorB*"
+    };
+    actor._timeHyperReason = reason;
+  }
+  const oldGame = state_engine_actions.timeTraitGame;
+  state_engine_actions.timeTraitGame = g;
+  const paidGuess = a.paymentPlan ? Number(a.paymentPlan.R || 0) + Number(a.paymentPlan.W || 0) + Number(a.paymentPlan.B || 0) : transformedSkillReq(g, t, actor, a.costOverride ?? skillOf(actor, a.skill)?.cost ?? "").tokens.length;
+  const willReact = !!actor && timePotentialReactors(g, actor, paidGuess, t, s).length > 0;
+  const liveClockBarrier = willReact && !opt.sim && g === state_ui_battle_state.game;
+  if (liveClockBarrier) {
+    g._timeDeferTurnAdvance = {
+      teamId: t,
+      slotIndex: s,
+      actorEntityId: actor?.entityId || actor?.uid || null
+    };
+    timeMarkTimeline(g, "clockLockAcquired", {
+      actorEntityId: actor?.entityId || actor?.uid || null
+    });
+    timeSetInputLock(true, true);
+  }
+  let result = false;
+  try {
+    result = executeCharacterAction(g, t, s, a, opt);
+    if (!result) {
+      if (liveClockBarrier) {
+        delete g._timeDeferTurnAdvance;
+        delete g.pendingClockTurnAdvance;
+        timeSetInputLock(false);
+        timeMarkTimeline(g, "clockLockReleased", {
+          reason: "action-rejected"
+        });
+      }
+      return result;
+    }
+    if (cardHasCapability(actor, "timeControl") && actionSkillHasEffect(a, "timeRecall")) actor.usedOnce[skillIdByEffect(actor, "timeRecall")] = true;
+    if (!!firstSkillByTag(actor, "copy") && actionSkillHasTag(a, "copy") && a.copySkill) {
+      actor.memoryUsed = true;
+      actor.memoryUses = 1;
+      log(g, `${actor.name}: 드래곤메모리로 ${state_catalog_cards.CARDS.find(c => c.id === a.copyCard)?.skills.find(sk => sk.id === a.copySkill)?.name || a.copySkill} 복사 · 드래곤메모리 1회 사용 소비됨.`, "turn");
+    }
+    const paid = timePaidAmountFromAction(g, t, actor, a);
+    const rotatedClocks = timeRotateClocks(g, t, s, actor, paid, !!opt.sim);
+    /* 원본 execute가 턴을 넘긴 뒤 시계가 회전하므로, 연속형 특성 수치도 여기서
+       즉시 다시 계산해야 한 턴 늦게 반영되는 현상이 생기지 않는다. */
+    if (rotatedClocks.length && typeof timeSyncContinuousTraitStates === "function") timeSyncContinuousTraitStates(g, "운명의 시계 회전");
+    if (liveClockBarrier && !rotatedClocks.length) {
+      timeSetInputLock(false);
+      timeMarkTimeline(g, "clockLockReleased", {
+        reason: "no-clock-events"
+      });
+      timeCommitPendingTurnAdvance(g);
+    }
+    return result;
+  } finally {
+    delete actor?._timeHyperReason;
+    delete actor?._timePaidRecord;
+    state_engine_actions.timeTraitGame = oldGame;
+  }
+}
+export function timeCloneRng(rng) {
+  const x = Object.create(RNG.prototype);
+  x.s = rng.s;
+  return x;
+}
+export function timeDrawNaturalColorFrom(rng, colors, store, amount) {
+  const half = amount === .5 ? (store || []).find(e => e?.a === .5) : null;
+  return {
+    color: half?.c || rng.pick(colors),
+    locked: !!half
+  };
+}
+export function timeStoreAfterGain(store, col, amount) {
+  const next = (store || []).map(e => ({
+    ...e
+  }));
+  next.push({
+    c: col,
+    a: amount
+  });
+  normalizeStore(next);
+  return next;
+}
+export function timePeekGather(u, g, t) {
+  const amt = status(u, "slow") ? .5 : 1,
+    colors = naturalColors(g, t, u, amt, null, "time-acceleration-preview"),
+    store = energyStore(u).map(e => ({
+      ...e
+    }));
+  const previewState = Number(g?.rng?.s ?? 0),
+    base = timeCloneRng(g.rng);
+  const firstDraw = timeDrawNaturalColorFrom(base, colors, store, amt),
+    first = firstDraw.color,
+    afterFirstState = base.s;
+  const rerollRng = timeCloneRng(g.rng);
+  rerollRng.s = afterFirstState;
+  const second = timeDrawNaturalColorFrom(rerollRng, colors, store, amt).color;
+  const bonusRng = timeCloneRng(g.rng);
+  bonusRng.s = afterFirstState;
+  const afterFirst = timeStoreAfterGain(store, first, amt),
+    bonusDraw = timeDrawNaturalColorFrom(bonusRng, colors, afterFirst, .5);
+  return {
+    first,
+    second,
+    bonusColor: bonusDraw.color,
+    amt,
+    previewState,
+    afterFirstState
+  };
+}
+export function timeAIShouldReroll(u, first) {
+  const pool = {
+    R: 0,
+    W: 0,
+    B: 0
+  };
+  energyStore(u).forEach(e => pool[e.c] += e.a);
+  if (pool.W < 1 && first !== "W") return true;
+  if (pool.W + pool.B < 2 && first === "R") return true;
+  return false;
+}
+export function timeHumanControlsTeam(g, t) {
+  if (g?.mode === "human") return t === "P";
+  if (g?.mode === "online") return t === state_ui_deck.onlineSide;
+  if (g?.mode === "bossSolo" || g?.mode === "bossOnline") return t === "P";
+  return false;
+}
+export function timeAccelerationIsActive(g, u) {
+  if (!g || !u || u.dead || !cardHasCapability(u, "timeControl")) return false;
+  const oldGame = state_engine_actions.timeTraitGame;
+  state_engine_actions.timeTraitGame = g;
+  try {
+    return !!traitsActive(u);
+  } finally {
+    state_engine_actions.timeTraitGame = oldGame;
+  }
+}
+export function timeAccelerationDiscardCandidates(u) {
+  const store = energyStore(u);
+  return store.map((e, index) => ({
+    e,
+    index
+  })).filter(({
+    e
+  }) => {
+    const amount = Number(e?.a || 0);
+    return amount === 1 || amount === .5;
+  });
+}
+export function timeFitAccelerationGains(store, gains, max) {
+  const accepted = [],
+    dropped = [];
+  let total = (store || []).reduce((n, e) => n + Number(e?.a || 0), 0);
+  for (const gain of gains || []) {
+    const amount = Number(gain?.a || 0);
+    if (total + amount <= max + .001) {
+      accepted.push({
+        ...gain
+      });
+      total += amount;
+    } else dropped.push({
+      ...gain
+    });
+  }
+  return {
+    accepted,
+    dropped,
+    total
+  };
+}
+export function timeBestAccelerationDiscardIndex(u, gains) {
+  const store = energyStore(u),
+    max = card(u).maxEnergy || 4;
+  let best = null;
+  for (const {
+    index,
+    e
+  } of timeAccelerationDiscardCandidates(u)) {
+    const pool = store.filter((_, i) => i !== index).map(x => ({
+      ...x
+    }));
+    const fit = timeFitAccelerationGains(pool, gains, max);
+    const gained = fit.accepted.reduce((n, x) => n + Number(x.a || 0), 0);
+    if (gained <= 0) continue;
+    const value = energyValue(u, pool.concat(fit.accepted.map(x => ({
+      c: x.c,
+      a: x.a
+    }))));
+    const score = gained * 1000 + value - Number(e.a || 0) * .01;
+    if (!best || score > best.score) best = {
+      index,
+      score
+    };
+  }
+  return best?.index ?? null;
+}
+export function timeExecuteTimeoraGather(g, t, s, u, a, opt = {}) {
+  if (!timeAccelerationIsActive(g, u)) return false;
+  const store = energyStore(u),
+    baseStore = store.map(e => ({
+      ...e
+    })),
+    amt = status(u, "slow") ? .5 : 1,
+    colors = naturalColors(g, t, u, amt, null, "time-acceleration-execute");
+  const stateBefore = Number(g?.rng?.s ?? 0);
+  const firstDraw = timeDrawNaturalColorFrom(g.rng, colors, baseStore, amt),
+    first = firstDraw.color;
+  let choice = a.timeAccelerationChoice || "auto";
+  if (choice === "auto") choice = timeAIShouldReroll(u, first) ? "reroll" : "keep";
+  if (choice !== "keep" && choice !== "reroll") return false;
+  let gains = [];
+  if (choice === "reroll") {
+    const secondDraw = timeDrawNaturalColorFrom(g.rng, colors, baseStore, amt),
+      chosen = secondDraw.color;
+    gains = [{
+      c: chosen,
+      a: amt,
+      role: "reroll"
+    }];
+    log(g, `${u.name} 특성 · 시간 가속: 에너지를 재추첨함.`, "turn");
+  } else {
+    const afterFirst = timeStoreAfterGain(baseStore, first, amt),
+      bonusColor = timeDrawNaturalColorFrom(g.rng, colors, afterFirst, .5).color;
+    gains = [{
+      c: first,
+      a: amt,
+      role: "first"
+    }, {
+      c: bonusColor,
+      a: .5,
+      role: "bonus"
+    }];
+  }
+  // UI에서 미리 본 난수 상태와 실제 실행 상태가 다르면 실제 권위 상태를 사용하되 기록한다.
+  if (a.timePreviewState != null && Number(a.timePreviewState) !== stateBefore && !opt.sim && g === state_ui_battle_state.game) {
+    log(g, `${u.name}: 시간 가속 상태를 최신 전투 상태로 다시 계산함.`, "turn");
+  }
+  const explicitKeep = Array.isArray(a.timeKeepGainIndices);
+  if (explicitKeep) {
+    const keepIndices = [...new Set(a.timeKeepGainIndices.map(Number))];
+    if (!keepIndices.length || keepIndices.some(index => !Number.isInteger(index) || !gains[index])) return false;
+    gains = keepIndices.map(index => gains[index]);
+  }
+  const max = card(u).maxEnergy || 4,
+    amount = gains.reduce((n, e) => n + Number(e.a || 0), 0);
+  let replace = a.timeReplacementIndex ?? a.timeReplacementIndices ?? a.replaceIndex ?? a.replaceIndices;
+  if (totalEnergy(u) + amount > max + .001 && replace == null) {
+    if (a.timeDeclineOverflow) {
+      log(g, `${u.name}: 최대 에너지로 시간 가속 수급을 포기.`);
+      u.lastAction = "gather";
+      advanceDualOrEnd(g, t, s, u, false, false);
+      return true;
+    }
+    if (!timeHumanControlsTeam(g, t)) replace = timeBestAccelerationDiscardIndex(u, gains);else return false;
+  }
+  let fit;
+  if (replace != null) {
+    const indices = [...new Set(Array.isArray(replace) ? replace : [replace])].filter(i => Number.isInteger(i) && store[i]);
+    if (!indices.length) return false;
+    const allowed = new Set(timeAccelerationDiscardCandidates(u).map(x => x.index));
+    if (indices.some(index => !allowed.has(index))) return false;
+    if (!explicitKeep && Array.isArray(a.timeSwapPairs)) {
+      const gainIndices = new Set(),
+        storeIndices = new Set();
+      for (const pair of a.timeSwapPairs) {
+        const gainIndex = Number(pair?.gainIndex),
+          storeIndex = Number(pair?.storeIndex);
+        if (!Number.isInteger(gainIndex) || !Number.isInteger(storeIndex) || !gains[gainIndex] || !store[storeIndex]) return false;
+        if (gainIndices.has(gainIndex) || storeIndices.has(storeIndex)) return false;
+        if (Math.abs(Number(gains[gainIndex].a || 0) - Number(store[storeIndex].a || 0)) > .001) return false;
+        gainIndices.add(gainIndex);
+        storeIndices.add(storeIndex);
+      }
+      if (storeIndices.size !== indices.length || indices.some(index => !storeIndices.has(index))) return false;
+    } else if (!explicitKeep && indices.length !== 1) return false;
+    const removedSet = new Set(indices);
+    const pool = store.filter((_, index) => !removedSet.has(index)).map(e => ({
+      ...e
+    }));
+    fit = timeFitAccelerationGains(pool, gains, max);
+    if (explicitKeep && (fit.dropped.length || fit.accepted.length !== gains.length)) return false;
+    if (!explicitKeep && !fit.accepted.some(e => e.role !== "bonus")) return false;
+    const removed = indices.slice().sort((a, b) => b - a).map(index => store.splice(index, 1)[0]).filter(Boolean);
+    log(g, `${u.name}: 기존 ${removed.map(e => `${e.c}${e.a === .5 ? "½" : ""}`).join(" + ")} 에너지를 새 에너지와 교환.`);
+  }
+  fit = timeFitAccelerationGains(store, gains, max);
+  // 직접 선택한 경우에는 선택한 새 에너지가 전부 들어가야 하며, 반에너지만 보관하는 선택도 허용한다.
+  if (explicitKeep) {
+    if (!fit.accepted.length || fit.dropped.length || fit.accepted.length !== gains.length) return false;
+  } else if (!fit.accepted.some(e => e.role !== "bonus")) {
+    // 자동/구형 행동은 첫 수급조차 들어가지 않는 상태에서 행동을 소비하지 않는다.
+    return false;
+  }
+  for (const e of fit.accepted) store.push({
+    c: e.c,
+    a: e.a
+  });
+  normalizeStore(store);
+  triggerEnergyGainResult(g, u, null);
+  if (choice === "keep") log(g, `${u.name} 특성 · 시간 가속: 총 ${energyAmountText(fit.accepted.reduce((n, e) => n + Number(e.a || 0), 0))}E 수급.`, "turn");
+  if (fit.dropped.some(e => e.role === "bonus")) log(g, `${u.name}: 보관 공간 부족으로 시간 가속의 추가 0.5E는 획득하지 못함.`, "turn");
+  log(g, `${u.name}: ${fit.accepted.map(e => `${e.c}${e.a === .5 ? "½" : ""}`).join(" + ")} 에너지 획득.`);
+  u.lastAction = "gather";
+  advanceDualOrEnd(g, t, s, u, false, false);
+  return true;
+}
+export function timeOpenGatherOverflow(a, choice, peek) {
+  const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
+    u = unitAt(state_ui_battle_state.game, t, s),
+    gains = choice === "keep" ? [{
+      c: peek.first,
+      a: peek.amt,
+      role: "first"
+    }, {
+      c: peek.bonusColor,
+      a: .5,
+      role: "bonus"
+    }] : [{
+      c: peek.second,
+      a: peek.amt,
+      role: "reroll"
+    }],
+    amount = gains.reduce((n, e) => n + e.a, 0),
+    max = card(u).maxEnergy || 4,
+    overflow = Math.max(0, totalEnergy(u) + amount - max);
+  let submitted = false;
+  const submit = extra => {
+    if (submitted) return;
+    submitted = true;
+    const action = {
+      ...a,
+      timeAccelerationChoice: choice,
+      timeFirstColor: peek.first,
+      timeSecondColor: peek.second,
+      timeBonusColor: peek.bonusColor,
+      timePreviewState: peek.previewState,
+      ...extra
+    };
+    const ok = execute(state_ui_battle_state.game, t, s, action);
+    if (ok) {
+      state_ui_battle_state.$("#modal").classList.remove("open");
+      afterAction();
+      return;
+    }
+    submitted = false;
+    const state = state_ui_battle_state.$("#modalContent")?.querySelector("p");
+    if (state) state.textContent = "전투 상태가 바뀌어 이 교환을 적용할 수 없습니다. 창을 닫고 다시 시도하세요.";
+  };
+  if (overflow <= .001) {
+    submit({
+      timeKeepGainIndices: gains.map((_, index) => index)
+    });
+    return;
+  }
+  const store = energyStore(u).map(e => ({
+    ...e
+  }));
+  state_features_timeora.EnergyOverflowPresentationOwner.open({
+    title: "시간 가속 · 에너지 교환",
+    sourceActionIdentity: a?.actionId || a?.commandId || `timeAcceleration:${state_ui_battle_state.game?.turnSerial || 0}:${u.uid}`,
+    pendingTransactionIdentity: a?.transactionId || a?.commandId || null,
+    current: store,
+    incoming: gains,
+    max,
+    onConfirm: ({
+      keepIncomingIndices,
+      discardCurrentIndices
+    }) => {
+      const extra = {
+        timeKeepGainIndices: keepIncomingIndices
+      };
+      if (discardCurrentIndices.length) extra.timeReplacementIndices = discardCurrentIndices;
+      submit(extra);
+    },
+    onDropNew: () => submit({
+      timeDeclineOverflow: true
+    })
+  });
+}
+export function timeClockMiniHTMLCore(u, g) {
+  const team = timeTeamOf(g, u),
+    local = localTeamFor(g),
+    theme = team === local ? "gold" : "blue",
+    aligned = timeIsAligned(u);
+  const stopReason = timeClockStopReason(g, u),
+    stopped = !!stopReason,
+    cancelled = aligned && timeClockAlignmentsCancel(g);
+  const state = stopped ? stopReason === "traitSeal" ? "정지 · 특성봉인" : "정지 · 상대 시계 정렬" : cancelled ? "동시 정렬 · 효과 상쇄" : aligned ? "정렬 · 자신 외 전원 특성 정지" : "비정렬";
+  const stateClass = stopped ? "stopped" : cancelled ? "cancelled" : aligned ? "aligned" : "";
+  return `<div class="time-mini-clock-wrap ${stopped ? "clock-stopped-wrap" : ""}"><div class="time-mini-clock ${theme}${stopped ? " clock-stopped" : ""}${cancelled ? " clock-cancelled" : ""}"><span class="time-clock-hand hour" style="transform:translateX(-50%) rotate(${timeNormDeg(u.timeHourDeg)}deg)"></span><span class="time-clock-hand minute" style="transform:translateX(-50%) rotate(${timeNormDeg(u.timeMinuteDeg)}deg)"></span><span class="time-clock-pin"></span><span class="time-clock-word">Time</span></div><div><b>Time</b><br><span>시침 ${timeNormDeg(u.timeHourDeg)}° · 분침 ${timeNormDeg(u.timeMinuteDeg)}°</span><br><span class="time-mini-state ${stateClass}">${state}</span></div></div>`;
+}
+export function timeClockMiniHTML(...args) {
+  return bossTimeClockMiniHTML.apply(this, args);
+}
+export function decorateTimeoraActions() {
+  if (!state_ui_battle_state.game) return;
+  const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
+    u = unitAt(state_ui_battle_state.game, t, s);
+  if (!cardHasCapability(u, "timeControl")) return;
+  for (const b of document.querySelectorAll('#actionButtons .skillbtn')) {
+    const sk = skillOf(u, b.dataset.skillId);
+    if (skillDefHasEffect(sk, "hyperClock")) {
+      const reason = timeHyperReason(u),
+        cost = b.querySelector('.cost'),
+        tiny = b.querySelector('.tiny');
+      if (cost) cost.textContent = status(u, 'traitSeal') ? '***' : 'W WorB *';
+      if (tiny) tiny.textContent = `${reason ? '160D 강화' : '100D'} · 시침 ${timeNormDeg(u.timeHourDeg)}° / 분침 ${timeNormDeg(u.timeMinuteDeg)}°`;
+    }
+    if (skillDefHasEffect(sk, "timeRecall")) {
+      const tiny = b.querySelector('.tiny');
+      if (tiny) tiny.textContent = u.usedOnce?.[sk.id] ? '전투 1회 사용 완료' : '대상의 2턴 전 자기 차례 시작 HP·상태이상 복구';
+    }
+  }
+}
+export function timeSuppressedUidSet(g) {
+  const domain = g ? timeCurrentSuppressionDomain(g) : null;
+  return new Set([...(domain?.suppressedUids || [])].map(String));
+}
+export function timeUpdateSuppressedTeamAttribute(g, uids = timeSuppressedUidSet(g)) {
+  const teams = new Set();
+  if (g && uids.size) for (const team of ["P", "A"]) {
+    for (const unit of g.teams?.[team]?.field || []) {
+      if (unit?.uid != null && !unit.dead && uids.has(String(unit.uid))) teams.add(team);
+    }
+  }
+  if (teams.size === 1) document.body.dataset.fateClockSuppressedTeam = [...teams][0];else delete document.body.dataset.fateClockSuppressedTeam;
+  return teams;
+}
+export function timeSyncSuppressionVisuals(g = typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null) {
+  const domain = g ? timeCurrentSuppressionDomain(g) : null;
+  const uids = timeSuppressedUidSet(g);
+  const cancelled = !!g && timeClockAlignmentsCancel(g);
+  timeUpdateSuppressedTeamAttribute(g, uids);
+  document.querySelectorAll('.arena .battle-unit-card[data-zone="field"],.arena .summon-card').forEach(el => {
+    const uid = el.dataset.uid || el.dataset.entityId;
+    const unit = g && uid != null ? findUnit(g, uid) : null;
+    const suppressed = uid != null && uids.has(String(uid));
+    const stopped = cardHasCapability(unit, "timeControl") && !!timeClockStopReason(g, unit);
+    el.classList.toggle('clock-trait-suppressed', suppressed);
+    el.classList.toggle('fate-clock-trait-blocked', suppressed);
+    el.toggleAttribute('data-fate-clock-trait-blocked', suppressed);
+    el.classList.toggle('clock-stopped-owner', stopped);
+    el.classList.toggle('clock-owner-active', !!domain && uid != null && domain.owns(uid) && !suppressed);
+    el.classList.toggle('clock-owner-cancelled', cancelled && cardHasCapability(unit, "timeControl") && timeIsAligned(unit) && !stopped);
+  });
+  return uids;
+}
+export function timeColorForTeamCore(g, t) {
+  return t === localTeamFor(g) ? "#ffd558" : "#58bfff";
+}
+export function timeColorForTeam(...args) {
+  return bossTimeColorForTeam.apply(this, args);
+}
+export function timeThemeForTeamCore(g, t) {
+  return t === localTeamFor(g) ? "gold" : "blue";
+}
+export function timeThemeForTeam(...args) {
+  return bossTimeThemeForTeam.apply(this, args);
+}
+export function timeClockFaceNode(theme, beforeHour, beforeMinute) {
+  const face = document.createElement('div');
+  face.className = `time-clock-face ${theme}`;
+  face.innerHTML = '<span class="time-clock-tick t0"></span><span class="time-clock-tick t1"></span><span class="time-clock-tick t2"></span><span class="time-clock-tick t3"></span><span class="time-clock-hand hour"></span><span class="time-clock-hand minute"></span><span class="time-clock-pin"></span><span class="time-clock-word">Time</span>';
+  const h = face.querySelector('.hour'),
+    m = face.querySelector('.minute');
+  h.style.transform = `translateX(-50%) rotate(${beforeHour}deg)`;
+  m.style.transform = `translateX(-50%) rotate(${beforeMinute}deg)`;
+  return face;
+}
+export function timeAnimateHand(el, from, to, duration, extraTurns = 0) {
+  const delta = ((to - from) % 360 + 360) % 360;
+  const destination = from + delta + Math.max(0, Number(extraTurns) || 0) * 360;
+  return el.animate([{
+    transform: `translateX(-50%) rotate(${from}deg)`
+  }, {
+    transform: `translateX(-50%) rotate(${destination}deg)`
+  }], {
+    duration,
+    easing: 'cubic-bezier(.12,.82,.14,1)',
+    fill: 'forwards'
+  }).finished.catch(() => {});
+}
+export function timeJitterHand(el, base, duration = 720) {
+  return el.animate([{
+    transform: `translateX(-50%) rotate(${base}deg)`
+  }, {
+    transform: `translateX(-50%) rotate(${base - 18}deg)`
+  }, {
+    transform: `translateX(-50%) rotate(${base + 16}deg)`
+  }, {
+    transform: `translateX(-50%) rotate(${base - 10}deg)`
+  }, {
+    transform: `translateX(-50%) rotate(${base + 8}deg)`
+  }, {
+    transform: `translateX(-50%) rotate(${base}deg)`
+  }], {
+    duration,
+    easing: 'cubic-bezier(.16,.68,.2,1)',
+    fill: 'forwards'
+  }).finished.catch(() => {});
+}
+export function timeTrackVisualTimers(fn) {
+  return systems.TimerManager.captureTimeouts(fn);
+}
+export function timeNextFrame() {
+  return new Promise(r => systems.TimerManager.requestAnimationFrame(() => systems.TimerManager.requestAnimationFrame(r)));
+}
+export async function timeWaitNamedAnimation(node, name, fallbackMs = 1000) {
+  await timeNextFrame();
+  const list = (node?.getAnimations?.({
+    subtree: true
+  }) || []).filter(a => !name || a.animationName === name);
+  if (list.length) {
+    await Promise.allSettled(list.map(a => a.finished.catch(() => {})));
+    return;
+  }
+  await new Promise(r => systems.TimerManager.setTimeout(r, fallbackMs));
+}
+export async function timePlayClockRotationOverlay(clockEvents) {
+  return systems.__timeClockOverlayImpl?.(clockEvents);
+}
+export async function timePlayHyperVisual(v) {
+  const arena = document.querySelector('.arena'),
+    fromEl = state_presentation_coordinates.battleEntityElement(v.uid),
+    toEl = state_presentation_coordinates.battleEntityElement(v.targetUid);
+  if (!arena || !fromEl || !toEl) return;
+  const from = state_presentation_coordinates.VfxCoordinateOwner.point(arena, fromEl),
+    to = state_presentation_coordinates.VfxCoordinateOwner.point(arena, toEl),
+    color = timeColorForTeam(state_ui_battle_state.game, v.team);
+  if (!v.enhanced) {
+    const beam = document.createElement('div');
+    beam.className = 'time-hyper-beam';
+    beam.style.setProperty('--from-x', `${from.x}px`);
+    beam.style.setProperty('--from-y', `${from.y}px`);
+    beam.style.setProperty('--beam-length', `${Math.hypot(to.x - from.x, to.y - from.y)}px`);
+    beam.style.setProperty('--beam-angle', `${Math.atan2(to.y - from.y, to.x - from.x)}rad`);
+    beam.style.setProperty('--time-color', color);
+    arena.appendChild(beam);
+    const impact = document.createElement('div');
+    impact.className = 'time-hyper-impact';
+    impact.style.setProperty('--time-color', color);
+    systems.AnimationEngine.mountViewportFx(impact, arena, to, {
+      ttlMs: 2200,
+      reason: 'time-hyper-impact'
+    });
+    await Promise.allSettled([...beam.getAnimations(), ...impact.getAnimations()].map(a => a.finished.catch(() => {})));
+    beam.remove();
+    systems.AnimationEngine.unmountViewportFx(impact);
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'time-hyper-clock';
+  wrap.style.setProperty('--time-color', color);
+  const face = timeClockFaceNode(timeThemeForTeam(state_ui_battle_state.game, v.team), 25, 300);
+  wrap.appendChild(face);
+  systems.AnimationEngine.mountViewportFx(wrap, arena, to, {
+    ttlMs: 6800,
+    reason: 'time-hyper-clock'
+  });
+  await timeWaitNamedAnimation(wrap, 'timeHyperClockAppear', 720);
+  await Promise.allSettled([timeAnimateHand(face.querySelector('.hour'), 25, 180, 2050, 10), timeAnimateHand(face.querySelector('.minute'), 300, 360, 2050, 15)]);
+  wrap.classList.add('aligned');
+  await timeWaitNamedAnimation(wrap, 'timeHyperClockAlign', 1080);
+  wrap.classList.add('explode');
+  await timeWaitNamedAnimation(wrap, 'timeHyperClockBlast', 1240);
+  systems.AnimationEngine.unmountViewportFx(wrap);
+}
+export function timePlayRecallVisual(v) {
+  const arena = document.querySelector('.arena'),
+    el = state_presentation_coordinates.battleEntityElement(v.targetUid);
+  if (!arena || !el) return Promise.resolve();
+  const node = document.createElement('div');
+  node.className = 'time-recall-fx';
+  node.style.setProperty('--time-color', timeColorForTeam(state_ui_battle_state.game, v.team));
+  systems.AnimationEngine.mountViewportFx(node, arena, state_presentation_coordinates.VfxCoordinateOwner.point(arena, el), {
+    ttlMs: 2200,
+    reason: 'time-recall'
+  });
+  return Promise.allSettled(node.getAnimations().map(a => a.finished.catch(() => {}))).then(() => systems.AnimationEngine.unmountViewportFx(node));
+}
+
+/* 시작 연출 canonical owner: exact-once Horizon, monotonic timing, 약 4초. */

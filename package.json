@@ -1,18 +1,27 @@
 {
-  "name": "cp32-trusted-baseline-external-validation",
+  "name": "megaleague",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=22"},
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "validate:static": "node tools/static-validation.js",
     "serve:candidate": "node tests/helpers/candidate-https-server.js",
     "test:candidate": "cross-env CP32_TARGET_MODE=candidate playwright test",
     "test:production": "cross-env CP32_TARGET_MODE=production playwright test",
-    "test:android": "node tests/android/android-background-player-path.js"
+    "test:android": "node tests/android/android-background-player-path.js",
+    "build": "node tools/build.js",
+    "dev": "node tools/serve.js",
+    "test": "node --test tests/unit/*.test.js"
   },
   "devDependencies": {
+    "@babel/parser": "8.0.7",
+    "@babel/traverse": "8.0.7",
     "@playwright/test": "1.61.0",
-    "cross-env": "7.0.3"
+    "cross-env": "7.0.3",
+    "esbuild": "0.28.2",
+    "globals": "17.13.0"
   }
 }
