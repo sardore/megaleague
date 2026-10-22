@@ -63,14 +63,15 @@ export function initializeUiBattleState() {
     }), Object.freeze({
       key: "defense",
       label: "방어",
-      value: combatInt(unit?.defenseMod || 0),
+      value: combatInt(visibleDefense(unit) - Number(unit?.baseDefense || 0)),
       effectiveValue: visibleDefense(unit)
-    })].filter(item => item.value !== 0));
+    })].filter(item => item.value !== 0 || item.key === "defense" && item.effectiveValue !== 0));
     const render = (unit, options = {}) => {
       const className = String(options.className || "combat-stat-chip");
       return project(unit).map(item => {
-        const title = item.key === "defense" ? `${item.label} modifier ${signed(item.value)} · 현재 최종 방어 ${combatInt(item.effectiveValue)}` : `${item.label} modifier ${signed(item.value)}`;
-        return `<span class="${escapeUIHTML(className)}" data-combat-stat-key="${item.key}" data-combat-stat-value="${item.value}" title="${escapeUIHTML(title)}">${item.label} ${signed(item.value)}</span>`;
+        const title = item.key === "defense" ? `${item.label} 변화 ${signed(item.value)} · 현재 방어 ${combatInt(item.effectiveValue)}` : `${item.label} 변화 ${signed(item.value)}`;
+        const value = item.key === "defense" && item.value === 0 ? combatInt(item.effectiveValue) : signed(item.value);
+        return `<span class="${escapeUIHTML(className)}" data-combat-stat-key="${item.key}" data-combat-stat-value="${item.value}" title="${escapeUIHTML(title)}">${item.label} ${value}</span>`;
       }).join("");
     };
     return Object.freeze({

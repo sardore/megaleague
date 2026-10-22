@@ -174,6 +174,7 @@ export function applyAuthoritativeOnlineState(msg) {
     const sameDecisionState = sameTurnSnapshot && !!state_ui_battle_state.game && onlineSnapshotEquivalentForInput(systems.__redTimeoraBossRaid.serialize(state_ui_battle_state.game), msg.state);
     if (localDecisionOpen && sameDecisionState) {
       if (revision) state_ui_deck.p2p.lastAuthoritativeRevision = revision;
+      state_ui_battle_state.game.networkRevision = Math.max(Number(state_ui_battle_state.game.networkRevision || 0), revision);
       admitAuthoritativeStateCommit({
         revision,
         kind: "authoritativeStateInputPreserved",
@@ -245,6 +246,7 @@ export function applyAuthoritativeOnlineState(msg) {
   const sameDecisionState = sameTurnSnapshot && !!state_ui_battle_state.game && onlineSnapshotEquivalentForInput(serializeOnlineGame(), msg.state);
   if (localDecisionOpen && sameDecisionState) {
     if (revision) state_ui_deck.p2p.lastAuthoritativeRevision = revision;
+    state_ui_battle_state.game.networkRevision = Math.max(Number(state_ui_battle_state.game.networkRevision || 0), revision);
     admitAuthoritativeStateCommit({
       revision,
       kind: "authoritativeStateInputPreserved",

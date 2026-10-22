@@ -69,8 +69,9 @@ try {
           p.battle.pendingSkill = {test:true,targets:[]};
           document.querySelector('#modal').classList.add('open');
         }
-        if (kind === 'same-revision') p.deck.p2p.lastAuthoritativeRevision = 7;
+        if (kind === 'same-revision') { p.deck.p2p.lastAuthoritativeRevision = 7; g.networkRevision=7; }
         const incoming = JSON.parse(p.serializeOnlineGame());
+        if (kind === 'input-preserved') incoming.networkRevision=7;
         if (kind === 'new-state') incoming.teams.P.field[0].hp -= 10;
         if (kind === 'terminal') incoming.winner = 'P';
         const msg = {type:'authoritativeState',mode:'PVP',matchId:'visual-test',revision:7,
@@ -84,11 +85,12 @@ try {
         p.snapshots.applyAuthoritativeOnlineState(msg);
         await new Promise(resolve=>setTimeout(resolve,80));
         observer.disconnect();
-        return {count,acks:sent.filter(m=>m.type === 'stateAck').map(m=>m.visualAckIds),pending:!!p.battle.pendingSkill};
+        return {count,revision:p.battle.game.networkRevision,acks:sent.filter(m=>m.type === 'stateAck').map(m=>m.visualAckIds),pending:!!p.battle.pendingSkill};
       },kind);
       assert.equal(result.count,1);
       assert.ok(result.acks.every(ids=>ids.includes('skill-1')));
       if(kind === 'input-preserved')assert.equal(result.pending,true);
+      assert.equal(result.revision,7);
     });
   }
   await check('peer coordinates are resolved in the receiving layout', async page => {
@@ -150,6 +152,10 @@ try {
       p.combat.dealDamage(g,a,t,{amount:100,crit:0},{id:'probe'},true);
       if(before-t.hp!==preview)errors.push(`preview ${preview}, actual ${before-t.hp}`);
       if(p.visibleDefense(t)!==50)errors.push(`display ${p.visibleDefense(t)}`);
+      t.defenseMod=0;
+      const auraDisplay=p.battle.CombatStatPresentationOwner.project(t).find(stat=>stat.key==='defense');
+      if(auraDisplay?.value!==20||auraDisplay?.effectiveValue!==20)errors.push('continuous aura chip missing');
+      t.defenseMod=30;
       if(p.combat.effectiveDefense(a,t,{defCap:5},false,g)!==5)errors.push('combined cap');
       if(p.combat.damageRange(g,a,t,{amount:100,crit:0,ignoreAttackMod:true},{id:'probe'}).mean!==50)errors.push('ignoreAttackMod prediction');
       return {errors,count};
