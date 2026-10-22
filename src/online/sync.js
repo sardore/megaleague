@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_online_sync = {
   NetworkEngine: undefined,
@@ -194,7 +195,7 @@ export function initializeOnlineSync() {
         run("clock-visual", () => systems.timeClockVisualSaturation?.reset?.());
         run("viewport-fx", () => state_runtime_presentation.AnimationEngine.clearViewportFx());
         if (battleId) {
-          run("battle-timers", () => state_runtime_config.TimerManager.clearScope(battleId));
+          run("battle-timers", () => TimerManager.clearScope(battleId));
           run("battle-locks", () => state_runtime_input.InputLockManager.releaseBattle(battleId));
           run("battle-transaction", () => state_runtime_transactions.ActionTransactionManager.clearBattle(battleId));
         }
@@ -216,7 +217,7 @@ export function initializeOnlineSync() {
           options: normalized,
           errors,
           battleId,
-          timers: state_runtime_config.TimerManager.stats(),
+          timers: TimerManager.stats(),
           locks: state_runtime_input.InputLockManager.snapshot(),
           chat: state_runtime_presentation.ChatEngine.debug(),
           matchmaking: matchmaking.debug()
@@ -260,12 +261,12 @@ export function initializeOnlineSync() {
     const setState = (state = "idle", label = "동기화") => {
       const current = button();
       if (!current) return false;
-      state_runtime_config.TimerManager.clear(resetButtonTimer);
+      TimerManager.clear(resetButtonTimer);
       resetButtonTimer = 0;
       current.dataset.state = state;
       current.textContent = label;
       current.title = state === "syncing" ? "공통 온라인 복구 coordinator에 authoritative resync를 요청하는 중" : "공통 온라인 복구 coordinator에 authoritative resync 요청";
-      if (state === "ok" || state === "error") resetButtonTimer = state_runtime_config.TimerManager.setTimeout(() => {
+      if (state === "ok" || state === "error") resetButtonTimer = TimerManager.setTimeout(() => {
         const live = button();
         if (live) {
           live.dataset.state = "idle";
@@ -367,7 +368,7 @@ export function initializeOnlineSync() {
     };
     const reset = reason => {
       activeSync = null;
-      state_runtime_config.TimerManager.clear(resetButtonTimer);
+      TimerManager.clear(resetButtonTimer);
       resetButtonTimer = 0;
       const current = button();
       if (current) {

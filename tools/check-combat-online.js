@@ -18,14 +18,52 @@ const failures = [];
 async function check(name, run) {
   const page = await browser.newPage();
   try {
-    await page.goto(`http://127.0.0.1:${server.address().port}`);
-    await page.waitForFunction(() => window.probe);
-    await run(page);
+    const pageFailure = new Promise((_, reject) => page.once('pageerror', reject));
+    await Promise.race([(async () => {
+      await page.goto(`http://127.0.0.1:${server.address().port}`);
+      await page.waitForFunction(() => window.probe);
+      await run(page);
+    })(), pageFailure]);
     console.log(`PASS ${name}`);
-  } catch (error) { failures.push(name); console.error(`FAIL ${name}: ${error.message}`); }
+  } catch (error) { failures.push(name); console.error(`FAIL ${name}: ${error.stack || error.message}`); if (process.env.MEGA_FAIL_FAST) throw error; }
   finally { await page.close(); }
 }
 try {
+  await check('raid uses its own card, shared clock and battle presentation', async page => {
+    const result = await page.evaluate(() => {
+      const p=probe, g=p.systems.__redTimeoraBossRaid.createGame(['wayli','hermit','ruby','kingprawn']);
+      p.battle.game=g; const boss=g.teams.A.field[0];
+      p.render();
+      return {id:p.card(boss).id, skills:p.card(boss).skills.map(s=>s.id),clock:p.timeClockMiniHTML(boss,g),tooltip:p.cardTooltipHTML(boss),errors:p.systems.__megaRecoveredErrors};
+    });
+    assert.equal(result.id,'red_timeora');
+    assert.ok(result.skills.includes('bossTimeStrike'));
+    assert.match(result.clock,/boss/);
+    assert.match(result.tooltip,/공용|동기화/);
+  });
+  await check('raid hyperclock consumes one guard and emits a red clock effect', async page => {
+    const result = await page.evaluate(() => {
+      const p=probe,g=p.systems.__redTimeoraBossRaid.createGame(['wayli','hermit','ruby','kingprawn']);
+      p.battle.game=g;p.battle.visualEvents=[];g.bossRaid.hyperGuard=1;
+      const actor=g.teams.A.field[0],target=g.teams.P.field[0],skill=p.card(actor).skills.find(s=>s.id==='hyperClock');
+      const hp=target.hp;
+      p.effectApply(g,actor,target,{type:'hyperClock'},skill,{team:'A',slot:0,sim:false,action:{}});
+      return {loss:hp-target.hp,guard:g.bossRaid.hyperGuard,event:p.battle.visualEvents.find(e=>e.type==='hyperClockFx')};
+    });
+    assert.equal(result.guard,0);assert.equal(result.loss,40);
+    assert.equal(result.event.bossRed,true);assert.equal(result.event.team,'__bossRed');
+  });
+  await check('raid defeat grants one reward through the common death path', async page => {
+    const result = await page.evaluate(() => {
+      const p=probe,g=p.systems.__redTimeoraBossRaid.createGame(['wayli','hermit','ruby','kingprawn']);
+      const boss=g.teams.A.field[0];boss.hp=0;
+      p.combat.checkDeath(g,boss,g.teams.P.field[0]);
+      p.combat.checkDeath(g,boss,g.teams.P.field[0]);
+      return {dead:boss.dead,kills:g.bossRaid.kills,rewards:g.pendingTraitChoices.filter(c=>c.kind==='bossReward')};
+    });
+    assert.equal(result.dead,true);assert.equal(result.kills,1);
+    assert.equal(result.rewards.length,1);assert.equal(result.rewards[0].options.length,3);
+  });
   await check('combat uses the supplied battle, independent of the displayed battle', async page => {
     const result = await page.evaluate(() => {
       const p = window.probe, api = window.Megaleague;
@@ -120,7 +158,7 @@ try {
       p.battle.game.pendingClockTurnAdvance={teamId:'P',slotIndex:0,actorEntityId:'u0'};
       const revision=p.commands.onlineAuthoritativeRevision;
       p.battle.visualEvents=[{type:'skillFx',uid:'u0',targetUid:'u4',kind:'projectile',skillName:'물총세례'}];
-      p.afterActionCore();
+      p.afterAction();
       const packet=sent.find(m=>m.type==='authoritativeState');
       return {count:packet?.visuals?.length||0,revision:packet?.revision,before:revision,remaining:p.battle.visualEvents.length};
     });

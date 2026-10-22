@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_features_genocider = {
   GENO_CLIENT_VERSION: undefined,
@@ -12,11 +13,9 @@ import { dealDamage, heal, queueVisual, traitsActive } from "../engine/combat.js
 import { energyStore, normalizeEnergy, reqAcceptsCounts, status, transformedSkillReq } from "../engine/energy.js";
 import { actionSkillHasEffect, card, cardCapability, firstSkillByEffect, skillDefHasEffect, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "../engine/entities.js";
 import { advanceDualOrEnd, recordPaidSkill } from "../engine/execution.js";
-import { policySlots, PASS } from "../engine/policies.js";
 import { pointForUid } from "./summons.js";
 import { log, queueCombatNotice } from "../presentation/audio.js";
 import { state_presentation_coordinates } from "../presentation/coordinates.js";
-import { systems } from "../runtime/systems.js";
 import { state_ui_action_panel } from "../ui/action-panel.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
 import { state_ui_cards } from "../ui/cards.js";
@@ -53,63 +52,6 @@ export function initializeFeaturesGenocider() {
   /* R49 generic reactive-energy trait lifecycle.
      A card opts in only through card.reactiveEnergyMaxHp; mutation owners never know card ids. */
   state_features_genocider.reactiveEnergyCurrentGame = null;
-  policySlots.legal7 = {
-    transform(currentActions, g, t, s) {
-      let actions = currentActions,
-        u = unitAt(g, t, s);
-      if (!u || u.dead || !reactiveEnergyRule(u)) return actions;
-      actions = actions.filter(a => !actionSkillHasEffect(a, "genociderDisplosion"));
-      if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal") || u.skillSeals?.[skillIdByEffect(u, "genociderDisplosion")]) return actions;
-      for (const target of enemyTargets(g, t)) {
-        for (let extra = 0; extra <= 4; extra += .5) {
-          const picks = genoFindDisplosionPicks(g, t, u, +extra.toFixed(1));
-          if (!picks) continue;
-          actions.push({
-            type: "skill",
-            skill: skillIdByEffectGlobal("genociderDisplosion"),
-            target,
-            displayCost: "B+",
-            displosionExtraB: +extra.toFixed(1),
-            genociderPayment: {
-              picks
-            },
-            label: `디스플로전 · 추가 B ${energyAmountText(extra)} · 기준 위력 ${combatInt(extra * 80)}D`
-          });
-        }
-      }
-      for (const a of actions) if (actionSkillHasEffect(a, "genociderSlashClaw")) a.displayCost = "*";
-      return actions;
-    }
-  };
-  policySlots.effect7 = function (g, actor, target, e, skill, ctx) {
-    if (e.type === "genociderSlashClaw") {
-      const snapshot = Number(actor._genociderSlashSnapshot ?? reactiveEnergyAmount(actor)),
-        amount = combatInt(20 + snapshot * 10);
-      let total = 0;
-      for (let hit = 1; hit <= 2; hit++) {
-        if (!target || target.dead || actor.dead) break;
-        const dealtHit = dealDamage(g, actor, target, {
-          amount
-        }, {
-          ...skill,
-          name: `슬래시클로 ${hit}타`
-        }, ctx?.sim);
-        log(g, `${actor.name}의 슬래시클로 ${hit}타 → ${dealtHit}D.`);
-        total += dealtHit;
-        queueVisual(g, {
-          type: "genociderClawFx",
-          uid: actor.uid,
-          targetUid: target.uid,
-          hit,
-          actualAmount: dealtHit,
-          rawAmount: amount
-        });
-      }
-      return total;
-    }
-    if (e.type === "genociderDisplosion") return 0;
-    return PASS;
-  };
   state_ui_action_panel.ActionRenderEngine.registerDecorator("genocider", 400, () => decorateGenociderActions());
   state_features_genocider.elixianCardNerf = state_catalog_cards.CARDS.find(c => c.id === "elixian");
   if (state_features_genocider.elixianCardNerf) {
@@ -542,7 +484,7 @@ export function playGenociderVisual(v) {
   if (v?.type === "genociderAbsorbFx") {
     if (!actor) return;
     const node = createGenoSiphonParticles(actor, Math.max(.5, Number(v.amount || 0)), "geno-devour-absorb");
-    systems.TimerManager.setTimeout(() => node?.remove(), 900);
+    TimerManager.setTimeout(() => node?.remove(), 900);
     state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 900);
     return;
   }
@@ -560,9 +502,9 @@ export function playGenociderVisual(v) {
         node.appendChild(line);
       }
       target.appendChild(node);
-      systems.TimerManager.setTimeout(() => node.remove(), 760);
+      TimerManager.setTimeout(() => node.remove(), 760);
     };
-    systems.TimerManager.setTimeout(show, v.hit === 2 ? 170 : 0);
+    TimerManager.setTimeout(show, v.hit === 2 ? 170 : 0);
     state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 1120);
     return;
   }
@@ -577,8 +519,8 @@ export function playGenociderVisual(v) {
     const totalLife = Math.min(3000, 1380 + power * 520);
     if (actor && actorPoint && arena) {
       const siphon = createGenoSiphonParticles(actor, power + 1.1, "geno-displosion-siphon");
-      systems.TimerManager.setTimeout(() => siphon?.remove(), siphonLife);
-      systems.TimerManager.setTimeout(() => {
+      TimerManager.setTimeout(() => siphon?.remove(), siphonLife);
+      TimerManager.setTimeout(() => {
         if (!arena.isConnected || !actorPoint) return;
         const vortex = document.createElement("div");
         vortex.className = "geno-displosion-vortex";
@@ -586,10 +528,10 @@ export function playGenociderVisual(v) {
         vortex.style.setProperty("--v-time", `${Math.min(1.95, 1.05 + power * .28)}s`);
         placeNode(vortex, actorPoint);
         arena.appendChild(vortex);
-        systems.TimerManager.setTimeout(() => vortex.remove(), vortexLife);
+        TimerManager.setTimeout(() => vortex.remove(), vortexLife);
       }, 180);
     }
-    systems.TimerManager.setTimeout(() => {
+    TimerManager.setTimeout(() => {
       if (!arena || !targetPoint) return;
       const impact = document.createElement("div");
       impact.className = "geno-displosion-impact";
@@ -606,10 +548,65 @@ export function playGenociderVisual(v) {
         impact.appendChild(shard);
       }
       arena.appendChild(impact);
-      systems.TimerManager.setTimeout(() => impact.remove(), impactLife);
+      TimerManager.setTimeout(() => impact.remove(), impactLife);
     }, Math.min(1600, 520 + power * 260));
     state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, totalLife);
   }
 }
 
 /* 엘릭시안: 기본 상시 회복량 증폭만 제거. 아로마필드 회복 보정은 유지한다. */
+
+export function listReactiveEnergyActions(g, t, s) {
+  let actions = [],
+    u = unitAt(g, t, s);
+  if (!u || u.dead || !reactiveEnergyRule(u)) return actions;
+  if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal") || u.skillSeals?.[skillIdByEffect(u, "genociderDisplosion")]) return actions;
+  for (const target of enemyTargets(g, t)) {
+    for (let extra = 0; extra <= 4; extra += .5) {
+      const picks = genoFindDisplosionPicks(g, t, u, +extra.toFixed(1));
+      if (!picks) continue;
+      actions.push({
+        type: "skill",
+        skill: skillIdByEffectGlobal("genociderDisplosion"),
+        target,
+        displayCost: "B+",
+        displosionExtraB: +extra.toFixed(1),
+        genociderPayment: {
+          picks
+        },
+        label: `디스플로전 · 추가 B ${energyAmountText(extra)} · 기준 위력 ${combatInt(extra * 80)}D`
+      });
+    }
+  }
+  for (const a of actions) if (actionSkillHasEffect(a, "genociderSlashClaw")) a.displayCost = "*";
+  return actions;
+}
+export function applyReactiveEnergyEffect(g, actor, target, e, skill, ctx) {
+  if (e.type === "genociderSlashClaw") {
+    const snapshot = Number(actor._genociderSlashSnapshot ?? reactiveEnergyAmount(actor)),
+      amount = combatInt(20 + snapshot * 10);
+    let total = 0;
+    for (let hit = 1; hit <= 2; hit++) {
+      if (!target || target.dead || actor.dead) break;
+      const dealtHit = dealDamage(g, actor, target, {
+        amount
+      }, {
+        ...skill,
+        name: `슬래시클로 ${hit}타`
+      }, ctx?.sim);
+      log(g, `${actor.name}의 슬래시클로 ${hit}타 → ${dealtHit}D.`);
+      total += dealtHit;
+      queueVisual(g, {
+        type: "genociderClawFx",
+        uid: actor.uid,
+        targetUid: target.uid,
+        hit,
+        actualAmount: dealtHit,
+        rawAmount: amount
+      });
+    }
+    return total;
+  }
+  if (e.type === "genociderDisplosion") return 0;
+  return;
+}

@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_presentation_coordinates = {
   RenderedBattleEntityMapOwner: undefined,
@@ -148,7 +149,10 @@ export function initializePresentationCoordinates() {
     };
     const captureInto = event => {
       const snapshot = resolveByIdentity(event);
-      if (snapshot) event.vfxAnchorSnapshot = { ...snapshot, clientId };
+      if (snapshot) event.vfxAnchorSnapshot = {
+        ...snapshot,
+        clientId
+      };
       return snapshot;
     };
     const resolveEvent = (event, options) => event?.vfxAnchorSnapshot?.clientId === clientId ? event.vfxAnchorSnapshot : resolveByIdentity(event, options);
@@ -272,7 +276,7 @@ export function initializePresentationCoordinates() {
         removedAt: null,
         status: "presented"
       });
-      systems.TimerManager.setTimeout(() => {
+      TimerManager.setTimeout(() => {
         node.remove();
         if (!host.children.length) host.remove();
         record.removedAt = performance.now();
@@ -294,7 +298,7 @@ export function visualNode(parent, cls, text = "", life = 900) {
   n.className = cls;
   n.textContent = normalizeGameNumberText(text);
   parent.appendChild(n);
-  systems.TimerManager.setTimeout(() => n.remove(), life);
+  TimerManager.setTimeout(() => n.remove(), life);
   return n;
 }
 export function battlefieldCardForUid(g, uid) {
@@ -342,7 +346,7 @@ export function showCombatNotice(v) {
   node.dataset.effectEventId = eventId;
   stack.appendChild(node);
   while (stack.children.length > 5) stack.firstElementChild?.remove();
-  systems.TimerManager.setTimeout(() => {
+  TimerManager.setTimeout(() => {
     if (node.dataset.effectEventId === eventId) node.remove();
     if (!stack.children.length) stack.remove();
   }, 2200);
@@ -360,13 +364,13 @@ export function positionFx(node, point) {
 export function playInstantUnitPopup(v, delay = 0) {
   if (!v || !["damage", "heal", "directHp"].includes(v.type)) return false;
   if (["damage", "directHp"].includes(v.type)) {
-    systems.TimerManager.setTimeout(() => state_presentation_coordinates.DamagePresentationAnchorOwner.present(v), Math.max(0, Number(delay) || 0));
+    TimerManager.setTimeout(() => state_presentation_coordinates.DamagePresentationAnchorOwner.present(v), Math.max(0, Number(delay) || 0));
     return true;
   }
   const recipientEntityId = v.recipientEntityId || v.uid || null;
   const host = battlefieldCardForUid(state_ui_battle_state.game, recipientEntityId);
   if (!host) return false;
-  systems.TimerManager.setTimeout(() => {
+  TimerManager.setTimeout(() => {
     const currentHost = battlefieldCardForUid(state_ui_battle_state.game, recipientEntityId);
     if (!currentHost) return;
     const popupHost = currentHost.querySelector(":scope > .character-effect-popup-layer") || currentHost;

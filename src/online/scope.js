@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 import { sessionRuntime } from "./session-model.js";
 import { systems } from "../runtime/systems.js";
 export class SessionScope {
@@ -63,7 +64,7 @@ export class SessionScope {
     const phase = options.phase || "SESSION",
       capture = this.capture(label, phase);
     let id = 0;
-    id = systems.TimerManager.setTimeout(() => {
+    id = TimerManager.setTimeout(() => {
       this.resources.delete(id);
       this.guard(capture, fn)();
     }, Math.max(0, Number(delay) || 0), {
@@ -76,7 +77,7 @@ export class SessionScope {
       kind: "timeout",
       phase,
       label,
-      cancel: () => systems.TimerManager.clear(id)
+      cancel: () => TimerManager.clear(id)
     });
     return id;
   }
@@ -84,7 +85,7 @@ export class SessionScope {
     if (this.invalidated || this.closed) return 0;
     const phase = options.phase || "SESSION",
       capture = this.capture(label, phase);
-    const id = systems.TimerManager.setInterval(this.guard(capture, fn), Math.max(16, Number(delay) || 0), {
+    const id = TimerManager.setInterval(this.guard(capture, fn), Math.max(16, Number(delay) || 0), {
       scope: `online-session:${this.generation}`,
       reason: label,
       sessionManaged: true,
@@ -94,7 +95,7 @@ export class SessionScope {
       kind: "interval",
       phase,
       label,
-      cancel: () => systems.TimerManager.clear(id)
+      cancel: () => TimerManager.clear(id)
     });
     return id;
   }
@@ -102,7 +103,7 @@ export class SessionScope {
     if (this.invalidated || this.closed) return 0;
     const phase = options.phase || this.phase,
       capture = this.capture(label, phase);
-    const id = systems.TimerManager.requestAnimationFrame(() => {
+    const id = TimerManager.requestAnimationFrame(() => {
       this.resources.delete(id);
       this.guard(capture, fn)();
     }, {
@@ -115,7 +116,7 @@ export class SessionScope {
       kind: "raf",
       phase,
       label,
-      cancel: () => systems.TimerManager.clear(id)
+      cancel: () => TimerManager.clear(id)
     });
     return id;
   }
@@ -125,7 +126,7 @@ export class SessionScope {
       kind: `adopted-${kind}`,
       phase: phase || this.phase,
       label: String(label),
-      cancel: () => systems.TimerManager.clear(id)
+      cancel: () => TimerManager.clear(id)
     });
     return true;
   }

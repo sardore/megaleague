@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 import { state_engine_actions } from "../engine/actions.js";
 import { findUnit } from "../engine/combat.js";
 import { transformedSkillReq } from "../engine/energy.js";
@@ -110,8 +111,8 @@ export function initializePresentationIntroductions() {
       anchor = el;
       startX = e.clientX;
       startY = e.clientY;
-      systems.TimerManager.clear(timer);
-      timer = systems.TimerManager.setTimeout(() => {
+      TimerManager.clear(timer);
+      timer = TimerManager.setTimeout(() => {
         showCardTooltip(el, true);
         state_ui_cards.cardTooltipState.suppressClickUntil = Date.now() + 800;
         state_ui_cards.cardTooltipState.suppressCard = el;
@@ -120,12 +121,12 @@ export function initializePresentationIntroductions() {
     }, true);
     document.addEventListener('pointermove', e => {
       if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > 9) {
-        systems.TimerManager.clear(timer);
+        TimerManager.clear(timer);
         timer = 0;
       }
     }, true);
     for (const name of ['pointerup', 'pointercancel']) document.addEventListener(name, () => {
-      systems.TimerManager.clear(timer);
+      TimerManager.clear(timer);
       timer = 0;
       anchor = null;
     }, true);

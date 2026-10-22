@@ -1,5 +1,5 @@
+import { presentRaidReward, scheduleRaidTurn, commitRaidActionPresentation } from "../features/boss-raid.js";
 import { specIsHostMatch, specStartHostBroadcast } from '../features/spectators.js';
-import { bossProcessPendingTraitChoice, bossAfterAction, bossScheduleAI } from "../features/boss-raid.js";
 import { aiReason, maskedStateFor } from "../ai/search.js";
 import { chooseAI } from "../ai/specialists.js";
 import { legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
@@ -204,7 +204,9 @@ export function playerChooseTarget(tar) {
   feature?.afterTarget?.();
   return result;
 }
-export function processPendingTraitChoiceCore() {
+export function processPendingTraitChoice() {
+  const raidReward = state_ui_battle_state.game?.pendingTraitChoices?.[0];
+  if (raidReward?.kind === "bossReward") return presentRaidReward(raidReward);
   if (!state_ui_battle_state.game?.pendingTraitChoices?.length) return false;
   const pending = state_ui_battle_state.game.pendingTraitChoices[0];
   if (pending?.kind === "deepMind") {
@@ -291,9 +293,6 @@ export function processPendingTraitChoiceCore() {
   openChoice(`<h2>플래피스 · 에너지 직조</h2><p>${q.reason}. 특성을 발동할까요?</p>`, items);
   return true;
 }
-export function processPendingTraitChoice(...args) {
-  return bossProcessPendingTraitChoice.apply(this, args);
-}
 export function openBloomHealSlider(q) {
   let units = q.targetUids.map(uid => findUnit(state_ui_battle_state.game, uid)).filter(x => x && !x.dead),
     pool = q.pool;
@@ -337,7 +336,8 @@ export function openBloomHealSlider(q) {
   };
   state_ui_battle_state.$("#modal").classList.add("open");
 }
-export function afterActionCore() {
+export function afterAction() {
+  if (state_ui_battle_state.game?.bossRaid) return commitRaidActionPresentation();
   systems.__interactionChoiceR25?.clearTarget?.();
   if ((state_ui_battle_state.game?.mode === "online" || state_ui_battle_state.game?.bossRaid?.online) && state_ui_deck.p2p?.role === "guest" && state_online_commands.OnlineActionAdmissionOwner.hasPending()) {
     state_ui_battle_state.pendingSkill = null;
@@ -371,10 +371,8 @@ export function afterActionCore() {
   } else render();
   if (!processPendingTraitChoice()) scheduleAI();
 }
-export function afterAction(...args) {
-  return bossAfterAction.apply(this, args);
-}
-export function scheduleAICore() {
+export function scheduleAI() {
+  if (state_ui_battle_state.game?.bossRaid) return scheduleRaidTurn();
   if (state_features_timeora.timeInputLocked || state_ui_battle_state.game?.pendingClockTurnAdvance) return;
   if (state_ui_battle_state.game?._timeAwaitingNextAiAction) timeMarkTimeline(state_ui_battle_state.game, "aiPlanningStarted", {
     actorEntityId: state_ui_battle_state.game.activeEntityId || null
@@ -388,7 +386,7 @@ export function scheduleAICore() {
     state_ui_action_panel.ActionPanelConvergenceOwner.request("automatic-start");
     const summonToken = state_ui_battle_state.game.token,
       summonUid = pendingSummon.u.uid;
-    scheduleLocalAutoTurnTimer("manual-summon-ai", true ? Math.max(Number(state_ui_battle_state.$("#speed")?.value || 900), state_ui_battle_state.visualHoldMs) : 0, () => {
+    scheduleLocalAutoTurnTimer("manual-summon-ai", (Math.max(Number(state_ui_battle_state.$("#speed")?.value || 900), state_ui_battle_state.visualHoldMs)), () => {
       if (!state_ui_battle_state.game || state_ui_battle_state.game.token !== summonToken) {
         state_ui_battle_state.busy = false;
         return;
@@ -488,7 +486,7 @@ export function scheduleAICore() {
       }
       afterAction();
     };
-    const delay = true ? Math.max(Number(state_ui_battle_state.$("#speed")?.value || 900), state_ui_battle_state.visualHoldMs) : 0;
+    const delay = (Math.max(Number(state_ui_battle_state.$("#speed")?.value || 900), state_ui_battle_state.visualHoldMs));
     const scope = systems.OnlineRuntime?.sessionScope;
     if (!scope || scope.closed) {
       state_ui_battle_state.onlineAutoCommandOwner = null;
@@ -504,7 +502,7 @@ export function scheduleAICore() {
   if (t === "P" && state_ui_battle_state.game.mode === "human" && !forced) return;
   state_ui_battle_state.busy = true;
   state_ui_action_panel.ActionPanelConvergenceOwner.request("automatic-dispatch");
-  scheduleLocalAutoTurnTimer(forced ? `scheduled:${forcedAction?.type || "forced"}` : "ai-turn", true ? Math.max(Number(state_ui_battle_state.$("#speed")?.value || 900), state_ui_battle_state.visualHoldMs) : 0, () => {
+  scheduleLocalAutoTurnTimer(forced ? `scheduled:${forcedAction?.type || "forced"}` : "ai-turn", (Math.max(Number(state_ui_battle_state.$("#speed")?.value || 900), state_ui_battle_state.visualHoldMs)), () => {
     if (!state_ui_battle_state.game || state_ui_battle_state.game.token !== token || state_ui_battle_state.game.turnSerial !== serial) {
       state_ui_battle_state.busy = false;
       return;
@@ -554,9 +552,6 @@ export function scheduleAICore() {
       scheduleAI();
     }
   });
-}
-export function scheduleAI(...args) {
-  return bossScheduleAI.apply(this, args);
 }
 export function startBattle(seedOverride, onlineConfig = null) {
   const isOnline = onlineConfig?.mode === "online";
@@ -652,6 +647,5 @@ export function startBattle(seedOverride, onlineConfig = null) {
     const timerId = systems.OnlineRuntime?.sessionScope?.setTimeout?.(specStartHostBroadcast, 120, "spectator-host-start-broadcast", {
       phase: "IN_BATTLE"
     });
-
   }
 }

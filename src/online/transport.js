@@ -5,7 +5,6 @@ export const state_online_transport = {
 };
 import { state_runtime_entities } from "../runtime/entities.js";
 import { state_runtime_state } from "../runtime/state.js";
-import { policySlots } from "../engine/policies.js";
 import { p2pSend, registerOnlineConnectionRoute } from "./connection.js";
 import { log } from "../presentation/audio.js";
 import { systems } from "../runtime/systems.js";
@@ -32,13 +31,6 @@ export function initializeOnlineTransport() {
       debug
     });
   })();
-  policySlots.render5 = {
-    transform(currentResult) {
-      const r = currentResult;
-      ensureOnlineLeaveButton();
-      return r;
-    }
-  };
   registerOnlineConnectionRoute("onlineHeartbeat", "online-transport", handleOnlineHeartbeatPacket, 50);
   registerOnlineConnectionRoute("surrender", "online-result", handleOnlineSurrenderPacket, 50);
   registerOnlineConnectionRoute("onlineResult", "online-result", handleOnlineResultPacket, 50);

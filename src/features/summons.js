@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_features_summons = {
   SUMMON_DEFS: undefined
@@ -8,9 +9,8 @@ import { other, unitAt } from "../engine/actions.js";
 import { applyStatus, dealDamage, findUnit, nonAttackDamage, queueVisual, teamOf, traitsActive } from "../engine/combat.js";
 import { cloneRngForPreview, drawRandomEnergyColor, naturalColors, registerScheduledAction } from "../engine/effects.js";
 import { allEnergy, bestEnergyReplacementPlan, canPayAction, energyStore, gainEnergy, notifyReactiveEnergyMutation, status, totalEnergy } from "../engine/energy.js";
-import { actionSkillHasEffect, card, cardCapability, cardHasCapability, firstSkillByEffect, makeUnit, registerRuntimeSkillContainer, skillHasTag, skillIdByEffect, skillIdByEffectGlobal, state_engine_entities } from "../engine/entities.js";
+import { card, cardCapability, cardHasCapability, firstSkillByEffect, makeUnit, registerRuntimeSkillContainer, skillIdByEffect, skillIdByEffectGlobal, state_engine_entities } from "../engine/entities.js";
 import { advanceDualOrEnd } from "../engine/execution.js";
-import { policySlots, PASS } from "../engine/policies.js";
 import { clearColorEnergy, colorAmount, energyStoresWithLabels, grantEnergyWithDiscard } from "./character-rules.js";
 import { ensurePendingSummonIdentity, normalizePendingSummonTurns } from "../online/emotes.js";
 import { log } from "../presentation/audio.js";
@@ -92,179 +92,6 @@ export function initializeFeaturesSummons() {
     }
   };
   registerRuntimeSkillContainer(state_features_summons.SUMMON_DEFS);
-  policySlots.legal4 = {
-    transform(currentActions, g, t, s) {
-      let a = currentActions,
-        u = unitAt(g, t, s);
-      if (!u || u.dead) return a;
-      if (!!firstSkillByEffect(u, "junglesVineWhip")) {
-        a = a.filter(x => !(skillHasTag(u, x.skill, "summon") && summonLimitReached(g, t, u)));
-        const fieldOnly = a.filter(x => x.type !== "skill" || !actionSkillHasEffect(x, "junglesVineWhip"));
-        const sk = firstSkillByEffect(u, "junglesVineWhip");
-        if (sk && !u.skillSeals?.[skillIdByEffect(u, "junglesVineWhip")] && canPayAction(g, t, u, sk.cost)) for (const target of summonTargets(g, t)) fieldOnly.push({
-          type: "skill",
-          skill: skillIdByEffectGlobal("junglesVineWhip"),
-          target: targetRef(g, other(t), target),
-          label: sk.name
-        });
-        a = fieldOnly;
-      }
-      if (!!firstSkillByEffect(u, "circuitVoltageBurst") || !!firstSkillByEffect(u, "circuitArmsBlade")) {
-        a = a.filter(x => !actionSkillHasEffect(x, "circuitVoltageBurst") && !actionSkillHasEffect(x, "circuitArmsBlade"));
-        const enemies = summonTargets(g, t),
-          arms = firstSkillByEffect(u, "circuitArmsBlade"),
-          volt = firstSkillByEffect(u, "circuitVoltageBurst");
-        if (arms && !u.skillSeals?.[skillIdByEffect(u, "circuitArmsBlade")] && canPayAction(g, t, u, arms.cost)) for (const target of enemies) a.push({
-          type: "skill",
-          skill: skillIdByEffectGlobal("circuitArmsBlade"),
-          target: targetRef(g, other(t), target),
-          label: arms.name
-        });
-        if (volt && !u.skillSeals?.[skillIdByEffect(u, "circuitVoltageBurst")] && countCompleteW(u) >= 1) for (const target of enemies) a.push({
-          type: "skill",
-          skill: skillIdByEffectGlobal("circuitVoltageBurst"),
-          target: targetRef(g, other(t), target),
-          voltageN: countCompleteW(u),
-          label: volt.name
-        });
-      }
-      if (!!firstSkillByEffect(u, "abyssVortex")) {
-        a = a.filter(x => !actionSkillHasEffect(x, "abyssVortex"));
-        const sk = firstSkillByEffect(u, "abyssVortex");
-        if (sk && !u.skillSeals?.[skillIdByEffect(u, "abyssVortex")] && canPayAction(g, t, u, sk.cost)) {
-          const fields = [...g.teams.P.field, ...g.teams.A.field].filter(x => x && !x.dead);
-          for (let i = 0; i < fields.length; i++) for (let j = i + 1; j < fields.length; j++) a.push({
-            type: "skill",
-            skill: skillIdByEffectGlobal("abyssVortex"),
-            target: {
-              team: t,
-              slot: s,
-              uid: u.uid
-            },
-            vortexTargets: [fields[i].uid, fields[j].uid],
-            vortexSwaps: [],
-            label: sk.name
-          });
-        }
-      }
-      return a;
-    }
-  };
-  policySlots.effect3 = function (g, actor, target, e, skill, ctx) {
-    const t = ctx?.team || teamOf(g, actor),
-      a = ctx?.action || {};
-    if (e.type === "abyssVortex") return applyRestrictedVortex(g, actor, a);
-    if (e.type === "suctionPad" && circuitBlocksExternal(target, actor)) {
-      const allied = teamOf(g, target) === t;
-      if (allied) {
-        const d = nonAttackDamage(g, target, 20, "흡착 발판");
-      }
-      log(g, `${target.name} 특성 · 프레그먼트: 흡착 발판의 R 부여 차단.`);
-      return 0;
-    }
-    if (e.type === "junglesVineWhip") {
-      const d = dealDamage(g, actor, target, {
-        amount: 20
-      }, skill, ctx.sim);
-      grantEnergyWithDiscard(g, actor, "W", .5, a.wDiscardSpecs || null);
-      const first = !actor.vineWhipFirstUsed,
-        afflicted = Object.keys(actor.statuses || {}).some(k => status(actor, k) > 0);
-      actor.vineWhipFirstUsed = true;
-      let stolen = 0;
-      if (first || afflicted) stolen = stealRecentEnergy(g, actor, target);
-      queueVisual(g, {
-        type: "jcVineFx",
-        uid: actor.uid,
-        targetUid: target.uid,
-        stolen
-      });
-      return d;
-    }
-    if (state_features_summons.SUMMON_DEFS[e.type]) return summonUnit(g, t, actor, e.type);
-    if (e.type === "circuitRoundKick") {
-      let total = 0,
-        targets = allBattleUnits(g, other(t), true);
-      for (const x of targets) total += dealDamage(g, actor, x, {
-        amount: 30
-      }, skill, ctx.sim);
-      queueVisual(g, {
-        type: "circuitRoundFx",
-        uid: actor.uid,
-        targetUids: targets.map(x => x.uid)
-      });
-      return total;
-    }
-    if (e.type === "circuitArmsBlade") {
-      const amount = target.maxHp * .25,
-        d = dealDamage(g, actor, target, {
-          amount
-        }, skill, ctx.sim);
-      if (!target.dead) applyStatus(g, target, "paralyze", 1, actor);
-      for (const c of ["B", "R"]) {
-        grantEnergyWithDiscard(g, actor, c, 1);
-      }
-      queueVisual(g, {
-        type: "circuitArmsFx",
-        uid: actor.uid,
-        targetUid: target.uid,
-        defense: fragmentDefense(actor)
-      });
-      return d;
-    }
-    if (e.type === "circuitVoltageBurst") {
-      const n = Math.max(1, a.voltageN || countCompleteW(actor));
-      if (n <= 1) return resolveVoltageBurst(g, t, actor, target, skill, ctx.sim);
-      registerScheduledAction(g, actor, {
-        kind: "voltageBurst",
-        targetTeam: teamOf(g, target),
-        targetSlot: targetRef(g, teamOf(g, target), target).slot,
-        targetUid: target.uid,
-        remaining: n - 1,
-        initialN: n
-      });
-      queueVisual(g, {
-        type: "voltagePrepareFx",
-        uid: actor.uid,
-        rings: 1,
-        total: n
-      });
-      log(g, `${actor.name}: 볼티지버스트 준비 1/${n}.`);
-      return 0;
-    }
-    return PASS;
-  };
-  policySlots.render2 = {
-    transform(currentResult) {
-      const r = currentResult;
-      if (!state_ui_battle_state.game) return r;
-      for (const t of ["P", "A"]) {
-        const pre = displaySideFor(state_ui_battle_state.game, t),
-          side = document.querySelector(`.${pre}-side`),
-          list = (state_ui_battle_state.game.teams[t].summons || []).filter(u => u && !u.dead);
-        let zone = side?.querySelector('.summon-zone');
-        if (!list.length) {
-          zone?.remove();
-          continue;
-        }
-        if (!zone && side) {
-          zone = document.createElement('div');
-          zone.className = 'summon-zone';
-          const slots = side.querySelector('.slots');
-          slots?.insertAdjacentElement('afterend', zone);
-        }
-        if (zone) zone.innerHTML = `<div class="summon-zone-title">소환물 ${list.length}/2</div><div class="summon-list">${list.map(u => summonPanelHTML(state_ui_battle_state.game, t, u)).join('')}</div>`;
-      }
-      if (state_ui_battle_state.pendingSkill) for (const tar of state_ui_battle_state.pendingSkill.targets || []) {
-        const uid = tar?.uid ? CSS.escape(String(tar.uid)) : "";
-        const el = uid ? document.querySelector(`.card[data-zone="field"][data-uid="${uid}"],.summon-panel[data-uid="${uid}"]`) : document.querySelector(`.card[data-zone="field"][data-team="${tar.team}"][data-slot="${tar.slot}"]`);
-        if (el) {
-          el.classList.add('targetable');
-          el.onclick = () => playerChooseTarget(tar);
-        }
-      }
-      return r;
-    }
-  };
 }
 export function fragmentDefense(u, g) {
   return cardHasCapability(u, "fragmentTrait") && traitsActive(u, g) ? Math.round((colorAmount(u, "R") + colorAmount(u, "B")) * 10) : 0;
@@ -587,13 +414,13 @@ export function playJcVisual(v) {
     orb?.style.setProperty('--from-y', `${from.y}px`);
     orb?.style.setProperty('--to-x', `${to.x}px`);
     orb?.style.setProperty('--to-y', `${to.y}px`);
-    systems.TimerManager.setTimeout(() => {
+    TimerManager.setTimeout(() => {
       const boom = visualNode(arena, 'jc-fx gz-mega', '', 1400),
         ring = visualNode(arena, 'jc-fx gz-mega-ring', '', 1400);
       positionFx(boom, to);
       positionFx(ring, to);
       arena.classList.add('groundzero-shake');
-      systems.TimerManager.setTimeout(() => arena.classList.remove('groundzero-shake'), 900);
+      TimerManager.setTimeout(() => arena.classList.remove('groundzero-shake'), 900);
     }, 760);
     return;
   }
@@ -673,11 +500,176 @@ export function playJcVisual(v) {
       positionFx(ring, from);
       ring?.style.setProperty('--ring-index', i);
     }
-    systems.TimerManager.setTimeout(() => {
+    TimerManager.setTimeout(() => {
       const core = visualNode(arena, 'jc-fx voltage-core', '', 1200);
       positionFx(core, to);
       visualNode(state_presentation_coordinates.battleEntityElement(v.targetUid), 'float-num status-pop', `${v.amount}D`, 900);
     }, 360);
     return;
   }
+}
+export function listSummonSkillActions(g, t, s) {
+  let a = [],
+    u = unitAt(g, t, s);
+  if (!u || u.dead) return a;
+  if (!!firstSkillByEffect(u, "junglesVineWhip")) {
+    const fieldOnly = a;
+    const sk = firstSkillByEffect(u, "junglesVineWhip");
+    if (sk && !u.skillSeals?.[skillIdByEffect(u, "junglesVineWhip")] && canPayAction(g, t, u, sk.cost)) for (const target of summonTargets(g, t)) fieldOnly.push({
+      type: "skill",
+      skill: skillIdByEffectGlobal("junglesVineWhip"),
+      target: targetRef(g, other(t), target),
+      label: sk.name
+    });
+    a = fieldOnly;
+  }
+  if (!!firstSkillByEffect(u, "circuitVoltageBurst") || !!firstSkillByEffect(u, "circuitArmsBlade")) {
+    const enemies = summonTargets(g, t),
+      arms = firstSkillByEffect(u, "circuitArmsBlade"),
+      volt = firstSkillByEffect(u, "circuitVoltageBurst");
+    if (arms && !u.skillSeals?.[skillIdByEffect(u, "circuitArmsBlade")] && canPayAction(g, t, u, arms.cost)) for (const target of enemies) a.push({
+      type: "skill",
+      skill: skillIdByEffectGlobal("circuitArmsBlade"),
+      target: targetRef(g, other(t), target),
+      label: arms.name
+    });
+    if (volt && !u.skillSeals?.[skillIdByEffect(u, "circuitVoltageBurst")] && countCompleteW(u) >= 1) for (const target of enemies) a.push({
+      type: "skill",
+      skill: skillIdByEffectGlobal("circuitVoltageBurst"),
+      target: targetRef(g, other(t), target),
+      voltageN: countCompleteW(u),
+      label: volt.name
+    });
+  }
+  if (!!firstSkillByEffect(u, "abyssVortex")) {
+    const sk = firstSkillByEffect(u, "abyssVortex");
+    if (sk && !u.skillSeals?.[skillIdByEffect(u, "abyssVortex")] && canPayAction(g, t, u, sk.cost)) {
+      const fields = [...g.teams.P.field, ...g.teams.A.field].filter(x => x && !x.dead);
+      for (let i = 0; i < fields.length; i++) for (let j = i + 1; j < fields.length; j++) a.push({
+        type: "skill",
+        skill: skillIdByEffectGlobal("abyssVortex"),
+        target: {
+          team: t,
+          slot: s,
+          uid: u.uid
+        },
+        vortexTargets: [fields[i].uid, fields[j].uid],
+        vortexSwaps: [],
+        label: sk.name
+      });
+    }
+  }
+  return a;
+}
+export function applySummonEffect(g, actor, target, e, skill, ctx) {
+  const t = ctx?.team || teamOf(g, actor),
+    a = ctx?.action || {};
+  if (e.type === "abyssVortex") return applyRestrictedVortex(g, actor, a);
+  if (e.type === "suctionPad" && circuitBlocksExternal(target, actor)) {
+    const allied = teamOf(g, target) === t;
+    if (allied) {
+      const d = nonAttackDamage(g, target, 20, "흡착 발판");
+    }
+    log(g, `${target.name} 특성 · 프레그먼트: 흡착 발판의 R 부여 차단.`);
+    return 0;
+  }
+  if (e.type === "junglesVineWhip") {
+    const d = dealDamage(g, actor, target, {
+      amount: 20
+    }, skill, ctx.sim);
+    grantEnergyWithDiscard(g, actor, "W", .5, a.wDiscardSpecs || null);
+    const first = !actor.vineWhipFirstUsed,
+      afflicted = Object.keys(actor.statuses || {}).some(k => status(actor, k) > 0);
+    actor.vineWhipFirstUsed = true;
+    let stolen = 0;
+    if (first || afflicted) stolen = stealRecentEnergy(g, actor, target);
+    queueVisual(g, {
+      type: "jcVineFx",
+      uid: actor.uid,
+      targetUid: target.uid,
+      stolen
+    });
+    return d;
+  }
+  if (state_features_summons.SUMMON_DEFS[e.type]) return summonUnit(g, t, actor, e.type);
+  if (e.type === "circuitRoundKick") {
+    let total = 0,
+      targets = allBattleUnits(g, other(t), true);
+    for (const x of targets) total += dealDamage(g, actor, x, {
+      amount: 30
+    }, skill, ctx.sim);
+    queueVisual(g, {
+      type: "circuitRoundFx",
+      uid: actor.uid,
+      targetUids: targets.map(x => x.uid)
+    });
+    return total;
+  }
+  if (e.type === "circuitArmsBlade") {
+    const amount = target.maxHp * .25,
+      d = dealDamage(g, actor, target, {
+        amount
+      }, skill, ctx.sim);
+    if (!target.dead) applyStatus(g, target, "paralyze", 1, actor);
+    for (const c of ["B", "R"]) {
+      grantEnergyWithDiscard(g, actor, c, 1);
+    }
+    queueVisual(g, {
+      type: "circuitArmsFx",
+      uid: actor.uid,
+      targetUid: target.uid,
+      defense: fragmentDefense(actor)
+    });
+    return d;
+  }
+  if (e.type === "circuitVoltageBurst") {
+    const n = Math.max(1, a.voltageN || countCompleteW(actor));
+    if (n <= 1) return resolveVoltageBurst(g, t, actor, target, skill, ctx.sim);
+    registerScheduledAction(g, actor, {
+      kind: "voltageBurst",
+      targetTeam: teamOf(g, target),
+      targetSlot: targetRef(g, teamOf(g, target), target).slot,
+      targetUid: target.uid,
+      remaining: n - 1,
+      initialN: n
+    });
+    queueVisual(g, {
+      type: "voltagePrepareFx",
+      uid: actor.uid,
+      rings: 1,
+      total: n
+    });
+    log(g, `${actor.name}: 볼티지버스트 준비 1/${n}.`);
+    return 0;
+  }
+  return;
+}
+export function renderSummonZones() {
+  if (!state_ui_battle_state.game) return;
+  for (const t of ["P", "A"]) {
+    const pre = displaySideFor(state_ui_battle_state.game, t),
+      side = document.querySelector(`.${pre}-side`),
+      list = (state_ui_battle_state.game.teams[t].summons || []).filter(u => u && !u.dead);
+    let zone = side?.querySelector('.summon-zone');
+    if (!list.length) {
+      zone?.remove();
+      continue;
+    }
+    if (!zone && side) {
+      zone = document.createElement('div');
+      zone.className = 'summon-zone';
+      const slots = side.querySelector('.slots');
+      slots?.insertAdjacentElement('afterend', zone);
+    }
+    if (zone) zone.innerHTML = `<div class="summon-zone-title">소환물 ${list.length}/2</div><div class="summon-list">${list.map(u => summonPanelHTML(state_ui_battle_state.game, t, u)).join('')}</div>`;
+  }
+  if (state_ui_battle_state.pendingSkill) for (const tar of state_ui_battle_state.pendingSkill.targets || []) {
+    const uid = tar?.uid ? CSS.escape(String(tar.uid)) : "";
+    const el = uid ? document.querySelector(`.card[data-zone="field"][data-uid="${uid}"],.summon-panel[data-uid="${uid}"]`) : document.querySelector(`.card[data-zone="field"][data-team="${tar.team}"][data-slot="${tar.slot}"]`);
+    if (el) {
+      el.classList.add('targetable');
+      el.onclick = () => playerChooseTarget(tar);
+    }
+  }
+  return;
 }

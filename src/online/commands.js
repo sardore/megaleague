@@ -1,3 +1,4 @@
+import { state_runtime_execute } from "../runtime/execute.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_online_commands = {
   ONLINE_TURN_SYNC_VERSION: undefined,
@@ -160,7 +161,7 @@ export function initializeOnlineCommands() {
     };
     const admit = function (g, t, s, action, opt = {}) {
       const live = !opt?.sim && g && (g === state_ui_battle_state.game || opt?.r48Live === true);
-      if (!live) return systems.CanonicalActionTransactionOwner.execute.call(this, g, t, s, action, opt);
+      if (!live) return state_runtime_execute.CanonicalActionTransactionOwner.execute(g, t, s, action, opt);
       const online = g === state_ui_battle_state.game && (g?.mode === "online" || g?.bossRaid?.online);
       if (online && state_ui_deck.p2p?.role === "guest") return guestOwns(g, t, s) ? requestAction(g, t, s, action) : false;
       if (online && state_ui_deck.p2p?.role !== "host") return false;
@@ -176,7 +177,7 @@ export function initializeOnlineCommands() {
           } else if (t !== state_ui_deck.onlineSide) return false;
         } else if (!['host-remote', 'host-automatic'].includes(source)) return false;
       }
-      return systems.CanonicalActionTransactionOwner.execute.call(this, g, t, s, action, opt);
+      return state_runtime_execute.CanonicalActionTransactionOwner.execute(g, t, s, action, opt);
     };
     const submitManualSummon = (g, q, u, owner, action) => {
       if (!g || !q || !u || !owner || !action) return false;

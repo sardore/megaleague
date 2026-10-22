@@ -1,22 +1,7 @@
 import { bossRedUnits } from '../features/boss-raid.js';
 import { cardHasCapability } from "../engine/entities.js";
-import { policySlots } from "../engine/policies.js";
 import { timeCurrentSuppressionDomain } from "../features/timeora.js";
-import { systems } from "../runtime/systems.js";
-export function initializePresentationClockSaturation() {
-  TIME_CLOCK_VISUAL_SATURATION_VERSION = "time-clock-visual-saturation-hold-r1";
-  timeClockVisualSaturation = new TimeClockVisualSaturationController();
-  systems.timeClockVisualSaturation = timeClockVisualSaturation;
-  policySlots.render10 = {
-    transform(currentResult) {
-      const result = currentResult;
-      /* 기존 render가 특성 정지 클래스를 지워도 연출 잠금은 다시 적용한다. */
-      timeClockVisualSaturation.sync();
-      return result;
-    }
-  };
-}
-let TIME_CLOCK_VISUAL_SATURATION_VERSION;
+const TIME_CLOCK_VISUAL_SATURATION_VERSION = "time-clock-visual-saturation-hold-r1";
 class TimeClockVisualSaturationLease {
   constructor(controller, id) {
     this.controller = controller;
@@ -98,4 +83,4 @@ class TimeClockVisualSaturationController {
     this.sync();
   }
 }
-let timeClockVisualSaturation;
+export const timeClockVisualSaturation = new TimeClockVisualSaturationController();

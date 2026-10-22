@@ -1,10 +1,9 @@
 import { state_runtime_entities } from "../runtime/entities.js";
-import { activeAbigate, eternaLocksTeam, isLocallyControlledTeam, isNonAttackSkill, resolvedSkillForAction } from "../app/controls.js";
+import { activeAbigate, isLocallyControlledTeam, isNonAttackSkill, resolvedSkillForAction } from "../app/controls.js";
 import { enemyTargets, other, unitAt } from "../engine/actions.js";
 import { applyStatus, dealDamage, findUnit, heal, nonAttackDamage, queueVisual, teamOf } from "../engine/combat.js";
 import { allEnergy, allPaymentPlans, energyStore, gainEnergy, notifyReactiveEnergyMutation, parseCost, status, totalEnergy } from "../engine/energy.js";
-import { actionSkillHasEffect, card, cardHasCapability, skillIdByEffect, skillIdByEffectGlobal } from "../engine/entities.js";
-import { policySlots, PASS } from "../engine/policies.js";
+import { card, cardHasCapability, skillIdByEffect, skillIdByEffectGlobal } from "../engine/entities.js";
 import { circuitBlocksExternal } from "./summons.js";
 import { log } from "../presentation/audio.js";
 import { systems } from "../runtime/systems.js";
@@ -244,202 +243,6 @@ export function triggerDeepMind(g, actingTeam, actor, passedTarget, action = {},
   if (picked) removeDeepMindHalf(g, picked, abigate);
   return true;
 }
-export function initializeFeaturesCharacterRules() {
-  policySlots.legal3 = {
-    transform(currentActions, g, t, s) {
-      let actions = currentActions,
-        u = unitAt(g, t, s);
-      if (!u || u.dead) return actions;
-      if (eternaLocksTeam(g, t)) actions = actions.filter(a => a.type !== "switch");
-      if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
-      actions = actions.filter(a => !(a.type === "skill" && (actionSkillHasEffect(a, "suctionPad") || actionSkillHasEffect(a, "abyssCannon"))));
-      if (cardHasCapability(u, "switchLockTrait") && !u.skillSeals?.[skillIdByEffect(u, "suctionPad")]) {
-        const padPlans = status(u, "poison") ? allPaymentPlans(g, t, u, "") : [{
-          R: 0,
-          W: 0,
-          B: 0
-        }];
-        for (const teamName of [t, other(t)]) g.teams[teamName].field.forEach((target, slot) => {
-          if (!target || target.dead) return;
-          for (const plan of padPlans) actions.push({
-            type: "skill",
-            skill: skillIdByEffectGlobal("suctionPad"),
-            paymentPlan: {
-              ...plan
-            },
-            target: {
-              team: teamName,
-              slot,
-              uid: target.uid
-            },
-            label: `흡착 발판 → ${target.name}`
-          });
-        });
-      }
-      if (cardHasCapability(u, "deepMind") && !u.skillSeals?.[skillIdByEffect(u, "abyssCannon")]) {
-        const targets = enemyTargets(g, t);
-        for (let n = 0; n <= 4; n++) {
-          const cost = "*".repeat(n),
-            plans = n === 0 && !status(u, "poison") ? [{
-              R: 0,
-              W: 0,
-              B: 0
-            }] : allPaymentPlans(g, t, u, cost);
-          for (const plan of plans) for (const target of targets) actions.push({
-            type: "skill",
-            skill: skillIdByEffectGlobal("abyssCannon"),
-            costOverride: cost,
-            paymentPlan: {
-              ...plan
-            },
-            baseCostCount: n,
-            target,
-            label: `초저주포 · ${n}E · ${Math.max(0, 100 - 40 * (4 - n))}D${plan.R > 0 && plan.W > 0 && plan.B > 0 ? " · 독" : ""}`
-          });
-        }
-      }
-      return actions;
-    }
-  };
-  policySlots.effect2 = function (g, actor, target, e, skill, ctx) {
-    const actingTeam = ctx?.team || teamOf(g, actor);
-    if (e.type === "suctionPad") {
-      const action = ctx.action || {},
-        allied = teamOf(g, target) === actingTeam,
-        ok = grantEnergyWithDiscard(g, target, "R", 1, action.rDiscardSpecs || null);
-      if (ok) {
-        log(g, `${actor.name}: 흡착 발판으로 ${target.name}에게 R 1 부여.`);
-      } else log(g, `${target.name}: 에너지 상한으로 흡착 발판 R 부여 실패.`);
-      let d = 0;
-      if (allied && !target.dead) {
-        d = nonAttackDamage(g, target, 20, "흡착 발판");
-      }
-      queueVisual(g, {
-        type: "deepTrioFx",
-        skill: skillIdByEffectGlobal("suctionPad"),
-        uid: actor.uid,
-        targetUid: target.uid,
-        allied
-      });
-      return d;
-    }
-    if (e.type === "eternaHeal") {
-      const action = ctx.action || {},
-        r = colorAmount(target, "R"),
-        raw = Math.round(r * 60),
-        dealt = deepTrioDamageSkill(g, actor, target, raw, skill, ctx.sim),
-        removed = clearColorEnergy(target, "R", actor);
-      log(g, `${target.name}: 이터너힐 처리 후 R ${energyAmountText(removed)}개 분량 전부 제거.`);
-      const allies = g.teams[actingTeam].field.filter(u => u && !u.dead),
-        hpBeforeHeal = new Map(allies.map(u => [u.uid, u.hp])),
-        healed = healPoolWithOverflow(g, allies, dealt / 2, action.healSplitPct ?? 50, actor, {
-          reason: "eterna-heal",
-          effectId: skill?.id || "eternaHeal",
-          sim: ctx.sim
-        }),
-        healResults = allies.map(u => ({
-          uid: u.uid,
-          amount: Math.max(0, u.hp - (hpBeforeHeal.get(u.uid) || 0))
-        })).filter(x => x.amount > 0);
-      let rTarget = action.rTargetUid ? findUnit(g, action.rTargetUid) : actor;
-      if (!rTarget || rTarget.dead || teamOf(g, rTarget) !== actingTeam || !g.teams[actingTeam].field.some(u => u?.uid === rTarget.uid)) rTarget = actor.dead ? allies[0] : actor;
-      if (rTarget) grantEnergyWithDiscard(g, rTarget, "R", 1, action.rDiscardSpecs || null);
-      queueVisual(g, {
-        type: "deepTrioFx",
-        skill: skillIdByEffectGlobal("eternaHeal"),
-        uid: actor.uid,
-        targetUid: target.uid,
-        r,
-        healResults,
-        rTargetUid: rTarget?.uid || null
-      });
-      return dealt;
-    }
-    if (e.type === "toxiousUnseal") {
-      const action = ctx.action || {},
-        broken = Math.max(0, actor.shield || 0);
-      actor.shield = 0;
-      log(g, `${actor.name}: 봉인 해제로 실드 ${broken} 전부 파괴.`);
-      const selfDamage = nonAttackDamage(g, actor, 20, "봉인 해제");
-      if (!actor.dead) {
-        const incoming = 3,
-          overflow = Math.max(0, totalEnergy(actor) + incoming - (card(actor).maxEnergy || 4));
-        if (overflow > 0.001) {
-          const specs = action.unsealDiscardSpecs || bestDiscardSpecs(actor, incoming);
-          const removed = applyDiscardSpecs(actor, specs);
-          if (removed) log(g, `${actor.name}: RRR 획득 공간 확보를 위해 ${energyAmountText(removed)}E 버림.`);
-        }
-        for (let i = 0; i < 3; i++) {
-          if (totalEnergy(actor) + 1 <= (card(actor).maxEnergy || 4) + 0.001) {
-            gainEnergy(g, actor, "R", 1);
-            log(g, `${actor.name}: 봉인 해제 R ${i + 1}/3 획득.`);
-          }
-        }
-      }
-      queueVisual(g, {
-        type: "deepTrioFx",
-        skill: skillIdByEffectGlobal("toxiousUnseal"),
-        uid: actor.uid,
-        targetUid: actor.uid
-      });
-      return selfDamage;
-    }
-    if (e.type === "groundZero") {
-      const main = deepTrioDamageSkill(g, actor, target, 140, skill, ctx.sim),
-        otherTarget = g.teams[other(actingTeam)].field.find(u => u && !u.dead && u.uid !== target.uid);
-      let splash = 0;
-      if (otherTarget) {
-        splash = deepTrioDamageSkill(g, actor, otherTarget, 70, skill, ctx.sim);
-        if (!otherTarget.dead) applyStatus(g, otherTarget, "burn", 4, actor);
-      }
-      queueVisual(g, {
-        type: "deepTrioFx",
-        skill: skillIdByEffectGlobal("groundZero"),
-        uid: actor.uid,
-        targetUid: target.uid,
-        secondaryUid: otherTarget?.uid || null
-      });
-      return main + splash;
-    }
-    if (e.type === "dustWave") {
-      const dealt = deepTrioDamageSkill(g, actor, target, 100, skill, ctx.sim);
-      queueVisual(g, {
-        type: "deepTrioFx",
-        skill: skillIdByEffectGlobal("dustWave"),
-        uid: actor.uid,
-        targetUid: target.uid
-      });
-      return dealt;
-    }
-    if (e.type === "abyssCannon") {
-      const action = ctx.action || {},
-        n = Math.max(0, Math.min(4, Number(action.baseCostCount) || 0)),
-        amount = Math.max(0, 100 - 40 * (4 - n)),
-        dealt = deepTrioDamageSkill(g, actor, target, amount, skill, ctx.sim),
-        basePlan = action.basePaymentPlan || action.paymentPlan || {
-          R: ctx.paid.filter(x => x.c === "R").reduce((z, x) => z + x.a, 0),
-          W: ctx.paid.filter(x => x.c === "W").reduce((z, x) => z + x.a, 0),
-          B: ctx.paid.filter(x => x.c === "B").reduce((z, x) => z + x.a, 0)
-        },
-        poison = basePlan.R > 0 && basePlan.W > 0 && basePlan.B > 0;
-      if (poison && !target.dead) {
-        const duration = 3;
-        applyStatus(g, target, "poison", duration, actor);
-      }
-      queueVisual(g, {
-        type: "deepTrioFx",
-        skill: skillIdByEffectGlobal("abyssCannon"),
-        uid: actor.uid,
-        targetUid: target.uid,
-        n,
-        poison
-      });
-      return dealt;
-    }
-    if (e.type === "abyssVortex") return applyVortexSwaps(g, actor, ctx.action?.vortexSwaps || []);
-    return PASS;
-  };
-}
 export function deepTrioDamageSkill(g, actor, target, amount, skill, sim, effect = {}) {
   return dealDamage(g, actor, target, {
     amount,
@@ -546,3 +349,198 @@ export function bestVortexSwaps(g, t, actor, paymentPlan = null) {
 /* ─────────────────────────────────────────────────────────────
    13th~14th 4☆: 정글즈 · 서킷 / 이루마·이그드라실·아비게이트 패치
 ───────────────────────────────────────────────────────────── */
+
+export function listDeepSeaActions(g, t, s) {
+  let actions = [],
+    u = unitAt(g, t, s);
+  if (!u || u.dead) return actions;
+  if (u.scheduledAction || status(u, "freeze") || status(u, "skillSeal")) return actions;
+  if (cardHasCapability(u, "switchLockTrait") && !u.skillSeals?.[skillIdByEffect(u, "suctionPad")]) {
+    const padPlans = status(u, "poison") ? allPaymentPlans(g, t, u, "") : [{
+      R: 0,
+      W: 0,
+      B: 0
+    }];
+    for (const teamName of [t, other(t)]) g.teams[teamName].field.forEach((target, slot) => {
+      if (!target || target.dead) return;
+      for (const plan of padPlans) actions.push({
+        type: "skill",
+        skill: skillIdByEffectGlobal("suctionPad"),
+        paymentPlan: {
+          ...plan
+        },
+        target: {
+          team: teamName,
+          slot,
+          uid: target.uid
+        },
+        label: `흡착 발판 → ${target.name}`
+      });
+    });
+  }
+  if (cardHasCapability(u, "deepMind") && !u.skillSeals?.[skillIdByEffect(u, "abyssCannon")]) {
+    const targets = enemyTargets(g, t);
+    for (let n = 0; n <= 4; n++) {
+      const cost = "*".repeat(n),
+        plans = n === 0 && !status(u, "poison") ? [{
+          R: 0,
+          W: 0,
+          B: 0
+        }] : allPaymentPlans(g, t, u, cost);
+      for (const plan of plans) for (const target of targets) actions.push({
+        type: "skill",
+        skill: skillIdByEffectGlobal("abyssCannon"),
+        costOverride: cost,
+        paymentPlan: {
+          ...plan
+        },
+        baseCostCount: n,
+        target,
+        label: `초저주포 · ${n}E · ${Math.max(0, 100 - 40 * (4 - n))}D${plan.R > 0 && plan.W > 0 && plan.B > 0 ? " · 독" : ""}`
+      });
+    }
+  }
+  return actions;
+}
+export function applyDeepSeaEffect(g, actor, target, e, skill, ctx) {
+  const actingTeam = ctx?.team || teamOf(g, actor);
+  if (e.type === "suctionPad") {
+    if (circuitBlocksExternal(target, actor)) {
+      if (teamOf(g, target) === actingTeam) nonAttackDamage(g, target, 20, "흡착 발판");
+      log(g, target.name + " 특성 · 프레그먼트: 흡착 발판의 R 부여 차단.");
+      return 0;
+    }
+    const action = ctx.action || {},
+      allied = teamOf(g, target) === actingTeam,
+      ok = grantEnergyWithDiscard(g, target, "R", 1, action.rDiscardSpecs || null);
+    if (ok) {
+      log(g, `${actor.name}: 흡착 발판으로 ${target.name}에게 R 1 부여.`);
+    } else log(g, `${target.name}: 에너지 상한으로 흡착 발판 R 부여 실패.`);
+    let d = 0;
+    if (allied && !target.dead) {
+      d = nonAttackDamage(g, target, 20, "흡착 발판");
+    }
+    queueVisual(g, {
+      type: "deepTrioFx",
+      skill: skillIdByEffectGlobal("suctionPad"),
+      uid: actor.uid,
+      targetUid: target.uid,
+      allied
+    });
+    return d;
+  }
+  if (e.type === "eternaHeal") {
+    const action = ctx.action || {},
+      r = colorAmount(target, "R"),
+      raw = Math.round(r * 60),
+      dealt = deepTrioDamageSkill(g, actor, target, raw, skill, ctx.sim),
+      removed = clearColorEnergy(target, "R", actor);
+    log(g, `${target.name}: 이터너힐 처리 후 R ${energyAmountText(removed)}개 분량 전부 제거.`);
+    const allies = g.teams[actingTeam].field.filter(u => u && !u.dead),
+      hpBeforeHeal = new Map(allies.map(u => [u.uid, u.hp])),
+      healed = healPoolWithOverflow(g, allies, dealt / 2, action.healSplitPct ?? 50, actor, {
+        reason: "eterna-heal",
+        effectId: skill?.id || "eternaHeal",
+        sim: ctx.sim
+      }),
+      healResults = allies.map(u => ({
+        uid: u.uid,
+        amount: Math.max(0, u.hp - (hpBeforeHeal.get(u.uid) || 0))
+      })).filter(x => x.amount > 0);
+    let rTarget = action.rTargetUid ? findUnit(g, action.rTargetUid) : actor;
+    if (!rTarget || rTarget.dead || teamOf(g, rTarget) !== actingTeam || !g.teams[actingTeam].field.some(u => u?.uid === rTarget.uid)) rTarget = actor.dead ? allies[0] : actor;
+    if (rTarget) grantEnergyWithDiscard(g, rTarget, "R", 1, action.rDiscardSpecs || null);
+    queueVisual(g, {
+      type: "deepTrioFx",
+      skill: skillIdByEffectGlobal("eternaHeal"),
+      uid: actor.uid,
+      targetUid: target.uid,
+      r,
+      healResults,
+      rTargetUid: rTarget?.uid || null
+    });
+    return dealt;
+  }
+  if (e.type === "toxiousUnseal") {
+    const action = ctx.action || {},
+      broken = Math.max(0, actor.shield || 0);
+    actor.shield = 0;
+    log(g, `${actor.name}: 봉인 해제로 실드 ${broken} 전부 파괴.`);
+    const selfDamage = nonAttackDamage(g, actor, 20, "봉인 해제");
+    if (!actor.dead) {
+      const incoming = 3,
+        overflow = Math.max(0, totalEnergy(actor) + incoming - (card(actor).maxEnergy || 4));
+      if (overflow > 0.001) {
+        const specs = action.unsealDiscardSpecs || bestDiscardSpecs(actor, incoming);
+        const removed = applyDiscardSpecs(actor, specs);
+        if (removed) log(g, `${actor.name}: RRR 획득 공간 확보를 위해 ${energyAmountText(removed)}E 버림.`);
+      }
+      for (let i = 0; i < 3; i++) {
+        if (totalEnergy(actor) + 1 <= (card(actor).maxEnergy || 4) + 0.001) {
+          gainEnergy(g, actor, "R", 1);
+          log(g, `${actor.name}: 봉인 해제 R ${i + 1}/3 획득.`);
+        }
+      }
+    }
+    queueVisual(g, {
+      type: "deepTrioFx",
+      skill: skillIdByEffectGlobal("toxiousUnseal"),
+      uid: actor.uid,
+      targetUid: actor.uid
+    });
+    return selfDamage;
+  }
+  if (e.type === "groundZero") {
+    const main = deepTrioDamageSkill(g, actor, target, 140, skill, ctx.sim),
+      otherTarget = g.teams[other(actingTeam)].field.find(u => u && !u.dead && u.uid !== target.uid);
+    let splash = 0;
+    if (otherTarget) {
+      splash = deepTrioDamageSkill(g, actor, otherTarget, 70, skill, ctx.sim);
+      if (!otherTarget.dead) applyStatus(g, otherTarget, "burn", 4, actor);
+    }
+    queueVisual(g, {
+      type: "deepTrioFx",
+      skill: skillIdByEffectGlobal("groundZero"),
+      uid: actor.uid,
+      targetUid: target.uid,
+      secondaryUid: otherTarget?.uid || null
+    });
+    return main + splash;
+  }
+  if (e.type === "dustWave") {
+    const dealt = deepTrioDamageSkill(g, actor, target, 100, skill, ctx.sim);
+    queueVisual(g, {
+      type: "deepTrioFx",
+      skill: skillIdByEffectGlobal("dustWave"),
+      uid: actor.uid,
+      targetUid: target.uid
+    });
+    return dealt;
+  }
+  if (e.type === "abyssCannon") {
+    const action = ctx.action || {},
+      n = Math.max(0, Math.min(4, Number(action.baseCostCount) || 0)),
+      amount = Math.max(0, 100 - 40 * (4 - n)),
+      dealt = deepTrioDamageSkill(g, actor, target, amount, skill, ctx.sim),
+      basePlan = action.basePaymentPlan || action.paymentPlan || {
+        R: ctx.paid.filter(x => x.c === "R").reduce((z, x) => z + x.a, 0),
+        W: ctx.paid.filter(x => x.c === "W").reduce((z, x) => z + x.a, 0),
+        B: ctx.paid.filter(x => x.c === "B").reduce((z, x) => z + x.a, 0)
+      },
+      poison = basePlan.R > 0 && basePlan.W > 0 && basePlan.B > 0;
+    if (poison && !target.dead) {
+      const duration = 3;
+      applyStatus(g, target, "poison", duration, actor);
+    }
+    queueVisual(g, {
+      type: "deepTrioFx",
+      skill: skillIdByEffectGlobal("abyssCannon"),
+      uid: actor.uid,
+      targetUid: target.uid,
+      n,
+      poison
+    });
+    return dealt;
+  }
+  return;
+}

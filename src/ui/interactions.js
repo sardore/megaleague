@@ -1,7 +1,7 @@
+import { TimerManager } from "../runtime/timers.js";
 import { unitAt } from "../engine/actions.js";
 import { findUnit } from "../engine/combat.js";
 import { energyStore, spendPaymentPlan } from "../engine/energy.js";
-import { policySlots } from "../engine/policies.js";
 import { vortexEnergySlots } from "../features/summons.js";
 import { systems } from "../runtime/systems.js";
 import { energyAmountText, state_ui_battle_state } from "./battle-state.js";
@@ -12,22 +12,6 @@ export function initializeUiInteractions() {
   countsEqual = (left, right) => ["R", "W", "B"].every(color => Math.abs(Number(left?.[color] || 0) - Number(right?.[color] || 0)) < .001);
   energyToken = entry => `${entry.c}${Number(entry.a) === .5 ? "½" : ""}`;
   activeChoiceTarget = null;
-  clearChoiceTarget = () => {
-    activeChoiceTarget = null;
-    document.querySelectorAll(".choice-target-selected").forEach(node => node.classList.remove("choice-target-selected"));
-  };
-  paintChoiceTarget = () => {
-    document.querySelectorAll(".choice-target-selected").forEach(node => node.classList.remove("choice-target-selected"));
-    const modal = document.getElementById("modal");
-    if (!activeChoiceTarget || !modal?.classList.contains("open")) return;
-    const ref = activeChoiceTarget;
-    const uid = ref.uid != null && systems.CSS?.escape ? CSS.escape(String(ref.uid)) : null;
-    let target = uid ? document.querySelector(`.battle-unit-card[data-uid="${uid}"],.summon-card[data-uid="${uid}"]`) : null;
-    if (!target && ref.team != null && ref.slot != null) {
-      target = document.querySelector(`.battle-unit-card[data-zone="field"][data-team="${ref.team}"][data-slot="${ref.slot}"]`) || document.querySelector(`.slot[data-slotteam="${ref.team}"][data-slotindex="${ref.slot}"]`);
-    }
-    target?.classList.add("choice-target-selected");
-  };
   systems.__interactionChoiceR25 = Object.freeze({
     openAbyssCannonChoice: openAbyssCannonChoiceR25,
     openVortexEditor: openVortexEditorR25,
@@ -38,17 +22,10 @@ export function initializeUiInteractions() {
     },
     afterTarget() {
       paintChoiceTarget();
-      systems.TimerManager.requestAnimationFrame(paintChoiceTarget);
+      TimerManager.requestAnimationFrame(paintChoiceTarget);
     },
     clearTarget: clearChoiceTarget
   });
-  policySlots.render11 = {
-    transform(currentResult) {
-      const result = currentResult;
-      paintChoiceTarget();
-      return result;
-    }
-  };
   new MutationObserver(() => {
     const modal = document.getElementById("modal");
     if (modal && !modal.classList.contains("open")) clearChoiceTarget();
@@ -398,8 +375,6 @@ function openVortexEditorR25(actions, plan) {
   document.getElementById("modal").classList.add("open");
 }
 let activeChoiceTarget;
-let clearChoiceTarget;
-let paintChoiceTarget;
 let onlineLobbyScrollMemory;
 let onlineLobbyFullRenderUntil;
 let onlineLobbyRestoreSerial;
@@ -452,9 +427,9 @@ export function restoreOnlineLobbyScroll(mode, snapshot = null) {
     return true;
   };
   apply();
-  systems.TimerManager.requestAnimationFrame(() => {
+  TimerManager.requestAnimationFrame(() => {
     apply();
-    systems.TimerManager.requestAnimationFrame(apply);
+    TimerManager.requestAnimationFrame(apply);
   });
   return true;
 }
@@ -474,4 +449,20 @@ function onlineLobbyPortalBackButton() {
     };
   }
   return null;
+}
+export function paintChoiceTarget() {
+  document.querySelectorAll(".choice-target-selected").forEach(node => node.classList.remove("choice-target-selected"));
+  const modal = document.getElementById("modal");
+  if (!activeChoiceTarget || !modal?.classList.contains("open")) return;
+  const ref = activeChoiceTarget;
+  const uid = ref.uid != null && systems.CSS?.escape ? CSS.escape(String(ref.uid)) : null;
+  let target = uid ? document.querySelector(`.battle-unit-card[data-uid="${uid}"],.summon-card[data-uid="${uid}"]`) : null;
+  if (!target && ref.team != null && ref.slot != null) {
+    target = document.querySelector(`.battle-unit-card[data-zone="field"][data-team="${ref.team}"][data-slot="${ref.slot}"]`) || document.querySelector(`.slot[data-slotteam="${ref.team}"][data-slotindex="${ref.slot}"]`);
+  }
+  target?.classList.add("choice-target-selected");
+}
+export function clearChoiceTarget() {
+  activeChoiceTarget = null;
+  document.querySelectorAll(".choice-target-selected").forEach(node => node.classList.remove("choice-target-selected"));
 }

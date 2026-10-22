@@ -2,6 +2,7 @@ import {test,beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import {SessionScope} from '../../src/online/scope.js';
 import {sessionRuntime} from '../../src/online/session-model.js';
+import {TimerManager} from '../../src/runtime/timers.js';
 let session,scope;
 beforeEach(()=>{
   session={generation:7,sessionToken:'session-7'};
@@ -46,4 +47,14 @@ test('a session token change invalidates a captured command',()=>{
   const captured=scope.capture('command','SESSION');
   session.sessionToken='different-room';
   assert.equal(scope.valid(captured),false);
+});
+test('closing a scope cancels its imported timer and releases its resource',async()=>{
+  let invoked=0;
+  const id=scope.setTimeout(()=>invoked++,5,'cancelled-work');
+  assert.ok(scope.resources.has(id));
+  scope.close();
+  await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal(invoked,0);
+  assert.equal(scope.resources.size,0);
+  assert.equal(TimerManager.stats().entries.some(entry=>entry.id===id),false);
 });

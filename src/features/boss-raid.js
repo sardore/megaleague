@@ -1,29 +1,28 @@
+import { TimerManager } from "../runtime/timers.js";
 import { bossSearchChooseR32 } from '../ai/boss-planner.js';
 import { bossResolveSuppressionR36, bossRotateClocksR36, bossChooseAIController } from '../ai/boss-tactics.js';
 import { captureOnlineLobbyScroll, restoreOnlineLobbyScroll } from '../ui/interactions.js';
-import { playVisualsCanonical } from "../presentation/animations.js";
-import { aiReason, maskedStateFor, aiReasonCore } from "../ai/search.js";
-import { actionHeuristic, chooseAI, actionHeuristicSpecialist } from "../ai/specialists.js";
+import { aiReason, maskedStateFor } from "../ai/search.js";
+import { actionHeuristic, chooseAI } from "../ai/specialists.js";
 import { state_catalog_cards } from "../catalog/cards.js";
 import { enemyTargets, legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
-import { createShield, dealDamage, heal, removeEnergy, teamOf, checkDeathCore, queueSkillVisualCore } from "../engine/combat.js";
+import { createShield, heal, removeEnergy, teamOf } from "../engine/combat.js";
 import { state_engine_effects } from "../engine/effects.js";
 import { canPayAction, status, totalEnergy, transformedSkillReq } from "../engine/energy.js";
-import { RNG, actionSkillHasEffect, card, cardHasCapability, clone, isPlusStarChoiceForCard, makeUnit, newGame, registerRuntimeSkillContainer, resolvePlusStarChoice, skillDefHasEffect, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect, state_engine_entities, cardCore } from "../engine/entities.js";
+import { RNG, actionSkillHasEffect, card, cardHasCapability, clone, isPlusStarChoiceForCard, makeUnit, newGame, registerRuntimeSkillContainer, resolvePlusStarChoice, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect, state_engine_entities } from "../engine/entities.js";
 import { endTurn, execute } from "../engine/execution.js";
-import { policySlots, PASS } from "../engine/policies.js";
-import { timeClockMiniHTML, timeHyperReason, timeNormDeg, timePaidAmountFromAction, timeRecallValue, timeSetInputLock, timeSyncSuppressionVisuals, state_features_timeora, timeClockMiniHTMLCore, timeColorForTeamCore, timeThemeForTeamCore } from "./timeora.js";
+import { timeClockMiniHTML, timeNormDeg, timePaidAmountFromAction, timeRecallValue, timeSetInputLock, timeSyncSuppressionVisuals, state_features_timeora } from "./timeora.js";
 import { onlineCurrentMatchId, onlineSafeSend, state_online_commands } from "../online/commands.js";
-import { cloneOnlineVisualEvents, p2pSend, registerOnlineConnectionRoute, serializeOnlineBattleProjection, showEnd, state_online_connection, showEndCore } from "../online/connection.js";
+import { cloneOnlineVisualEvents, p2pSend, registerOnlineConnectionRoute, serializeOnlineBattleProjection, showEnd, state_online_connection } from "../online/connection.js";
 import { renderManualSummonActions } from "../online/emotes.js";
 import { sendAuthoritativeOnlineState } from "../online/snapshots.js";
 import { onlineStartPacketDigest, scheduleOnlineStartPublicationRetry, traceOnlineStart } from "../online/start.js";
 import { log } from "../presentation/audio.js";
 import { systems } from "../runtime/systems.js";
-import { afterAction, processPendingTraitChoice, scheduleAI, processPendingTraitChoiceCore, afterActionCore, scheduleAICore } from "../ui/action-choices.js";
+import { afterAction, processPendingTraitChoice, scheduleAI } from "../ui/action-choices.js";
 import { renderBaseActions, state_ui_action_panel } from "../ui/action-panel.js";
 import { scheduleLocalAutoTurnTimer, state_ui_battle_state } from "../ui/battle-state.js";
-import { pictogramHTML, state_ui_cards, cardTooltipHTMLCore } from "../ui/cards.js";
+import { pictogramHTML, state_ui_cards } from "../ui/cards.js";
 import { otherFormId, setSetupFormState, setupFormState, startBgm, state_ui_deck } from "../ui/deck.js";
 import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
@@ -70,11 +69,6 @@ export function initializeFeaturesBossRaid() {
   bossIntroPromise = null;
   bossOnlineAiTimer = 0;
   bossPendingStartGame = null;
-  LEGACY_CARD_ALIASES = Object.freeze({
-    red_timeora: Object.freeze({
-      bossRed: true
-    })
-  });
   BossLobbyApplication = (() => {
     const snapshot = () => Object.freeze({
       deck: Object.freeze([...bossRaidSelection]),
@@ -248,73 +242,6 @@ export function initializeFeaturesBossRaid() {
   /* 붉은 공용 시계의 특성 정지는 TimeClockTraitSuppressionPolicy가 처리한다.
      보스 카드별 예외가 아니라 공용 시계 소유자 집합 전체가 자동으로 면역이다. */
 
-  policySlots.legal10 = {
-    transform(currentActions, g, t, s) {
-      let actions = currentActions,
-        u = unitAt(g, t, s);
-      if (g?.bossRaid && t === "A") actions = actions.filter(a => a?.type !== "switch");
-      if (g?.bossRaid && t === "P") {
-        const owner = g.bossRaid.slotOwners?.[s] || u?.bossOwner || "solo";
-        if (!u || u.dead) actions = actions.filter(a => a.type !== "deploy" || g.teams.P.bench.find(x => x?.uid === a.unit)?.bossOwner === owner || !g.bossRaid.online);else actions = actions.filter(a => a.type !== "switch" || g.teams.P.bench[a.bench]?.bossOwner === u.bossOwner || !g.bossRaid.online);
-      }
-      if (!u?.bossRed) return actions;
-      actions = actions.filter(a => !(a.type === "skill" && actionSkillHasEffect(a, "bossTimeStrike")));
-      if (!u.skillSeals?.[skillIdByEffect(u, "bossTimeStrike")] && !status(u, "skillSeal")) {
-        for (const cost of ["*", "**"]) {
-          if (!canPayAction(g, t, u, cost)) continue;
-          const damage = cost.length === 1 ? 40 : 70;
-          for (const target of enemyTargets(g, t)) actions.push({
-            type: "skill",
-            skill: skillIdByEffectGlobal("bossTimeStrike"),
-            costOverride: cost,
-            displayCost: `${cost} · ${damage}D`,
-            bossTimeStrikeDamage: damage,
-            target,
-            label: `타임 크래시 ${cost} ${damage}D`
-          });
-        }
-      }
-      return actions;
-    }
-  };
-  policySlots.effect9 = function (g, actor, target, e, skill, ctx = {}) {
-    if (e?.type === "bossTimeStrike") return dealDamage(g, actor, target, {
-      amount: Number(ctx?.action?.bossTimeStrikeDamage || 40)
-    }, skill, ctx.sim);
-    if (e?.type === "hyperClock" && g?.bossRaid && actor?.bossRed && g.bossRaid.hyperGuard > 0) {
-      const reason = ctx?.action?.timeHyperReason || timeHyperReason(actor),
-        raw = reason ? 160 : 100,
-        amount = Math.max(0, raw - 60);
-      g.bossRaid.hyperGuard--;
-      log(g, `레이드 보상 · 시간 방벽: 하이퍼클락 ${raw}D → ${amount}D.`, "turn");
-      const result = dealDamage(g, actor, target, {
-        amount
-      }, skill, ctx.sim);
-      if (!ctx.sim && g === state_ui_battle_state.game) state_ui_battle_state.visualEvents.push({
-        type: "hyperClockFx",
-        uid: actor.uid,
-        targetUid: target?.uid || null,
-        team: "__bossRed",
-        bossRed: true,
-        enhanced: !!reason,
-        reason,
-        amount: result,
-        rawAmount: raw
-      });
-      return result;
-    }
-    return PASS;
-  };
-  policySlots.after2 = (result, meta, g, actor, target, e, skill, ctx = {}) => {
-    if (g?.bossRaid && actor?.bossRed && !ctx.sim && g === state_ui_battle_state.game) for (let i = meta.visualStart; i < state_ui_battle_state.visualEvents.length; i++) {
-      const v = state_ui_battle_state.visualEvents[i];
-      if (v && ["hyperClockFx", "timeRecallFx"].includes(v.type)) {
-        v.team = "__bossRed";
-        v.bossRed = true;
-      }
-    }
-  };
-
   /*
    * 붉은 공용 시계 위상 모델
    * - 시침과 분침의 상대각을 30도 단위 12칸으로 변환한다.
@@ -386,13 +313,6 @@ export function initializeFeaturesBossRaid() {
   }
   state_ui_action_panel.ActionRenderEngine.registerRoute("boss-raid", 300, () => !!state_ui_battle_state.game?.bossRaid, ctx => renderBossActions(ctx));
   for (const type of ["bossLobbyState", "bossRewardOffer", "bossRewardPick"]) registerOnlineConnectionRoute(type, "boss-application", bossHandlePacket, 65);
-  policySlots.render9 = {
-    transform(currentResult) {
-      const r = currentResult;
-      bossDecorateRender();
-      return r;
-    }
-  };
   systems.__redTimeoraBossRaid = {
     version: BOSS_RAID_VERSION,
     resolveSuppression: bossResolveSuppressionR36,
@@ -483,7 +403,6 @@ export function initializeFeaturesBossRaid() {
       closeModal: true
     });
   }, true);
-  bossRulesReady = true;
 }
 let BOSS_RAID_VERSION;
 let BOSS_LOBBY_PROTOCOL;
@@ -506,7 +425,6 @@ let bossVictoryMatchId;
 let bossIntroPromise;
 let bossOnlineAiTimer;
 let bossPendingStartGame;
-let LEGACY_CARD_ALIASES;
 function bossRaidPool() {
   /* 보스 편성에서는 기본형/각성형을 모두 실제 카드로 노출한다.
      MEGA_SETUP_IDS는 일반 편성용 대표 슬롯이라 각성이루마·휴브가 빠지므로 사용하지 않는다. */
@@ -645,7 +563,7 @@ function bossClockAligned(g) {
     d = timeNormDeg(c.hourDeg - c.minuteDeg);
   return Math.abs(d) < .001 || Math.abs(d - 180) < .001;
 }
-function bossPlayTimeStrikeFx(v) {
+export function bossPlayTimeStrikeFx(v) {
   const target = v.targetUid ? document.querySelector(`.card[data-uid="${CSS.escape(String(v.targetUid))}"]`) : null,
     r = target?.getBoundingClientRect(),
     x = r ? r.left + r.width / 2 : innerWidth / 2,
@@ -665,8 +583,8 @@ function bossPlayTimeStrikeFx(v) {
   layer.appendChild(core);
   document.body.appendChild(layer);
   document.querySelector(".app")?.classList.add("boss-screen-hit");
-  systems.TimerManager.setTimeout(() => document.querySelector(".app")?.classList.remove("boss-screen-hit"), 360);
-  systems.TimerManager.setTimeout(() => layer.remove(), 560);
+  TimerManager.setTimeout(() => document.querySelector(".app")?.classList.remove("boss-screen-hit"), 360);
+  TimerManager.setTimeout(() => layer.remove(), 560);
 }
 function bossPhaseMod(v) {
   v = Math.round(Number(v) || 0) % 12;
@@ -888,10 +806,10 @@ function bossCreateGame(hostDeck, guestDeck = null, online = false, plusState = 
   return g;
 }
 function bossPrepareGame(g) {
-  systems.TimerManager.clear(bossRewardDelayTimer);
+  TimerManager.clear(bossRewardDelayTimer);
   bossRewardDelayTimer = 0;
   bossRewardLocalReadyAt.clear();
-  systems.TimerManager.clear(bossVictoryDelayTimer);
+  TimerManager.clear(bossVictoryDelayTimer);
   bossVictoryDelayTimer = 0;
   bossVictoryReadyAt = 0;
   bossVictoryMatchId = "";
@@ -927,8 +845,8 @@ function bossPlayIntro() {
     const finish = () => {
       if (done) return;
       done = true;
-      systems.TimerManager.clear(endingTimer);
-      systems.TimerManager.clear(finishTimer);
+      TimerManager.clear(endingTimer);
+      TimerManager.clear(finishTimer);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("pageshow", onResume);
       document.removeEventListener("visibilitychange", onVisibility);
@@ -953,10 +871,10 @@ function bossPlayIntro() {
     document.addEventListener("visibilitychange", onVisibility, {
       passive: true
     });
-    endingTimer = systems.TimerManager.setTimeout(() => {
+    endingTimer = TimerManager.setTimeout(() => {
       if (!done) el.classList.add("ending");
     }, 1850);
-    finishTimer = systems.TimerManager.setTimeout(finish, 2400);
+    finishTimer = TimerManager.setTimeout(finish, 2400);
   });
   const scope = state_ui_battle_state.game?.bossRaid?.online ? systems.OnlineRuntime?.sessionScope : null;
   bossIntroPromise = scope && !scope.closed ? scope.track(introPromise, "boss-raid-intro", {
@@ -981,7 +899,7 @@ async function bossLaunch(g) {
   if (state_ui_battle_state.game !== g) return;
   state_ui_battle_state.busy = false;
   render();
-  if (g?.bossRaid && (!g.bossRaid.online || state_ui_deck.p2p?.role === "host")) systems.TimerManager.setTimeout(() => systems.__megaSpectatorR18?.startHost?.(), 80);
+  if (g?.bossRaid && (!g.bossRaid.online || state_ui_deck.p2p?.role === "host")) TimerManager.setTimeout(() => systems.__megaSpectatorR18?.startHost?.(), 80);
   bossSendState(true);
   scheduleAI();
 }
@@ -1103,8 +1021,8 @@ function bossRewardWaitForVisuals(q) {
   const remain = Math.max(0, bossRewardLocalReadyAt.get(key) - Date.now());
   if (remain <= 0) return false;
   state_ui_battle_state.busy = true;
-  systems.TimerManager.clear(bossRewardDelayTimer);
-  bossRewardDelayTimer = systems.TimerManager.setTimeout(() => {
+  TimerManager.clear(bossRewardDelayTimer);
+  bossRewardDelayTimer = TimerManager.setTimeout(() => {
     bossRewardDelayTimer = 0;
     if (state_ui_battle_state.game?.pendingTraitChoices?.[0]?.kind === "bossReward") processPendingTraitChoice();
   }, remain + 24);
@@ -1127,7 +1045,7 @@ function bossRewardSetDisabled(flag) {
   document.querySelectorAll("[data-boss-reward]").forEach(button => button.disabled = !!flag);
 }
 function bossClearRewardPickPending(reenable = false) {
-  systems.TimerManager.clear(bossRewardPickRetryTimer);
+  TimerManager.clear(bossRewardPickRetryTimer);
   bossRewardPickRetryTimer = 0;
   bossRewardPickPending = null;
   if (reenable) {
@@ -1173,7 +1091,7 @@ function bossSendGuestRewardPick(q, index) {
     }
   };
   send();
-  bossRewardPickRetryTimer = systems.TimerManager.setInterval(send, 550);
+  bossRewardPickRetryTimer = TimerManager.setInterval(send, 550);
 }
 function bossFinishReward(q, index, pickerRole = null) {
   if (bossRewardResolving || !state_ui_battle_state.game?.bossRaid) return false;
@@ -1188,7 +1106,7 @@ function bossFinishReward(q, index, pickerRole = null) {
     state_ui_battle_state.game.pendingTraitChoices.shift();
     bossClearRewardPickPending(false);
     bossRewardLocalReadyAt.delete(bossRewardKey(cur));
-    systems.TimerManager.clear(bossRewardDelayTimer);
+    TimerManager.clear(bossRewardDelayTimer);
     bossRewardDelayTimer = 0;
     bossApplyReward(state_ui_battle_state.game, reward, pickerRole || cur.chooserRole || "host");
     const rewardVisuals = state_ui_battle_state.game.bossRaid.online && state_ui_deck.p2p.role === "host" ? cloneOnlineVisualEvents((state_ui_battle_state.visualEvents || []).slice(visualMark)) : [];
@@ -1316,7 +1234,7 @@ function bossSendState(force = false, visuals = []) {
   if (spectator && canHostSpectators) {
     const spectatorVisuals = packetVisuals.length ? packetVisuals : cloneOnlineVisualEvents(state_ui_battle_state.visualEvents);
     if (spectatorVisuals.length) spectator.queueVisuals?.(spectatorVisuals);
-    systems.TimerManager.setTimeout(() => {
+    TimerManager.setTimeout(() => {
       spectator.broadcastAnnounce?.();
       spectator.broadcastSnapshot?.(!!force);
     }, 0);
@@ -1357,7 +1275,7 @@ function bossHandlePacket(msg) {
   }
   return false;
 }
-function bossDecorateRender() {
+export function renderRaidBattleStatus() {
   document.body.classList.toggle("boss-raid-active", !!state_ui_battle_state.game?.bossRaid);
   document.querySelectorAll(".slot.boss-active-slot").forEach(x => x.classList.remove("boss-active-slot"));
   if (!state_ui_battle_state.game?.bossRaid) {
@@ -1538,7 +1456,7 @@ function showBossDeckPicker(count = 4, online = false) {
         host: bossPlusStarSelection
       });
       document.querySelector(".boss-lobby")?.classList.add("boss-lobby-closing");
-      systems.TimerManager.setTimeout(() => {
+      TimerManager.setTimeout(() => {
         document.getElementById("modal").classList.remove("open");
         bossLaunch(g);
       }, 480);
@@ -1822,12 +1740,12 @@ function bossResumeOnlineSession(reason = "resume", requestTransport = true) {
   if (!state_ui_battle_state.game?.bossRaid?.online) return false;
   if (state_ui_deck.p2p?.conn?.open) {
     if (state_ui_battle_state.game.winner) {
-      systems.TimerManager.clear(bossVictoryDelayTimer);
+      TimerManager.clear(bossVictoryDelayTimer);
       bossVictoryDelayTimer = 0;
       showEnd();
     }
     if (state_ui_battle_state.game.pendingTraitChoices?.[0]?.kind === "bossReward") {
-      systems.TimerManager.clear(bossRewardDelayTimer);
+      TimerManager.clear(bossRewardDelayTimer);
       bossRewardDelayTimer = 0;
       const pending = bossRewardPickPending,
         current = state_ui_battle_state.game.pendingTraitChoices[0];
@@ -1917,64 +1835,45 @@ function installBossButton() {
   b.onclick = showBossRaidMenu;
   online?.insertAdjacentElement("afterend", b);
 }
-let bossRulesReady = false;
-export function bossCard(u) {
-  if (!bossRulesReady) return cardCore.apply(this, arguments);
-  const legacy = LEGACY_CARD_ALIASES[u?.card];
-  return u?.bossRed || legacy?.bossRed ? RED_TIMEORA_CARD : cardCore(u);
+export function listRaidSkillActions(g, t, s) {
+  let actions = [],
+    u = unitAt(g, t, s);
+  if (!u?.bossRed) return actions;
+  if (!u.skillSeals?.[skillIdByEffect(u, "bossTimeStrike")] && !status(u, "skillSeal")) {
+    for (const cost of ["*", "**"]) {
+      if (!canPayAction(g, t, u, cost)) continue;
+      const damage = cost.length === 1 ? 40 : 70;
+      for (const target of enemyTargets(g, t)) actions.push({
+        type: "skill",
+        skill: skillIdByEffectGlobal("bossTimeStrike"),
+        costOverride: cost,
+        displayCost: `${cost} · ${damage}D`,
+        bossTimeStrikeDamage: damage,
+        target,
+        label: `타임 크래시 ${cost} ${damage}D`
+      });
+    }
+  }
+  return actions;
 }
-export function bossTimeThemeForTeam(g, t) {
-  if (!bossRulesReady) return timeThemeForTeamCore.apply(this, arguments);
-  return g?.bossRaid && (t === "A" || t === "__bossRed") ? "red" : timeThemeForTeamCore(g, t);
+export function raidCardForUnit(u) {
+  return u?.bossRed ? RED_TIMEORA_CARD : null;
 }
-export function bossTimeColorForTeam(g, t) {
-  if (!bossRulesReady) return timeColorForTeamCore.apply(this, arguments);
-  return g?.bossRaid && (t === "A" || t === "__bossRed") ? "#ff4058" : timeColorForTeamCore(g, t);
-}
-export function bossTimeClockMiniHTML(u, g) {
-  if (!bossRulesReady) return timeClockMiniHTMLCore.apply(this, arguments);
-  if (!u?.bossRed) return timeClockMiniHTMLCore(u, g);
+export function raidClockHTML(u, g) {
   const c = bossClock(g),
     aligned = bossClockAligned(g);
   return `<div class="time-mini-clock-wrap boss-red-clock-wrap"><div class="time-mini-clock red"><span class="time-clock-hand hour" style="transform:translateX(-50%) rotate(${timeNormDeg(c.hourDeg)}deg)"></span><span class="time-clock-hand minute" style="transform:translateX(-50%) rotate(${timeNormDeg(c.minuteDeg)}deg)"></span><span class="time-clock-pin"></span><span class="time-clock-word">Time</span></div><div><b>붉은 공용 시계</b><br><span>시침 ${timeNormDeg(c.hourDeg)}° · 분침 ${timeNormDeg(c.minuteDeg)}°</span><br><span class="time-mini-state ${aligned ? "aligned" : ""}">${aligned ? "정렬 · 플레이어 특성 정지" : "비정렬"}</span></div></div>`;
 }
-export function bossCardTooltipHTML(c, u = null) {
-  if (!bossRulesReady) return cardTooltipHTMLCore.apply(this, arguments);
+export function formatRaidCardTooltip(html, u) {
   /* 전투 유닛은 내부적으로 timeora 카드를 유지하므로, 붉은 개체의 설명창만 전용 카드 데이터로 렌더링한다. */
-  let html = cardTooltipHTMLCore(u?.bossRed ? {
-    ...RED_TIMEORA_CARD,
-    id: "timeora"
-  } : c, u);
   if (!u?.bossRed || !state_ui_battle_state.game?.bossRaid) return html;
   html = html.replace(/time-mini-clock (?:blue|gold)/g, "time-mini-clock red").replace(/time-mini-clock-wrap/g, "time-mini-clock-wrap boss-red-clock-wrap");
   if (!html.includes("boss-red-clock-wrap")) html = html.replace('</div><div class="card-info-section"><b>특성</b>', `</div>${timeClockMiniHTML(u, state_ui_battle_state.game)}<div class="card-info-section"><b>특성</b>`);
   html = html.replace(/붉은 타임오러(?: \d+)?/g, "타임오러");
   return `<div class="boss-red-timeora-tooltip-content">${html}</div>`;
 }
-export function bossQueueSkillVisual(g, actor, target, skill, effects = []) {
-  if (!bossRulesReady) return queueSkillVisualCore.apply(this, arguments);
-  if (g?.bossRaid && skillDefHasEffect(skill, "bossTimeStrike")) {
-    if (typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game) state_ui_battle_state.visualEvents.push({
-      type: "bossTimeStrikeFx",
-      uid: actor.uid,
-      targetUid: target?.uid || null
-    });
-    return;
-  }
-  return queueSkillVisualCore(g, actor, target, skill, effects);
-}
-export function bossPlayVisuals() {
-  if (!bossRulesReady) return playVisualsCanonical.apply(this, arguments);
-  const custom = state_ui_battle_state.visualEvents.filter(v => v?.type === "bossTimeStrikeFx"),
-    rest = state_ui_battle_state.visualEvents.filter(v => v?.type !== "bossTimeStrikeFx");
-  state_ui_battle_state.visualEvents = rest;
-  custom.forEach((v, i) => systems.TimerManager.setTimeout(() => bossPlayTimeStrikeFx(v), i * 100));
-  if (custom.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 620);
-  return playVisualsCanonical();
-}
-export function bossActionHeuristic(g, t, s, a) {
-  if (!bossRulesReady) return actionHeuristicSpecialist.apply(this, arguments);
-  let score = actionHeuristicSpecialist(g, t, s, a),
+export function raidActionBonus(g, t, s, a) {
+  let score = 0,
     u = unitAt(g, t, s);
   if (!g?.bossRaid || !u?.bossRed) return score;
   score += bossPhaseActionScore(g, t, s, a);
@@ -1991,8 +1890,7 @@ export function bossActionHeuristic(g, t, s, a) {
   }
   return score;
 }
-export function bossAiReason(g, t, s, a) {
-  if (!bossRulesReady) return aiReasonCore.apply(this, arguments);
+export function raidActionReason(g, t, s, a) {
   const u = unitAt(g, t, s);
   if (g?.bossRaid && u?.bossRed) {
     const p = bossActionPhasePlan(g, t, s, a);
@@ -2001,13 +1899,10 @@ export function bossAiReason(g, t, s, a) {
     if (actionSkillHasEffect(a, "hyperClock")) return p.before.aligned ? "정렬된 공용 시계를 이용해 강화 하이퍼클락을 사용한다." : "하이퍼클락으로 공격하면서 다음 시계 정렬 경로를 유지한다.";
     if (actionSkillHasEffect(a, "timeRecall")) return "타임리콜로 큰 복구 이득을 얻을 수 있어 우선 사용한다.";
   }
-  return aiReasonCore(g, t, s, a);
+  return null;
 }
-export function bossCheckDeath(g, u, killer) {
-  if (!bossRulesReady) return checkDeathCore.apply(this, arguments);
-  const was = !!u?.dead,
-    result = checkDeathCore(g, u, killer);
-  if (g?.bossRaid && u?.bossRed && !was && u.dead) {
+export function onRaidUnitDefeated(g, u, killer) {
+  if (g?.bossRaid && u?.bossRed && u.dead) {
     g.bossRaid.kills = Number(g.bossRaid.kills || 0) + 1;
     const finalKill = !!g.winner || g.bossRaid.kills >= 4;
     if (finalKill) {
@@ -2024,34 +1919,29 @@ export function bossCheckDeath(g, u, killer) {
       log(g, `붉은 타임오러 처치 ${g.bossRaid.kills}/4 · 전리품 선택 발생.`, "turn");
     }
   }
-  return result;
 }
-export function bossShowEnd() {
-  if (!bossRulesReady) return showEndCore.apply(this, arguments);
-  if (!state_ui_battle_state.game?.bossRaid) return showEndCore();
-  if (state_ui_battle_state.game.pendingTraitChoices?.some(q => q?.kind === "bossReward")) return;
+export function deferRaidResult() {
+  if (!state_ui_battle_state.game?.bossRaid) return false;
+  if (state_ui_battle_state.game.pendingTraitChoices?.some(q => q?.kind === "bossReward")) return true;
   if (state_ui_battle_state.game.winner) {
     const matchId = String(state_ui_battle_state.game.matchId || "");
     if (bossVictoryMatchId !== matchId) {
       bossVictoryMatchId = matchId;
-      bossVictoryReadyAt = Date.now() + (true ? Math.max(0, Number(state_ui_battle_state.visualHoldMs || 0)) + 150 : 0);
+      bossVictoryReadyAt = Date.now() + ((Math.max(0, Number(state_ui_battle_state.visualHoldMs || 0)) + 150));
     }
     const remain = bossVictoryReadyAt - Date.now();
     if (remain > 0) {
-      systems.TimerManager.clear(bossVictoryDelayTimer);
-      bossVictoryDelayTimer = systems.TimerManager.setTimeout(() => {
+      TimerManager.clear(bossVictoryDelayTimer);
+      bossVictoryDelayTimer = TimerManager.setTimeout(() => {
         bossVictoryDelayTimer = 0;
-        if (state_ui_battle_state.game?.bossRaid && state_ui_battle_state.game.winner && String(state_ui_battle_state.game.matchId || "") === matchId) showEndCore();
+        if (state_ui_battle_state.game?.bossRaid && state_ui_battle_state.game.winner && String(state_ui_battle_state.game.matchId || "") === matchId) showEnd();
       }, remain + 24);
-      return;
+      return true;
     }
   }
-  return showEndCore();
+  return false;
 }
-export function bossProcessPendingTraitChoice() {
-  if (!bossRulesReady) return processPendingTraitChoiceCore.apply(this, arguments);
-  const q = state_ui_battle_state.game?.pendingTraitChoices?.[0];
-  if (q?.kind !== "bossReward") return processPendingTraitChoiceCore();
+export function presentRaidReward(q) {
   if (bossRewardWaitForVisuals(q)) return true;
   state_ui_battle_state.busy = true;
   if (state_ui_battle_state.game.bossRaid.online && state_ui_deck.p2p.role === "host" && !q.sent) {
@@ -2066,9 +1956,7 @@ export function bossProcessPendingTraitChoice() {
   }
   return bossOpenReward(q);
 }
-export function bossScheduleAI() {
-  if (!bossRulesReady) return scheduleAICore.apply(this, arguments);
-  if (!state_ui_battle_state.game?.bossRaid) return scheduleAICore();
+export function scheduleRaidTurn() {
   if (state_ui_battle_state.game.winner || state_ui_battle_state.busy || state_ui_battle_state.game.pendingTraitChoices?.length) return;
   prepareCurrentTurn(state_ui_battle_state.game);
   const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
@@ -2154,9 +2042,7 @@ export function bossScheduleAI() {
     bossOnlineAiTimer = onlineTimerId;
   } else scheduleLocalAutoTurnTimer(noLegalActions ? "boss-no-legal-actions" : "boss-ai", delay, run);
 }
-export function bossAfterAction() {
-  if (!bossRulesReady) return afterActionCore.apply(this, arguments);
-  if (!state_ui_battle_state.game?.bossRaid) return afterActionCore();
+export function commitRaidActionPresentation() {
   state_ui_battle_state.pendingSkill = null;
   if (state_ui_battle_state.game.bossRaid.online && state_ui_deck.p2p.role === "guest" && state_online_commands.OnlineActionAdmissionOwner.hasPending()) {
     systems.OnlineRuntime?.projection?.request?.("boss-guest-command-pending", {
@@ -2168,7 +2054,7 @@ export function bossAfterAction() {
   }
   const teammateVisuals = state_ui_battle_state.game.bossRaid.online && state_ui_deck.p2p.role === "host" ? cloneOnlineVisualEvents(state_ui_battle_state.visualEvents) : [];
   const reward = state_ui_battle_state.game.pendingTraitChoices?.[0];
-  if (reward?.kind === "bossReward" && reward.visualDelayMs == null) reward.visualDelayMs = true ? Math.max(0, Number(state_ui_battle_state.visualHoldMs || 0)) + 140 : 0;
+  if (reward?.kind === "bossReward" && reward.visualDelayMs == null) reward.visualDelayMs = (Math.max(0, Number(state_ui_battle_state.visualHoldMs || 0)) + 140);
   if (state_ui_battle_state.game.bossRaid.online && state_ui_deck.p2p.role === "host") {
     bossSendState(false, teammateVisuals);
     systems.OnlineRuntime?.projection?.request?.("boss-host-action-commit", {

@@ -13,7 +13,10 @@ import { state_presentation_coordinates } from "../presentation/coordinates.js";
 // may remove a defeated target. Never reuse another client's pixel coordinates.
 function receiveAuthoritativeVisuals(msg) {
   const delivery = visualDelivery(state_ui_deck.p2p, onlineCurrentMatchId());
-  const batches = delivery.unseen(msg).map(batch => ({ ...batch, visuals: cloneOnlineVisualEvents(batch.visuals) }));
+  const batches = delivery.unseen(msg).map(batch => ({
+    ...batch,
+    visuals: cloneOnlineVisualEvents(batch.visuals)
+  }));
   for (const batch of batches) for (const event of batch.visuals) {
     delete event.vfxAnchorSnapshot;
     delete event.presentationAnchor;
@@ -134,16 +137,23 @@ export function applyAuthoritativeOnlineState(msg) {
   if (msg.mode !== expectedMode) return false;
   const replayVisuals = receiveAuthoritativeVisuals(msg);
   const acknowledge = extra => onlineSafeSend({
-    type: "stateAck", protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-    mode: expectedMode, matchId: onlineCurrentMatchId(), revision,
+    type: "stateAck",
+    protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
+    mode: expectedMode,
+    matchId: onlineCurrentMatchId(),
+    revision,
     turnSerial: state_ui_battle_state.game?.turnSerial,
-    ackActionId: msg.ackActionId || null, ...extra,
+    ackActionId: msg.ackActionId || null,
+    ...extra,
     visualAckIds: replayVisuals()
   });
   if (revision && (revision < appliedRevision || revision === appliedRevision && !restorePending)) {
     if (revision === appliedRevision) {
       const resolution = state_online_commands.OnlineActionAdmissionOwner.settle(msg);
-      if (resolution.settled) admitAuthoritativeStateCommit({ revision, kind: "authoritativeActionResolution" });
+      if (resolution.settled) admitAuthoritativeStateCommit({
+        revision,
+        kind: "authoritativeActionResolution"
+      });
     }
     acknowledge();
     return false;
@@ -180,7 +190,9 @@ export function applyAuthoritativeOnlineState(msg) {
         kind: "authoritativeStateInputPreserved",
         inputPreserved: true
       });
-      acknowledge({ inputPreserved: true });
+      acknowledge({
+        inputPreserved: true
+      });
       return true;
     }
     let sameState = false;
@@ -252,7 +264,9 @@ export function applyAuthoritativeOnlineState(msg) {
       kind: "authoritativeStateInputPreserved",
       inputPreserved: true
     });
-    acknowledge({ inputPreserved: true });
+    acknowledge({
+      inputPreserved: true
+    });
     return true;
   }
   let sameState = false;

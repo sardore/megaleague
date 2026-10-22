@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_online_start = {
   onlineCoinShownScopes: undefined,
@@ -5,7 +6,6 @@ export const state_online_start = {
 };
 import { state_runtime_transactions } from "../runtime/transactions.js";
 import { state_runtime_input } from "../runtime/input.js";
-import { state_runtime_config } from "../runtime/config.js";
 import { state_catalog_cards } from "../catalog/cards.js";
 import { clone } from "../engine/entities.js";
 import { showOnlineCoinToss } from "../features/foxious.js";
@@ -143,7 +143,7 @@ export function abortOnlineStartTransaction(reason = "START_ACK_TIMEOUT") {
   if (packet.mode === "BOSS_COOP") systems.__redTimeoraBossRaid?.abortPendingStart?.(reason);else if (state_ui_battle_state.game?.mode === "online") {
     const battleId = state_ui_battle_state.game.battleId || null;
     if (battleId) {
-      state_runtime_config.TimerManager?.clearScope?.(battleId);
+      TimerManager?.clearScope?.(battleId);
       state_runtime_input.InputLockManager?.releaseBattle?.(battleId);
       state_runtime_transactions.ActionTransactionManager?.clearBattle?.(battleId);
     }
@@ -388,7 +388,7 @@ export function rollbackGuestOnlineStart(msg, reason = "HOST_START_ABORTED") {
   const g = state_ui_battle_state.game,
     battleId = g?.battleId || msg?.battleId || null;
   if (battleId) {
-    state_runtime_config.TimerManager?.clearScope?.(battleId);
+    TimerManager?.clearScope?.(battleId);
     state_runtime_input.InputLockManager?.releaseBattle?.(battleId);
     state_runtime_transactions.ActionTransactionManager?.clearBattle?.(battleId);
   }
@@ -642,7 +642,7 @@ export function startOnlineRoomBattleOnce() {
   } catch (error) {
     const battleId = state_ui_battle_state.game?.battleId || null;
     if (battleId) {
-      state_runtime_config.TimerManager?.clearScope?.(battleId);
+      TimerManager?.clearScope?.(battleId);
       state_runtime_input.InputLockManager?.releaseBattle?.(battleId);
       state_runtime_transactions.ActionTransactionManager?.clearBattle?.(battleId);
     }

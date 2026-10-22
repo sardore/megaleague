@@ -28,9 +28,15 @@ for(const file of files){
       if(left.type==='MemberExpression'&&left.object.type==='Identifier'&&['window','globalThis'].includes(left.object.name))fail(p,'application state cannot be written onto the browser global');
       if(left.type==='MemberExpression'&&left.object.type==='MemberExpression'&&left.object.property?.name==='prototype')fail(p,'prototype patch');
     },
+    CallExpression(p){
+      const callee=p.node.callee;
+      if(callee.type==='MemberExpression'&&['apply','call'].includes(callee.property?.name)&&p.node.arguments[0]?.type==='ThisExpression')fail(p,'receiver-forwarding runtime wrapper');
+    },
   });
   assert.ok(!/invokeBossModeHook|actionTransactionExecuteStage|withExecuteContext|onlinePendingCommand|p2p\.pendingActionId/.test(source),`Retired execution path in ${file}`);
+  assert.ok(!/policySlots|sealPolicies|bossRulesReady|systems\.TimerManager|state_runtime_config\.TimerManager|__timeClockOverlayImpl/.test(source),`Retired mutable interceptor or service alias in ${file}`);
 }
+assert.ok(!fs.existsSync('src/engine/policies.js'),'numbered policy registry must stay removed');
 const html=fs.readFileSync('index.html','utf8');
 assert.equal((html.match(/<script\b/g)||[]).length,1,'one module entry point');
 assert.match(html,/<script type="module" src="\.\/assets\/app\.js/);

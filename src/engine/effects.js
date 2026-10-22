@@ -1,3 +1,9 @@
+import { applyClockEffect } from "../features/timeora.js";
+import { applyReactiveEnergyEffect } from "../features/genocider.js";
+import { applyResonanceEffect, syncAromaCombatFlags, elixianHpProtection, totalHpProtection } from "../features/elixian.js";
+import { applyStrikeEffect } from "../features/foxious.js";
+import { applySummonEffect, circuitBlocksExternal, resolveVoltageBurst } from "../features/summons.js";
+import { applyDeepSeaEffect, grantEnergyWithDiscard } from "../features/character-rules.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_engine_effects = {
   RANDOM_ENERGY_RULES: undefined,
@@ -9,10 +15,7 @@ import { activeIruma, activeNoBlack, activeNoRed, afterBodyHpChange, applyCritic
 import { allEnergy, energyStore, gainEnergy, notifyReactiveEnergyMutation, spendReq, status, totalEnergy } from "./energy.js";
 import { RNG, actionFaultHit, card, cardHasCapability, firstSkillByEffect, firstSkillByTag, firstSkillOf, skillDefHasEffect, skillDefHasTag, skillIdByEffectGlobal, state_engine_entities } from "./entities.js";
 import { checkWinner } from "./execution.js";
-import { grantEnergyWithDiscard } from "../features/character-rules.js";
 import { dmAppendMemoryCost, dmIsDragonCard, dmMemoryBaseCosts } from "../features/dragon-memory.js";
-import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
-import { circuitBlocksExternal, resolveVoltageBurst } from "../features/summons.js";
 import { log, queueCombatNotice } from "../presentation/audio.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
 export class EnergyGainContext {
@@ -992,8 +995,42 @@ export function activateFullInvulnerabilityUntilOwnTurn(g, actor, sourceName = "
   queueCombatNotice(g, actor, "전 피해 무적", "immune");
   return true;
 }
-export function effectApplyCore(g, actor, target, e, skill, ctx) {
+export function effectApply(g, actor, target, e, skill, ctx) {
   switch (e.type) {
+    case "mysticBurst":
+      return executeMysticBurst(g, actor, target, skill, ctx);
+    case "mutualEnergyTrade":
+      return executeMutualEnergyTrade(g, actor, target, e, skill, ctx);
+    case "suctionPad":
+    case "eternaHeal":
+    case "toxiousUnseal":
+    case "groundZero":
+    case "dustWave":
+    case "abyssCannon":
+      return applyDeepSeaEffect(g, actor, target, e, skill, ctx);
+    case "abyssVortex":
+    case "junglesVineWhip":
+    case "circuitRoundKick":
+    case "circuitArmsBlade":
+    case "circuitVoltageBurst":
+      return applySummonEffect(g, actor, target, e, skill, ctx);
+    case "foxStrike":
+      return applyStrikeEffect(g, actor, target, e, skill, ctx);
+    case "elixianShiningWind":
+    case "elixianAromaField":
+    case "elixianMultiArrow":
+    case "elixianLastGift":
+      return applyResonanceEffect(g, actor, target, e, skill, ctx);
+    case "genociderSlashClaw":
+    case "genociderDisplosion":
+      return applyReactiveEnergyEffect(g, actor, target, e, skill, ctx);
+    case "timeRecall":
+    case "hyperClock":
+      return applyClockEffect(g, actor, target, e, skill, ctx);
+    case "bossTimeStrike":
+      return dealDamage(g, actor, target, {
+        amount: Number(ctx?.action?.bossTimeStrikeDamage || 40)
+      }, skill, ctx.sim);
     case "masterTailwind":
       {
         let gained = 0;
@@ -1389,7 +1426,11 @@ export function effectApplyCore(g, actor, target, e, skill, ctx) {
     case "lightCandelabra":
       return lightCandelabra(g, actor, target, ctx.paid, ctx, skill);
     case "grandField":
-      return createGrandField(g, actor, ctx.team, target, skill, ctx.sim, e);
+      {
+        const result = createGrandField(g, actor, ctx.team, target, skill, ctx.sim, e);
+        syncAromaCombatFlags(g);
+        return result;
+      }
     case "zigzagExcavate":
       return startZigzag(g, actor);
     case "hurricaneDive":

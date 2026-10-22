@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_online_emotes = {
   BATTLE_EMOTE_PROTOCOL: undefined,
@@ -48,7 +49,7 @@ export function showBattleEmote(emoji, who = "상대") {
   n.style.zIndex = "26000";
   n.textContent = `${who} ${emoji}`;
   document.body.appendChild(n);
-  systems.TimerManager.setTimeout(() => n.remove(), 2300);
+  TimerManager.setTimeout(() => n.remove(), 2300);
   return n;
 }
 export function sendBattleEmoteControl(packet) {
@@ -591,6 +592,5 @@ export function chooseSummonAIAction(g, t, u) {
 // Validate the exact selected payment before mutating a summon or its target.
 export function validSummonPayment(g, team, summon, cost, plan) {
   if (!plan || ["R", "W", "B"].some(c => !Number.isFinite(Number(plan[c] || 0)) || Number(plan[c] || 0) < 0)) return !cost && !plan;
-  return !!findPaymentPlan(g, team, summon, cost, null, candidate =>
-    ["R", "W", "B"].every(color => Math.abs(candidate[color] - Number(plan[color] || 0)) < 0.001));
+  return !!findPaymentPlan(g, team, summon, cost, null, candidate => ["R", "W", "B"].every(color => Math.abs(candidate[color] - Number(plan[color] || 0)) < 0.001));
 }

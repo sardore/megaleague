@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_ui_results = {
   ResultContributionViewModelOwner: undefined,
@@ -458,7 +459,7 @@ export async function runSimulation() {
       quickBattle(`balance-${gr.key}-${i}`, gr.variance, stats, gr.league, gr.composition);
       if (i % 20 === 0) {
         state_ui_battle_state.$("#simProgress i").style.width = `${(gi * n + i) / (n * groups.length) * 100}%`;
-        await new Promise(r => systems.TimerManager.setTimeout(r, 0));
+        await new Promise(r => TimerManager.setTimeout(r, 0));
       }
     }
     res[gr.key] = stats;

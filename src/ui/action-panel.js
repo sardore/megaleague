@@ -382,7 +382,7 @@ export function renderBaseActions(viewModel = null) {
       serial = state_ui_battle_state.game.turnSerial;
     state_ui_battle_state.busy = true;
     state_ui_action_panel.ActionPanelConvergenceOwner.request("interaction-choice");
-    scheduleLocalAutoTurnTimer("speed-delay", true ? 550 : 0, () => {
+    scheduleLocalAutoTurnTimer("speed-delay", (550), () => {
       if (!state_ui_battle_state.game || state_ui_battle_state.game.winner || state_ui_battle_state.game.token !== token || state_ui_battle_state.game.turnSerial !== serial) {
         state_ui_battle_state.busy = false;
         return;

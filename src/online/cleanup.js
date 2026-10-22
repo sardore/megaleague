@@ -1,3 +1,4 @@
+import { TimerManager } from "../runtime/timers.js";
 import { resetOnlineStartTransactionState, state_online_start } from "./start.js";
 import { resetBattleEmoteReliability } from "./emotes.js";
 import { state_online_commands } from "./commands.js";
@@ -5,7 +6,6 @@ import { state_online_connection, onlineRulesPayload, lockOnlineSettings } from 
 import { state_ui_battle_state } from "../ui/battle-state.js";
 import { state_runtime_presentation } from "../runtime/presentation.js";
 import { systems } from "../runtime/systems.js";
-import { state_runtime_config } from "../runtime/config.js";
 import { state_runtime_input } from "../runtime/input.js";
 import { state_runtime_transactions } from "../runtime/transactions.js";
 import { state_ui_deck } from "../ui/deck.js";
@@ -34,7 +34,7 @@ export function releaseOnlineApplicationState(reason = "online-session-release")
       systems.__megaRecordRecoveredError?.(error, "OnlineRuntime.newSession.AnimationEngine");
     }
     try {
-      if (priorGame.battleId) state_runtime_config.TimerManager?.clearScope?.(priorGame.battleId);
+      if (priorGame.battleId) TimerManager?.clearScope?.(priorGame.battleId);
     } catch (error) {
       systems.__megaRecordRecoveredError?.(error, "OnlineRuntime.newSession.TimerManager");
     }
