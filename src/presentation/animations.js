@@ -792,11 +792,10 @@ export function playVisualsCoreBase() {
       return;
     }
     if (v.type === "skillFx") {
-      const actorEl = state_presentation_coordinates.battleEntityElement(v.uid),
-        targetEl = v.targetUid ? state_presentation_coordinates.battleEntityElement(v.targetUid) : actorEl;
-      if (!arena || !actorEl) return;
-      const from = state_presentation_coordinates.VfxCoordinateOwner.point(arena, actorEl),
-        to = state_presentation_coordinates.VfxCoordinateOwner.point(arena, targetEl || actorEl);
+      const snapshot = state_presentation_coordinates.VfxCoordinateOwner.resolveEvent(v);
+      if (!arena || !snapshot) return;
+      const from = snapshot.source,
+        to = snapshot.targets?.[v.targetUid] || from;
       if (!from || !to) return;
       const palettes = {
         heal: "#55f0a6",
@@ -1150,6 +1149,7 @@ export function playVisualsCoreBase() {
   }, i * 130));
 }
 export function playVisualsCanonical() {
+  const visualGame = state_ui_battle_state.game;
   // Canonical visual dispatcher: custom event families are peeled once, then the base renderer runs once.
   const clocks = [],
     hypers = [],
@@ -1196,10 +1196,15 @@ export function playVisualsCanonical() {
   const extras = tracked.result?.extras || [];
   if (clocks.length) {
     state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 4200);
-    state_features_timeora.timeVisualChain = state_features_timeora.timeVisualChain.then(() => Promise.allSettled([tracked.done, ...extras])).then(() => timePlayClockRotationOverlay(clocks)).finally(() => {
+    state_features_timeora.timeVisualChain = state_features_timeora.timeVisualChain.then(() => Promise.allSettled([tracked.done, ...extras])).then(() => {
+      if (state_ui_battle_state.game?.battleId !== visualGame?.battleId) return;
+      timeSetInputLock(true, true);
+      return timePlayClockRotationOverlay(clocks);
+    }).finally(() => {
+      if (state_ui_battle_state.game?.battleId !== visualGame?.battleId) return;
       timeSetInputLock(false);
       timeMarkTimeline(state_ui_battle_state.game, "clockLockReleased");
-      const advanced = timeCommitPendingTurnAdvance(state_ui_battle_state.game);
+      const advanced = state_ui_battle_state.game === visualGame && timeCommitPendingTurnAdvance(visualGame);
       try {
         if (advanced && typeof afterAction === "function") afterAction();else render();
       } catch (error) {

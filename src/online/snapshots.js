@@ -7,6 +7,29 @@ import { systems } from "../runtime/systems.js";
 import { processPendingTraitChoice, scheduleAI } from "../ui/action-choices.js";
 import { state_ui_battle_state } from "../ui/battle-state.js";
 import { startBgm, state_ui_deck } from "../ui/deck.js";
+import { visualDelivery } from "./visual-delivery.js";
+import { state_presentation_coordinates } from "../presentation/coordinates.js";
+// Capture against this client's current layout before restoring a snapshot that
+// may remove a defeated target. Never reuse another client's pixel coordinates.
+function receiveAuthoritativeVisuals(msg) {
+  const delivery = visualDelivery(state_ui_deck.p2p, onlineCurrentMatchId());
+  const batches = delivery.unseen(msg).map(batch => ({ ...batch, visuals: cloneOnlineVisualEvents(batch.visuals) }));
+  for (const batch of batches) for (const event of batch.visuals) {
+    delete event.vfxAnchorSnapshot;
+    delete event.presentationAnchor;
+    state_presentation_coordinates.VfxCoordinateOwner.captureInto(event);
+    state_presentation_coordinates.DamagePresentationAnchorOwner.captureInto(state_ui_battle_state.game, event);
+  }
+  return () => {
+    for (const batch of batches) {
+      if (delivery.received.has(batch.id)) continue;
+      state_ui_battle_state.visualEvents.push(...batch.visuals);
+      playVisuals();
+      delivery.received.add(batch.id);
+    }
+    return delivery.batches(msg).filter(batch => delivery.received.has(batch.id)).map(batch => batch.id);
+  };
+}
 export function sendAuthoritativeOnlineState(visuals = [], ackActionId = null, force = false, actionResolution = null) {
   systems.__megaSpectatorR18?.beforeAuthoritativeState?.(visuals);
   const bossOnline = !!state_ui_battle_state.game?.bossRaid?.online;
@@ -24,7 +47,8 @@ export function sendAuthoritativeOnlineState(visuals = [], ackActionId = null, f
   // Transport availability cannot veto an already committed host mutation. Advance the
   // canonical revision first; onlineSafeSend may fail and the same immutable revision is
   // then retained by the single reliable-state retry owner below.
-  const sent = onlineSafeSend({
+  const visualBatches = visualDelivery(state_ui_deck.p2p, onlineCurrentMatchId()).publish(revision, packet);
+  const authoritativePacket = {
     type: "authoritativeState",
     protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
     mode: bossOnline ? "BOSS_COOP" : "PVP",
@@ -37,8 +61,10 @@ export function sendAuthoritativeOnlineState(visuals = [], ackActionId = null, f
     actionResolution: normalizedResolution,
     visualPacketId: packet.length ? `${state_ui_battle_state.game.turnSerial}:${revision}` : null,
     visuals: packet,
+    visualBatches,
     forced: !!force
-  });
+  };
+  const sent = onlineSafeSend(authoritativePacket);
   systems.LifecycleManager?.continuity?.authoritativeSettled?.({
     source: "host-authoritative-publication",
     mode: bossOnline ? "BOSS_COOP" : "PVP",
@@ -47,24 +73,10 @@ export function sendAuthoritativeOnlineState(visuals = [], ackActionId = null, f
     sent: !!sent,
     forced: !!force
   });
-  if (state_ui_deck.p2p?.role === "host" && state_ui_battle_state.game?.mode === "online") {
+  if (state_ui_deck.p2p?.role === "host") {
     // Keep the newest canonical snapshot even when the first socket write fails.
     // The reliable retry loop can then publish this exact revision once transport recovers.
-    state_ui_deck.p2p.__reliableStatePacket = {
-      type: "authoritativeState",
-      protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-      mode: "PVP",
-      matchId: onlineCurrentMatchId(),
-      revision,
-      turnSerial: state_ui_battle_state.game.turnSerial,
-      turn: state_ui_battle_state.game.turn,
-      state: serializeOnlineGame(),
-      ackActionId: ackActionId || null,
-      actionResolution: normalizedResolution,
-      visualPacketId: null,
-      visuals: [],
-      forced: !!force
-    };
+    state_ui_deck.p2p.__reliableStatePacket = authoritativePacket;
     state_ui_deck.p2p.__reliableStateAck = Math.min(Number(state_ui_deck.p2p.__reliableStateAck || 0), revision - 1);
     state_ui_deck.p2p.__reliableStateSentAt = sent ? Date.now() : 0;
   }
@@ -116,11 +128,26 @@ export function applyAuthoritativeOnlineState(msg) {
   const revision = Number(msg.revision || 0);
   const restorePending = !!systems.OnlineRuntime?.restore?.pending?.();
   const appliedRevision = Number(state_ui_deck.p2p.lastAuthoritativeRevision || 0);
-  if (revision && (revision < appliedRevision || revision === appliedRevision && !restorePending)) return false;
   if (incomingMatch && !state_ui_deck.p2p.matchId) state_ui_deck.p2p.matchId = incomingMatch;
   const bossMode = state_ui_deck.p2p?.sessionMode === "bossRaid" || !!state_ui_battle_state.game?.bossRaid?.online,
     expectedMode = bossMode ? "BOSS_COOP" : "PVP";
   if (msg.mode !== expectedMode) return false;
+  const replayVisuals = receiveAuthoritativeVisuals(msg);
+  const acknowledge = extra => onlineSafeSend({
+    type: "stateAck", protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
+    mode: expectedMode, matchId: onlineCurrentMatchId(), revision,
+    turnSerial: state_ui_battle_state.game?.turnSerial,
+    ackActionId: msg.ackActionId || null, ...extra,
+    visualAckIds: replayVisuals()
+  });
+  if (revision && (revision < appliedRevision || revision === appliedRevision && !restorePending)) {
+    if (revision === appliedRevision) {
+      const resolution = state_online_commands.OnlineActionAdmissionOwner.settle(msg);
+      if (resolution.settled) admitAuthoritativeStateCommit({ revision, kind: "authoritativeActionResolution" });
+    }
+    acknowledge();
+    return false;
+  }
   if (state_ui_deck.p2p.guestStartAwaitingHostCommit && String(state_ui_deck.p2p.guestStartAwaitingHostCommit.matchId || "") === String(msg.matchId || state_ui_deck.p2p.matchId || "")) {
     const pendingStart = {
       ...state_ui_deck.p2p.guestStartAwaitingHostCommit
@@ -147,25 +174,15 @@ export function applyAuthoritativeOnlineState(msg) {
     const sameDecisionState = sameTurnSnapshot && !!state_ui_battle_state.game && onlineSnapshotEquivalentForInput(systems.__redTimeoraBossRaid.serialize(state_ui_battle_state.game), msg.state);
     if (localDecisionOpen && sameDecisionState) {
       if (revision) state_ui_deck.p2p.lastAuthoritativeRevision = revision;
-      onlineSafeSend({
-        type: "stateAck",
-        protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-        mode: "BOSS_COOP",
-        matchId: onlineCurrentMatchId(),
-        revision,
-        turnSerial: state_ui_battle_state.game.turnSerial,
-        ackActionId: msg.ackActionId || null,
-        inputPreserved: true
-      });
+      state_ui_battle_state.game.networkRevision = Math.max(Number(state_ui_battle_state.game.networkRevision || 0), revision);
       admitAuthoritativeStateCommit({
         revision,
         kind: "authoritativeStateInputPreserved",
         inputPreserved: true
       });
+      acknowledge({ inputPreserved: true });
       return true;
     }
-    const replay = msg.visualPacketId && state_ui_deck.p2p.lastVisualPacketId !== msg.visualPacketId ? cloneOnlineVisualEvents(msg.visuals || []) : [];
-    if (msg.visualPacketId) state_ui_deck.p2p.lastVisualPacketId = msg.visualPacketId;
     let sameState = false;
     try {
       sameState = !!state_ui_battle_state.game?.bossRaid?.online && systems.__redTimeoraBossRaid.serialize(state_ui_battle_state.game) === msg.state;
@@ -182,27 +199,11 @@ export function applyAuthoritativeOnlineState(msg) {
         source: "boss-authoritative-state-recovery",
         canonicalRevision: revision || Number(state_ui_battle_state.game?.turnSerial || 0)
       });
-      if (replay.length) {
-        state_ui_battle_state.visualEvents = cloneOnlineVisualEvents(replay);
-        systems.OnlineRuntime?.sessionScope?.requestAnimationFrame?.(() => {
-          if (state_ui_battle_state.game?.bossRaid?.online) playVisuals();
-        }, "boss-authoritative-replay", {
-          phase: "IN_BATTLE"
-        });
-      }
-      onlineSafeSend({
-        type: "stateAck",
-        protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-        mode: "BOSS_COOP",
-        matchId: onlineCurrentMatchId(),
-        revision,
-        turnSerial: state_ui_battle_state.game.turnSerial,
-        ackActionId: msg.ackActionId || null
-      });
       admitAuthoritativeStateCommit({
         revision,
         kind: "authoritativeStateSame"
       });
+      acknowledge();
       return true;
     }
     const boundaryNeedsHeal = !state_ui_deck.p2p.battleStarted || systems.OnlineRuntime?.identity?.().phase !== "IN_BATTLE";
@@ -222,27 +223,11 @@ export function applyAuthoritativeOnlineState(msg) {
       revision,
       kind: "authoritativeState"
     });
-    if (replay.length) {
-      state_ui_battle_state.visualEvents = cloneOnlineVisualEvents(replay);
-      systems.OnlineRuntime?.sessionScope?.requestAnimationFrame?.(() => {
-        if (state_ui_battle_state.game?.bossRaid?.online) playVisuals();
-      }, "boss-authoritative-replay", {
-        phase: "IN_BATTLE"
-      });
-    }
+    acknowledge();
     if (state_ui_battle_state.game.pendingTraitChoices?.[0]?.kind === "bossReward") processPendingTraitChoice();else {
       document.getElementById("modal")?.classList.remove("open");
       scheduleAI();
     }
-    onlineSafeSend({
-      type: "stateAck",
-      protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-      mode: "BOSS_COOP",
-      matchId: onlineCurrentMatchId(),
-      revision,
-      turnSerial: state_ui_battle_state.game.turnSerial,
-      ackActionId: msg.ackActionId || null
-    });
     state_online_commands.OnlineActionAdmissionOwner.startProbe();
     return true;
   }
@@ -261,21 +246,13 @@ export function applyAuthoritativeOnlineState(msg) {
   const sameDecisionState = sameTurnSnapshot && !!state_ui_battle_state.game && onlineSnapshotEquivalentForInput(serializeOnlineGame(), msg.state);
   if (localDecisionOpen && sameDecisionState) {
     if (revision) state_ui_deck.p2p.lastAuthoritativeRevision = revision;
-    onlineSafeSend({
-      type: "stateAck",
-      protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-      mode: "PVP",
-      matchId: onlineCurrentMatchId(),
-      revision,
-      turnSerial: state_ui_battle_state.game.turnSerial,
-      ackActionId: msg.ackActionId || null,
-      inputPreserved: true
-    });
+    state_ui_battle_state.game.networkRevision = Math.max(Number(state_ui_battle_state.game.networkRevision || 0), revision);
     admitAuthoritativeStateCommit({
       revision,
       kind: "authoritativeStateInputPreserved",
       inputPreserved: true
     });
+    acknowledge({ inputPreserved: true });
     return true;
   }
   let sameState = false;
@@ -287,19 +264,11 @@ export function applyAuthoritativeOnlineState(msg) {
   if (sameState) {
     if (revision) state_ui_deck.p2p.lastAuthoritativeRevision = revision;
     state_ui_battle_state.game.networkRevision = Math.max(Number(state_ui_battle_state.game.networkRevision || 0), revision);
-    onlineSafeSend({
-      type: "stateAck",
-      protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-      mode: "PVP",
-      matchId: onlineCurrentMatchId(),
-      revision,
-      turnSerial: state_ui_battle_state.game.turnSerial,
-      ackActionId: msg.ackActionId || null
-    });
     admitAuthoritativeStateCommit({
       revision,
       kind: "authoritativeStateSame"
     });
+    acknowledge();
     return true;
   }
   state_ui_battle_state.game = systems.OnlineSnapshotEngine.restoreState(msg.state, {
@@ -312,8 +281,6 @@ export function applyAuthoritativeOnlineState(msg) {
   state_ui_battle_state.game.battleStarted = true;
   state_ui_deck.p2p.battleStarted = true;
   state_ui_deck.onlineSide = "A";
-  const replay = msg.visualPacketId && state_ui_deck.p2p.lastVisualPacketId !== msg.visualPacketId ? cloneOnlineVisualEvents(msg.visuals || []) : [];
-  if (msg.visualPacketId) state_ui_deck.p2p.lastVisualPacketId = msg.visualPacketId;
   state_ui_battle_state.busy = false;
   state_ui_battle_state.pendingSkill = null;
   state_ui_battle_state.lastLog = 0;
@@ -324,24 +291,8 @@ export function applyAuthoritativeOnlineState(msg) {
     revision,
     kind: "authoritativeState"
   });
-  if (replay.length) {
-    state_ui_battle_state.visualEvents = replay;
-    systems.OnlineRuntime?.sessionScope?.requestAnimationFrame?.(() => {
-      if (state_ui_battle_state.game?.mode === "online") playVisuals();
-    }, "pvp-authoritative-replay", {
-      phase: "IN_BATTLE"
-    });
-  }
+  acknowledge();
   startBgm();
-  onlineSafeSend({
-    type: "stateAck",
-    protocol: state_online_commands.ONLINE_TURN_SYNC_VERSION,
-    mode: "PVP",
-    matchId: onlineCurrentMatchId(),
-    revision,
-    turnSerial: state_ui_battle_state.game.turnSerial,
-    ackActionId: msg.ackActionId || null
-  });
   return true;
 }
 export function initializeOnlineSnapshots() {

@@ -45,7 +45,7 @@ export function initializeFeaturesBossRaid() {
     grade: "BOSS",
     maxEnergy: 4,
     tags: ["dragon", "time", "boss"],
-    timeProtect: 20,
+    defenseAura: 20,
     timeAcceleration: true,
     fateClock: true,
     hiddenUntilRevealed: false

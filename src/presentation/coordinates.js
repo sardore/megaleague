@@ -28,6 +28,7 @@ export function initializePresentationCoordinates() {
   state_presentation_coordinates.battleEntityElement = uid => state_presentation_coordinates.RenderedBattleEntityMapOwner.field(uid);
   state_presentation_coordinates.battleVisualElement = uid => state_presentation_coordinates.RenderedBattleEntityMapOwner.visual(uid);
   state_presentation_coordinates.VfxCoordinateOwner = (() => {
+    const clientId = `vfx-client:${Math.random().toString(36).slice(2)}`;
     const finiteRect = rect => !!rect && [rect.left, rect.top, rect.width, rect.height].every(Number.isFinite);
     const epoch = () => Number(systems.ActionRenderEngine?.snapshot?.().renderSerial || 0);
     const point = (overlay, element) => {
@@ -147,10 +148,10 @@ export function initializePresentationCoordinates() {
     };
     const captureInto = event => {
       const snapshot = resolveByIdentity(event);
-      if (snapshot) event.vfxAnchorSnapshot = snapshot;
+      if (snapshot) event.vfxAnchorSnapshot = { ...snapshot, clientId };
       return snapshot;
     };
-    const resolveEvent = (event, options) => event?.vfxAnchorSnapshot || resolveByIdentity(event, options);
+    const resolveEvent = (event, options) => event?.vfxAnchorSnapshot?.clientId === clientId ? event.vfxAnchorSnapshot : resolveByIdentity(event, options);
     return Object.freeze({
       point,
       pair,

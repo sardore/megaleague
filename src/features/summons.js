@@ -266,8 +266,8 @@ export function initializeFeaturesSummons() {
     }
   };
 }
-export function fragmentDefense(u) {
-  return cardHasCapability(u, "fragmentTrait") && traitsActive(u) ? Math.round((colorAmount(u, "R") + colorAmount(u, "B")) * 10) : 0;
+export function fragmentDefense(u, g) {
+  return cardHasCapability(u, "fragmentTrait") && traitsActive(u, g) ? Math.round((colorAmount(u, "R") + colorAmount(u, "B")) * 10) : 0;
 }
 export function circuitBlocksExternal(target, source) {
   return !!(target && cardHasCapability(target, "fragmentTrait") && traitsActive(target) && (!source || source.uid !== target.uid));

@@ -1228,7 +1228,7 @@ export function effectApplyCore(g, actor, target, e, skill, ctx) {
             }, skill).mean,
             normalDefeats = attackPacketWouldDefeatTarget(g, target, Math.round(normalEstimate), {}),
             criticalDefeats = attackPacketWouldDefeatTarget(g, target, Math.round(criticalEstimate), {}),
-            evadeChance = attackEvasionChance(target),
+            evadeChance = attackEvasionChance(target, g),
             defeatChance = (1 - evadeChance) * ((normalDefeats ? 1 - chance : 0) + (criticalDefeats ? chance : 0));
           if (defeatChance >= 1 - 1e-9) return applyCriticalAttack(g, actor, target, Number(e.amount || 0), skill, true, `${Math.round(chance * 100)}% 판정`, {
             failUnlessDefeat: true

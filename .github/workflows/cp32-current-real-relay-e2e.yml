@@ -81,6 +81,7 @@ jobs:
           npm run build
           npm run validate:static
           npm test
+          node tools/check-combat-online.js
           node --check relay-src/server.js
 
       - name: Start exact relay source

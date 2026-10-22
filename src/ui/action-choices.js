@@ -12,6 +12,7 @@ import { removeDeepMindHalf } from "../features/character-rules.js";
 import { timeAccelerationIsActive, timeMarkTimeline, timeOpenGatherOverflow, timePeekGather, state_features_timeora } from "../features/timeora.js";
 import { state_online_commands } from "../online/commands.js";
 import { broadcastOnlineState, cloneOnlineVisualEvents } from "../online/connection.js";
+import { sendAuthoritativeOnlineState } from "../online/snapshots.js";
 import { applyManualSummonAction, chooseSummonAIAction, normalizePendingSummonTurns, summonTeamLocallyControlled } from "../online/emotes.js";
 import { randomId, stableOnlinePlayerId } from "../online/transport.js";
 import { log } from "../presentation/audio.js";
@@ -349,6 +350,11 @@ export function afterActionCore() {
   }
   state_ui_battle_state.pendingSkill = null;
   if (state_ui_battle_state.game?.pendingClockTurnAdvance) {
+    if (state_ui_battle_state.game.mode === "online" && state_ui_deck.p2p?.role === "host") {
+      // Publish effects before local rendering drains them. The turn is still
+      // awaiting its clock barrier; its single canonical revision follows later.
+      sendAuthoritativeOnlineState(cloneOnlineVisualEvents(state_ui_battle_state.visualEvents), null, true);
+    }
     render();
     return;
   }

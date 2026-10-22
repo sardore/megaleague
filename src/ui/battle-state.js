@@ -21,7 +21,7 @@ export const state_ui_battle_state = {
   CombatStatPresentationOwner: undefined
 };
 import { state_engine_actions } from "../engine/actions.js";
-import { eclipseBlocks, traitsActive } from "../engine/combat.js";
+import { combatStats, eclipseBlocks, traitsActive } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
 import { card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillIdByEffect } from "../engine/entities.js";
 import { foxSingleCost } from "../features/foxious.js";
@@ -63,14 +63,15 @@ export function initializeUiBattleState() {
     }), Object.freeze({
       key: "defense",
       label: "방어",
-      value: combatInt(unit?.defenseMod || 0),
-      effectiveValue: combatInt(unit?.defense || 0)
-    })].filter(item => item.value !== 0));
+      value: combatInt(visibleDefense(unit) - Number(unit?.baseDefense || 0)),
+      effectiveValue: visibleDefense(unit)
+    })].filter(item => item.value !== 0 || item.key === "defense" && item.effectiveValue !== 0));
     const render = (unit, options = {}) => {
       const className = String(options.className || "combat-stat-chip");
       return project(unit).map(item => {
-        const title = item.key === "defense" ? `${item.label} modifier ${signed(item.value)} · 현재 최종 방어 ${combatInt(item.effectiveValue)}` : `${item.label} modifier ${signed(item.value)}`;
-        return `<span class="${escapeUIHTML(className)}" data-combat-stat-key="${item.key}" data-combat-stat-value="${item.value}" title="${escapeUIHTML(title)}">${item.label} ${signed(item.value)}</span>`;
+        const title = item.key === "defense" ? `${item.label} 변화 ${signed(item.value)} · 현재 방어 ${combatInt(item.effectiveValue)}` : `${item.label} 변화 ${signed(item.value)}`;
+        const value = item.key === "defense" && item.value === 0 ? combatInt(item.effectiveValue) : signed(item.value);
+        return `<span class="${escapeUIHTML(className)}" data-combat-stat-key="${item.key}" data-combat-stat-value="${item.value}" title="${escapeUIHTML(title)}">${item.label} ${value}</span>`;
       }).join("");
     };
     return Object.freeze({
@@ -168,8 +169,7 @@ export function energyHTML(u, actor = null) {
   return storeHTML(energyStore(u, actor));
 }
 export function visibleDefense(u) {
-  const base = cardHasCapability(u, "baseDefenseTraitBound") && !traitsActive(u) ? 0 : u.defense;
-  return combatInt(base + (typeof fragmentDefense === "function" ? fragmentDefense(u) : 0));
+  return combatInt(combatStats(state_ui_battle_state.game, u).defense);
 }
 export function effectsHTML(u) {
   let e = [];

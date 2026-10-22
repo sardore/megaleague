@@ -467,6 +467,7 @@ export function initializeOnlineCommands() {
       if (state_ui_deck.p2p) {
         state_ui_deck.p2p.lastAuthoritativeRevision = 0;
         state_ui_deck.p2p.lastVisualPacketId = null;
+        state_ui_deck.p2p.visualDelivery = null;
       }
       return view();
     };
