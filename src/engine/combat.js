@@ -13,7 +13,7 @@ import { checkWinner } from "./execution.js";
 import { elixianHealAmount, syncAromaCombatFlags } from "../features/elixian.js";
 import { reactiveEnergyRule, syncReactiveEnergyMaxHp } from "../features/genocider.js";
 import { circuitBlocksExternal, fragmentDefense } from "../features/summons.js";
-import { timeFieldTimeoras, timeTeamOf, state_features_timeora } from "../features/timeora.js";
+import { state_features_timeora } from "../features/timeora.js";
 import { log, queueCombatNotice } from "../presentation/audio.js";
 import { state_presentation_coordinates } from "../presentation/coordinates.js";
 import { systems } from "../runtime/systems.js";
@@ -193,9 +193,10 @@ export function combatStats(g, unit, { ignoreChanges = false, defenseModMultipli
   const traitBound = cardHasCapability(unit, "baseDefenseTraitBound");
   const baseDefense = traitBound && (ignoreChanges || !traitsActive(unit, g)) ? 0 : Number(unit.baseDefense || 0);
   if (ignoreChanges) return { attack: 0, defense: baseDefense };
-  const team = g && timeTeamOf(g, unit);
-  const aura = team ? Math.max(0, ...timeFieldTimeoras(g, team)
-    .filter(source => traitsActive(source, g)).map(source => Number(cardCapability(source, "timeProtect", 0)))) : 0;
+  const team = g && teamOf(g, unit);
+  const aura = team ? Math.max(0, ...g.teams[team].field
+    .filter(source => source && !source.dead && traitsActive(source, g))
+    .map(source => Number(cardCapability(source, "defenseAura", 0)))) : 0;
   const penalty = unit.aromaDamagePenalty && !(traitsActive(unit, g) && card(unit).statDecreaseImmune) ? 10 : 0;
   return {
     attack: Number(unit.attackMod || 0),

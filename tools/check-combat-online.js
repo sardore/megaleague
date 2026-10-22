@@ -174,5 +174,23 @@ try {
     });
     assert.deepEqual(errors,[]);
   });
+  await check('same-revision rejection resolves a pending guest command', async page => {
+    const result=await page.evaluate(()=>{
+      const p=window.probe;p.setupGuest();const g=p.battle.game;
+      g.turn=g.order.findIndex(([team])=>team==='A');
+      g.networkRevision=7;p.deck.p2p.lastAuthoritativeRevision=7;p.deck.p2p.connected=true;
+      const [team,slot]=g.order[g.turn];
+      window.Megaleague.execute(g,team,slot,{type:'gather'});
+      const actionId=p.commands.OnlineActionAdmissionOwner.pendingActionId();
+      p.snapshots.applyAuthoritativeOnlineState({type:'authoritativeState',mode:'PVP',matchId:'visual-test',
+        revision:6,turn:g.turn,turnSerial:g.turnSerial-1,state:p.serializeOnlineGame()});
+      const pendingAfterStale=p.commands.OnlineActionAdmissionOwner.hasPending();
+      p.snapshots.applyAuthoritativeOnlineState({type:'authoritativeState',mode:'PVP',matchId:'visual-test',
+        revision:7,turn:g.turn,turnSerial:g.turnSerial,state:p.serializeOnlineGame(),
+        actionResolution:{actionId,status:'rejected',reason:'invalid-action'}});
+      return {actionId,pendingAfterStale,pending:p.commands.OnlineActionAdmissionOwner.hasPending(),busy:p.battle.busy};
+    });
+    assert.ok(result.actionId);assert.equal(result.pendingAfterStale,true);assert.equal(result.pending,false);assert.equal(result.busy,false);
+  });
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 if (failures.length) process.exitCode = 1;

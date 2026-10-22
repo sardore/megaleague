@@ -141,6 +141,10 @@ export function applyAuthoritativeOnlineState(msg) {
     visualAckIds: replayVisuals()
   });
   if (revision && (revision < appliedRevision || revision === appliedRevision && !restorePending)) {
+    if (revision === appliedRevision) {
+      const resolution = state_online_commands.OnlineActionAdmissionOwner.settle(msg);
+      if (resolution.settled) admitAuthoritativeStateCommit({ revision, kind: "authoritativeActionResolution" });
+    }
     acknowledge();
     return false;
   }

@@ -22,7 +22,7 @@ function setupGuest() {
   let phase = 'IN_BATTLE';
   systems.OnlineRuntime = {
     identity: () => ({phase}),
-    sessionScope:{requestAnimationFrame:callback=>requestAnimationFrame(()=>{if(phase==='IN_BATTLE')callback();})},
+    sessionScope:{setInterval:()=>1,cancel:()=>true,requestAnimationFrame:callback=>requestAnimationFrame(()=>{if(phase==='IN_BATTLE')callback();})},
     restore:{pending:()=>false,authoritativeApplied:()=>false},
     projection:{request:()=>{render();return true;}},
     markBattleEnded:()=>{phase='TERMINAL';return true;},

@@ -45,7 +45,7 @@ export function initializeFeaturesTimeora() {
     maxEnergy: 4,
     releaseOrder: 18,
     tags: ["dragon", "legendary-dragon", "time"],
-    timeProtect: 20,
+    defenseAura: 20,
     timeAcceleration: true,
     fateClock: true,
     timeControl: true
