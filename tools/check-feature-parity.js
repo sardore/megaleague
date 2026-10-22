@@ -29,7 +29,7 @@ try{
   await page.goto(baselineRun?'http://127.0.0.1:4174':'http://127.0.0.1:4173');
   if(!legacy)await page.waitForFunction(()=>!!window.Megaleague);
   const result=await page.evaluate(({legacy})=>{
-   const api=legacy?{CARDS,newGame,prepareCurrentTurn,unitAt,chooseAI,execute,legalActions,endTurn}:window.Megaleague;
+   const api=legacy?{CARDS,card,newGame,prepareCurrentTurn,unitAt,chooseAI,execute,legalActions,endTurn}:window.Megaleague;
    const cards=JSON.parse(JSON.stringify(api.CARDS));
    const snapshots=[],bossSnapshots=[],errors=[],actionCases=[],invalidActions=[];
    const hpEligible=(unit,action)=>{
