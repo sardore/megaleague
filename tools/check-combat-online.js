@@ -198,5 +198,16 @@ try {
     });
     assert.ok(result.actionId);assert.equal(result.pendingAfterStale,true);assert.equal(result.pending,false);assert.equal(result.busy,false);
   });
+  await check('boss and regular aura providers share the stat and ignore path', async page => {
+    const result=await page.evaluate(()=>{
+      const p=window.probe,g=window.Megaleague.newGame(['hermit','wayli','hermit','wayli'],['hermit','wayli','hermit','wayli']);
+      p.battle.game=g;
+      const source=g.teams.A.field[1],target=g.teams.A.field[0];
+      source.bossRed=true;
+      return {aura:p.combat.effectiveDefense(g.teams.P.field[0],target,{},false,g),
+        ignored:p.combat.effectiveDefense(g.teams.P.field[1],target,{},false,g)};
+    });
+    assert.equal(result.aura,20);assert.equal(result.ignored,0);
+  });
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 if (failures.length) process.exitCode = 1;
