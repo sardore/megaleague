@@ -61,7 +61,7 @@ export function initializeOnlineChat() {
     // 기존 권위 상태 전송을 보존하면서 마지막 패킷을 ACK가 올 때까지 재전송한다.
 
     function retryReliableOnlineState(force = false) {
-      if (!onlineConnectionReady() || state_ui_deck.p2p?.role !== "host" || state_ui_battle_state.game?.mode !== "online") return;
+      if (!onlineConnectionReady() || state_ui_deck.p2p?.role !== "host" || !(state_ui_battle_state.game?.mode === "online" || state_ui_battle_state.game?.bossRaid?.online)) return;
       const packet = state_ui_deck.p2p.__reliableStatePacket;
       if (!packet) return;
       if (Number(state_ui_deck.p2p.__reliableStateAck || 0) >= Number(packet.revision || 0)) return;
@@ -333,7 +333,7 @@ export function initializeOnlineChat() {
     function ensureOnlineStateRetryTimer() {
       if (onlineStateRetryTimer) return onlineStateRetryTimer;
       onlineStateRetryTimer = systems.OnlineRuntime?.sessionScope?.setInterval?.(() => retryReliableOnlineState(false), 520, "reliable-state-retry", {
-        phase: "IN_BATTLE"
+        phase: "SESSION"
       }) || null;
       return onlineStateRetryTimer;
     }
@@ -452,13 +452,14 @@ export function initializeOnlineChat() {
     };
     function handleOnlineResiliencePacket(msg) {
       handleOnlineChatPacket(msg);
-      if (msg.type === "stateAck" && state_ui_deck.p2p?.role === "host" && state_ui_battle_state.game?.mode === "online") {
-        if (msg.mode && msg.mode !== "PVP") return false;
+      if (msg.type === "stateAck" && state_ui_deck.p2p?.role === "host" && (state_ui_battle_state.game?.mode === "online" || state_ui_battle_state.game?.bossRaid?.online)) {
+        if (msg.mode && msg.mode !== (state_ui_battle_state.game?.bossRaid?.online ? "BOSS_COOP" : "PVP")) return false;
         const incoming = String(msg.matchId || ""),
           local = String(state_ui_deck.p2p?.matchId || state_ui_battle_state.game?.matchId || "");
         const revision = Number(msg.revision || 0),
           latest = Number(state_ui_deck.p2p?.__reliableStatePacket?.revision || 0);
         if (!incoming || !local || incoming !== local || revision <= 0 || !latest || revision > latest) return false;
+        state_ui_deck.p2p.visualDelivery?.acknowledge(msg.visualAckIds);
         state_ui_deck.p2p.__reliableStateAck = Math.max(Number(state_ui_deck.p2p.__reliableStateAck || 0), revision);
       }
     }

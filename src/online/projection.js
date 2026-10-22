@@ -9,6 +9,7 @@ import { render } from "../ui/payment.js";
 import { state_ui_action_panel } from "../ui/action-panel.js";
 import { showEnd, lockOnlineSettings } from "./connection.js";
 import { updateDeckSetup } from "../ui/setup.js";
+import { playVisuals } from "../presentation/animations.js";
 export function initializeOnlineProjection() {
   sessionRuntime.projectStatusDom = () => {
     const session = sessionRuntime.activeSession,
@@ -147,6 +148,7 @@ export function initializeOnlineProjection() {
         }
       } else if (tx.phase === "TERMINAL") {
         commitNavigation("TERMINAL", tx.reason);
+        playVisuals();
         if (state_runtime_config.currentGame()?.winner) showEnd();
         result = true;
       } else if (tx.phase === "SETUP") {

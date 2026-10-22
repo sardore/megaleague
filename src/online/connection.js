@@ -360,7 +360,7 @@ export function initializeOnlineConnection() {
 }
 export function cloneOnlineVisualEvents(events = []) {
   try {
-    const safe = JSON.parse(JSON.stringify(Array.isArray(events) ? events.slice(0, 72) : []));
+    const safe = JSON.parse(JSON.stringify(Array.isArray(events) ? events : []));
     return safe.filter(v => v && typeof v === "object");
   } catch (_) {
     return [];

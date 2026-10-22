@@ -21,7 +21,7 @@ export const state_ui_battle_state = {
   CombatStatPresentationOwner: undefined
 };
 import { state_engine_actions } from "../engine/actions.js";
-import { eclipseBlocks, traitsActive } from "../engine/combat.js";
+import { combatStats, eclipseBlocks, traitsActive } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
 import { card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillIdByEffect } from "../engine/entities.js";
 import { foxSingleCost } from "../features/foxious.js";
@@ -64,7 +64,7 @@ export function initializeUiBattleState() {
       key: "defense",
       label: "방어",
       value: combatInt(unit?.defenseMod || 0),
-      effectiveValue: combatInt(unit?.defense || 0)
+      effectiveValue: visibleDefense(unit)
     })].filter(item => item.value !== 0));
     const render = (unit, options = {}) => {
       const className = String(options.className || "combat-stat-chip");
@@ -168,8 +168,7 @@ export function energyHTML(u, actor = null) {
   return storeHTML(energyStore(u, actor));
 }
 export function visibleDefense(u) {
-  const base = cardHasCapability(u, "baseDefenseTraitBound") && !traitsActive(u) ? 0 : u.defense;
-  return combatInt(base + (typeof fragmentDefense === "function" ? fragmentDefense(u) : 0));
+  return combatInt(combatStats(state_ui_battle_state.game, u).defense);
 }
 export function effectsHTML(u) {
   let e = [];

@@ -281,6 +281,7 @@ export function timeMarkTimeline(g, type, payload = {}) {
   return mark;
 }
 export function timeCommitPendingTurnAdvance(g) {
+  if (g === state_ui_battle_state.game && (g?.mode === "online" || g?.bossRaid?.online) && state_ui_deck.p2p?.role === "guest") return false;
   const pending = g?.pendingClockTurnAdvance;
   if (!pending) return false;
   delete g.pendingClockTurnAdvance;

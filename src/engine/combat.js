@@ -18,10 +18,9 @@ import { log, queueCombatNotice } from "../presentation/audio.js";
 import { state_presentation_coordinates } from "../presentation/coordinates.js";
 import { systems } from "../runtime/systems.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
-export function traitsActive(u) {
+export function traitsActive(u, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   if (status(u, "traitSeal")) return false;
   if (!state_engine_actions.timeFeatureReady) return true;
-  const g = state_engine_actions.timeTraitGame || (typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null);
   return !state_features_timeora.timeClockTraitSuppression.suppresses(g, u);
 }
 export function isStatusImmune(u, s) {
@@ -97,7 +96,7 @@ export function teamOf(g, u) {
   return null;
 }
 export function activeSweetna(g, t) {
-  return g.teams[t]?.field.some(u => u && !u.dead && cardHasCapability(u, "sweetna") && traitsActive(u));
+  return g.teams[t]?.field.some(u => u && !u.dead && cardHasCapability(u, "sweetna") && traitsActive(u, g));
 }
 export function hasTrait(u, prop) {
   return traitsActive(u) && !!card(u)[prop];
@@ -159,8 +158,8 @@ export function initializeEngineCombat() {
       const snapshot = {
         source,
         horizonGuard: {
-          P: !!g?.teams?.P?.field?.some(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u)),
-          A: !!g?.teams?.A?.field?.some(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u))
+          P: !!g?.teams?.P?.field?.some(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u, g)),
+          A: !!g?.teams?.A?.field?.some(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u, g))
         }
       };
       g.damageBatchContext = snapshot;
@@ -172,9 +171,9 @@ export function initializeEngineCombat() {
     const finalReceived = (g, target, amount) => {
       const team = teamOf(g, target);
       const batch = g?.damageBatchContext;
-      const active = batch ? !!batch.horizonGuard?.[team] : !!g?.teams?.[team]?.field?.some(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u));
+      const active = batch ? !!batch.horizonGuard?.[team] : !!g?.teams?.[team]?.field?.some(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u, g));
       if (!active) return Math.max(0, Number(amount) || 0);
-      const guard = (g?.teams?.[team]?.field || []).find(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u));
+      const guard = (g?.teams?.[team]?.field || []).find(u => u && !u.dead && Number(cardCapability(u, "teamDamageGuardAtFullHp", 0)) > 0 && Number(u.hp) >= Number(u.maxHp) && traitsActive(u, g));
       const multiplier = Math.max(0, Math.min(1, Number(cardCapability(guard, "teamDamageGuardAtFullHp", 0.5)) || 0.5));
       return Math.max(0, (Number(amount) || 0) * multiplier);
     };
@@ -185,34 +184,42 @@ export function initializeEngineCombat() {
     });
   })();
 }
-export function ignoresCombatStatChanges(actor, target) {
-  return hasTrait(actor, "ignoreStatChanges") || hasTrait(target, "ignoreStatChanges");
+export function ignoresCombatStatChanges(actor, target, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
+  return [actor, target].some(u => u && traitsActive(u, g) && card(u).ignoreStatChanges);
 }
-export function rawDamage(effect, actor, target, skill) {
+// Stored modifiers and continuous traits contribute to the same stat value.
+// Consumers choose whether changes apply once, before either stat is evaluated.
+export function combatStats(g, unit, { ignoreChanges = false, defenseModMultiplier = 1 } = {}) {
+  const traitBound = cardHasCapability(unit, "baseDefenseTraitBound");
+  const baseDefense = traitBound && (ignoreChanges || !traitsActive(unit, g)) ? 0 : Number(unit.baseDefense || 0);
+  if (ignoreChanges) return { attack: 0, defense: baseDefense };
+  const team = g && timeTeamOf(g, unit);
+  const aura = team ? Math.max(0, ...timeFieldTimeoras(g, team)
+    .filter(source => traitsActive(source, g)).map(source => Number(cardCapability(source, "timeProtect", 0)))) : 0;
+  const penalty = unit.aromaDamagePenalty && !(traitsActive(unit, g) && card(unit).statDecreaseImmune) ? 10 : 0;
+  return {
+    attack: Number(unit.attackMod || 0),
+    defense: baseDefense + Number(unit.defenseMod || 0) * defenseModMultiplier + fragmentDefense(unit, g) + aura - penalty
+  };
+}
+export function rawDamage(effect, actor, target, skill, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   let n = effect.amount,
-    statIgnored = ignoresCombatStatChanges(actor, target);
-  if (!statIgnored) n += actor.attackMod || 0;
+    statIgnored = ignoresCombatStatChanges(actor, target, g);
+  if (!effect.ignoreAttackMod) n += combatStats(g, actor, { ignoreChanges: statIgnored }).attack;
   if (effect.noShieldBonus && !actor.shield) n += effect.noShieldBonus;
   if (effect.ifTargetGathered && target.lastAction === "gather") n += effect.ifTargetGathered;
   if (effect.lastEnergyBonus && totalEnergy(actor) < 0.01) n += effect.lastEnergyBonus;
   if (effect.sameTargetBonus && actor.lastTarget === target.uid) n += effect.sameTargetBonus;
   if (effect.alternateBonus && actor.lastSkill && actor.lastSkill !== skill.id) n += effect.alternateBonus;
-  if ((effect.sweetPoisonBonus || cardHasCapability(actor, "sweetna") && traitsActive(actor)) && status(target, "poison")) n += 10 * status(target, "poison");
+  if ((effect.sweetPoisonBonus || cardHasCapability(actor, "sweetna") && traitsActive(actor, g)) && status(target, "poison")) n += 10 * status(target, "poison");
   return n;
 }
-export function effectiveDefense(actor, target, effect, crit) {
+export function effectiveDefense(actor, target, effect, crit, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   if (crit) return 0;
-  const statIgnored = ignoresCombatStatChanges(actor, target),
+  const statIgnored = ignoresCombatStatChanges(actor, target, g),
     cap = effect?.defCap ?? 999,
     modMultiplier = Number(effect?.defenseModMultiplier ?? 1);
-  if (cardHasCapability(target, "baseDefenseTraitBound") && (statIgnored || !traitsActive(target))) return 0;
-  let result = Math.min(statIgnored ? Number(target.baseDefense || 0) : Number(target.baseDefense || 0) + Number(target.defenseMod || 0) * modMultiplier, cap);
-  if (!statIgnored && typeof fragmentDefense === "function") result += fragmentDefense(target);
-  if (!statIgnored && target?.aromaDamagePenalty && !(traitsActive(target) && card(target).statDecreaseImmune)) result -= 10;
-  const g = typeof state_engine_actions.timeTraitGame !== "undefined" && state_engine_actions.timeTraitGame ? state_engine_actions.timeTraitGame : typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null,
-    tt = g && typeof timeTeamOf === "function" ? timeTeamOf(g, target) : null;
-  if (!statIgnored && tt && typeof timeFieldTimeoras === "function" && timeFieldTimeoras(g, tt).some(u => traitsActive(u))) result = Math.min(cap, result + 20);
-  return result;
+  return Math.min(cap, combatStats(g, target, { ignoreChanges: statIgnored, defenseModMultiplier: modMultiplier }).defense);
 }
 export function sweetProtection(g, actor, target) {
   let tt = teamOf(g, target);
@@ -226,14 +233,14 @@ export function damageRange(g, actor, target, effect, skill) {
       n: effect.boostAmount,
       w: effect.boostChance
     }] : [{
-      n: rawDamage(effect, actor, target, skill),
+      n: rawDamage(effect, actor, target, skill, g),
       w: 1
     }],
     critChance = effect.forceCritical ? 1 : effect.crit ?? card(actor).crit ?? 0,
     vals = [],
     sum = 0,
     weight = 0,
-    pcts = g.variance ? Array.from({
+    pcts = g.variance && !effect.ignoreVariance ? Array.from({
       length: 35
     }, (_, i) => 66 + i) : [100];
   for (const bv of bases) for (const crit of critChance >= 1 ? [true] : critChance > 0 ? [false, true] : [false]) for (const pct of pcts) {
@@ -241,14 +248,14 @@ export function damageRange(g, actor, target, effect, skill) {
         ...effect,
         amount: 0,
         boostAmount: null
-      }, actor, target, skill) : bv.n,
+      }, actor, target, skill, g) : bv.n,
       w = bv.w * (crit ? critChance : 1 - critChance) / pcts.length;
     if (!critChance) w = bv.w / pcts.length;
-    let def = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false),
+    let def = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false, g),
       n;
     if (crit) {
       const mult = state_engine_combat.CRITICAL_DAMAGE_MULTIPLIER,
-        attackModParticipates = !ignoresCombatStatChanges(actor, target) && !effect.ignoreAttackMod,
+        attackModParticipates = !ignoresCombatStatChanges(actor, target, g) && !effect.ignoreAttackMod,
         noAttackStatBase = attackModParticipates ? base - Number(actor.attackMod || 0) : base,
         baseline = noAttackStatBase * mult * pct / 100,
         adjusted = Math.max(0, base * mult * pct / 100 - def);
@@ -256,30 +263,21 @@ export function damageRange(g, actor, target, effect, skill) {
     } else {
       n = base * pct / 100 - def;
     }
-    n = Math.round(Math.max(0, n - sweetProtection(g, actor, target) - (target.hideHits ? 30 : 0)));
+    n = Math.max(0, n - sweetProtection(g, actor, target) - (target.hideHits ? 30 : 0));
+    n = attackMitigation(g, target, n);
+    n = Math.round(state_engine_combat.DamageBatchOwner.finalReceived(g, target, n));
+    if (activeShieldProtector(g, target)) n = Math.ceil(n / 2);
     vals.push(n);
     sum += n * w;
     weight += w;
   }
-  const evadeChance = traitsActive(target) ? Math.max(0, Math.min(1, Number(card(target).attackEvasionChance || 0))) : 0;
+  const evadeChance = attackEvasionChance(target, g);
   const r = {
     min: evadeChance > 0 ? 0 : Math.min(...vals),
     max: Math.max(...vals),
     mean: sum / weight * (1 - evadeChance),
     critChance
   };
-  const reduction = traitsActive(target) ? Number(cardCapability(target, "damageReduction", 0)) : 0;
-  if (reduction > 0) {
-    r.min = Math.max(0, r.min - reduction);
-    r.max = Math.max(0, r.max - reduction);
-    r.mean = Math.max(0, r.mean - reduction);
-  }
-  if (target.fireWingUntil != null) r.min = r.max = r.mean = 0;
-  if (activeShieldProtector(g, target)) {
-    r.min = Math.ceil(r.min / 2);
-    r.max = Math.ceil(r.max / 2);
-    r.mean = Math.ceil(r.mean / 2);
-  }
   return r;
 }
 export function clearOwnedField(g, u, reason = "전장을 떠남") {
@@ -353,7 +351,7 @@ export function queueVisual(g, u, type, amount, meta = {}) {
         };
       }
       if (["damage", "directHp"].includes(event.type) && typeof state_presentation_coordinates.DamagePresentationAnchorOwner !== "undefined") state_presentation_coordinates.DamagePresentationAnchorOwner.captureInto(g, event);
-      if (["horizonStrike", "lunaShard", "sugarSwamp", "leafBlade"].includes(event.type) && typeof state_presentation_coordinates.VfxCoordinateOwner !== "undefined") state_presentation_coordinates.VfxCoordinateOwner.captureInto(event);
+      if (["skillFx", "horizonStrike", "lunaShard", "sugarSwamp", "leafBlade"].includes(event.type) && typeof state_presentation_coordinates.VfxCoordinateOwner !== "undefined") state_presentation_coordinates.VfxCoordinateOwner.captureInto(event);
       state_ui_battle_state.visualEvents.push(event);
     }
   }
@@ -422,11 +420,11 @@ export function queueBloomVisual(g, enemies, evaded) {
     });
   }
 }
-export function reduceAllDamage(u, n) {
+export function reduceAllDamage(u, n, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   if (u.fullInvulnerableUntilOwnTurn) return 0;
   if (u.scheduledAction?.kind === "zigzag") return 0;
-  let out = traitsActive(u) ? Math.max(0, n - Number(cardCapability(u, "damageReduction", 0))) : Math.max(0, n);
-  const fullHpMultiplier = traitsActive(u) ? Number(card(u).fullHpDamageMultiplier || 1) : 1;
+  let out = traitsActive(u, g) ? Math.max(0, n - Number(cardCapability(u, "damageReduction", 0))) : Math.max(0, n);
+  const fullHpMultiplier = traitsActive(u, g) ? Number(card(u).fullHpDamageMultiplier || 1) : 1;
   if (fullHpMultiplier < 1 && Number(u.hp || 0) >= Number(u.maxHp || 0) - 1e-6) out = Math.ceil(out * fullHpMultiplier);
   return out;
 }
@@ -493,7 +491,7 @@ export function removeOneFieldEnergy(g, u) {
 }
 export function nonAttackDamage(g, u, n, source) {
   const raw = Math.round(n);
-  const final = Math.round(state_engine_combat.DamageBatchOwner.finalReceived(g, u, reduceAllDamage(u, raw)));
+  const final = Math.round(state_engine_combat.DamageBatchOwner.finalReceived(g, u, reduceAllDamage(u, raw, g)));
   if (final > 0) g.noDamageTurns = 0;
   log(g, `${u.name}: ${source} 피해 ${raw}${raw !== final ? ` → 피해경감 후 ${final}` : ""}.`, "damage");
   const applied = applyResolvedDamagePacket(g, null, u, final, {
@@ -507,7 +505,7 @@ export function nonAttackDamage(g, u, n, source) {
 }
 export function applyShieldFirstFixedDamage(g, u, n, source) {
   const raw = Math.round(n);
-  const final = Math.round(state_engine_combat.DamageBatchOwner.finalReceived(g, u, reduceAllDamage(u, raw)));
+  const final = Math.round(state_engine_combat.DamageBatchOwner.finalReceived(g, u, reduceAllDamage(u, raw, g)));
   const beforeHp = Number(u.hp || 0),
     beforeShield = Number(u.shield || 0);
   const applied = applyResolvedDamagePacket(g, null, u, final, {
@@ -536,19 +534,20 @@ export function reflectDamage(g, defender, attacker) {
 }
 export function activeShieldProtector(g, target) {
   let t = teamOf(g, target);
-  return t && g.teams[t].field.find(u => u && !u.dead && u.uid !== target.uid && cardHasCapability(u, "shieldProtector") && traitsActive(u) && u.shield > 0);
+  return t && g.teams[t].field.find(u => u && !u.dead && u.uid !== target.uid && cardHasCapability(u, "shieldProtector") && traitsActive(u, g) && u.shield > 0);
 }
-export function eclipseBlocks(target) {
-  return cardHasCapability(target, "eclipse") && target.eclipseEligible && traitsActive(target) && Math.abs(totalEnergy(target) - target.turns) < 0.001;
+export function eclipseBlocks(target, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
+  return cardHasCapability(target, "eclipse") && target.eclipseEligible && traitsActive(target, g) && Math.abs(totalEnergy(target) - target.turns) < 0.001;
+}
+export function attackMitigation(g, target, amount) {
+  return target.fireWingUntil != null || eclipseBlocks(target, g) ? 0 : reduceAllDamage(target, amount, g);
 }
 export function applyAttackReductionAndImmunity(g, target, amount) {
-  let after = reduceAllDamage(target, amount);
+  const after = attackMitigation(g, target, amount);
   if (target.fireWingUntil != null) {
-    after = 0;
     log(g, `${target.name} 효과 · 화염날개: 공격 피해 무효.`);
   }
-  if (eclipseBlocks(target)) {
-    after = 0;
+  if (eclipseBlocks(target, g)) {
     log(g, `${target.name} 특성 · 이클립스: 공격기술 피해 무효.`);
   }
   return after;
@@ -763,11 +762,11 @@ export function attackPacketWouldDefeatTarget(g, target, finalDamage, effect = {
   const barriers = (target?.hpProtectionBarriers || []).reduce((sum, layer) => sum + Math.max(0, Number(layer?.amount || 0)), 0);
   return toTarget + 1e-6 >= Math.max(0, Number(target?.hp || 0)) + barriers;
 }
-export function attackEvasionChance(target) {
-  return traitsActive(target) ? Math.max(0, Math.min(1, Number(card(target).attackEvasionChance || 0))) : 0;
+export function attackEvasionChance(target, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
+  return traitsActive(target, g) ? Math.max(0, Math.min(1, Number(card(target).attackEvasionChance || 0))) : 0;
 }
 export function attackEvaded(g, target, sim = false) {
-  const chance = attackEvasionChance(target);
+  const chance = attackEvasionChance(target, g);
   if (!(chance > 0) || sim) return false;
   if (g.rng.next() >= chance) return false;
   log(g, `${target.name} 특성 · 공격 회피!`);
@@ -811,7 +810,7 @@ export function applyCriticalAttack(g, actor, target, amount, skill, sim = false
 export function dealDamage(g, actor, target, effect, skill, sim = false) {
   const faultBoundary = !effect?._nestedDamageSequence;
   if (faultBoundary) actionFaultHit("damage-before");
-  const evadeChance = attackEvasionChance(target);
+  const evadeChance = attackEvasionChance(target, g);
   if (attackEvaded(g, target, sim)) {
     if (faultBoundary) actionFaultHit("damage-after");
     return 0;
@@ -829,7 +828,7 @@ export function dealDamage(g, actor, target, effect, skill, sim = false) {
         ...effect,
         amount: 0,
         boostAmount: null
-      }, actor, target, skill);
+      }, actor, target, skill, g);
       base += extras;
       if (!sim) {
         const eruptionBoosted = base - extras === effect.boostAmount;
@@ -844,8 +843,7 @@ export function dealDamage(g, actor, target, effect, skill, sim = false) {
           }
         }
       }
-    } else base = rawDamage(effect, actor, target, skill);
-    if (effect.ignoreAttackMod && !ignoresCombatStatChanges(actor, target)) base -= Number(actor.attackMod || 0);
+    } else base = rawDamage(effect, actor, target, skill, g);
     let crit = false,
       pct = 100,
       simCritExpectedAfterDefense = null,
@@ -854,9 +852,9 @@ export function dealDamage(g, actor, target, effect, skill, sim = false) {
       criticalAdjustedAfterDefense = null;
     const criticalMultiplier = state_engine_combat.CRITICAL_DAMAGE_MULTIPLIER;
     const criticalChance = effect.forceCritical ? 1 : Math.max(0, Math.min(1, Number(effect.crit ?? card(actor).crit ?? 0)));
-    const attackModParticipates = !ignoresCombatStatChanges(actor, target) && !effect.ignoreAttackMod;
+    const attackModParticipates = !ignoresCombatStatChanges(actor, target, g) && !effect.ignoreAttackMod;
     const noAttackStatBase = attackModParticipates ? base - Number(actor.attackMod || 0) : base;
-    const defenseForCriticalComparison = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false);
+    const defenseForCriticalComparison = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false, g);
     if (!sim) {
       crit = effect.forceCritical || g.rng.next() < criticalChance;
       if (g.variance && !effect.ignoreVariance) pct = g.rng.int(66, 100);
@@ -875,7 +873,7 @@ export function dealDamage(g, actor, target, effect, skill, sim = false) {
       if (criticalChance > 0) {
         const normalBase = base,
           normalRolled = normalBase * pct / 100,
-          normalDefense = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false),
+          normalDefense = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false, g),
           normalAfterDefense = Math.max(0, normalRolled - normalDefense),
           criticalBaseline = noAttackStatBase * criticalMultiplier * pct / 100,
           criticalAdjusted = Math.max(0, normalBase * criticalMultiplier * pct / 100 - defenseForCriticalComparison),
@@ -885,7 +883,7 @@ export function dealDamage(g, actor, target, effect, skill, sim = false) {
       }
     }
     let rolled = base * pct / 100,
-      def = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, crit),
+      def = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, crit, g),
       after = sim && Number.isFinite(simCritExpectedAfterDefense) ? simCritExpectedAfterDefense : crit ? Math.max(Number(criticalBaselineRolled || 0), Number(criticalAdjustedAfterDefense || 0)) : Math.max(0, rolled - def),
       sweet = sweetProtection(g, actor, target);
     if (sim && Number.isFinite(simCritExpectedAfterDefense)) def = 0;
