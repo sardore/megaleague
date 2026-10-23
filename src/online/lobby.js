@@ -760,7 +760,7 @@ export function initializeOnlineLobby() {
             deck: state_ui_battle_state.selected,
             currentChoice: state_ui_deck.plusStarSelection,
             cardId: button.dataset.plusstarCard,
-            capacity: 4,
+            capacity: state_ui_deck.LeagueFormatOwner.deckSize(onlineLeagueNow()),
             validate: (proposal, choice) => state_ui_deck.LeagueFormatOwner.partialValid(proposal, onlineLeagueNow(), onlineCompositionNow(), choice, onlineLocalTeam()),
             commit: (nextDeck, nextChoice) => state_ui_setup.DeckDraftApplication.commit(nextDeck, nextChoice),
             feedback: message => {
@@ -965,7 +965,7 @@ export function sanitizeOnlineRoomSelection(league = onlineLeagueNow(), composit
       c = state_catalog_cards.CARDS.find(x => x.id === id);
     if (!c || clean.includes(id) || !state_ui_deck.LeagueFormatOwner.cardAllowed(c, league, composition)) continue;
     if (!state_ui_deck.LeagueFormatOwner.partialValid([...clean, id], league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam())) continue;
-    if (clean.length < 4) clean.push(id);
+    if (clean.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) clean.push(id);
   }
   state_ui_battle_state.selected.splice(0, state_ui_battle_state.selected.length, ...clean);
   return before !== JSON.stringify(state_ui_battle_state.selected);

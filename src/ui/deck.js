@@ -61,6 +61,13 @@ export function initializeUiDeck() {
         shortRule: "등급 제한 없음",
         accent: "purple",
         requirements: null
+      }),
+      duel: Object.freeze({
+        id: "duel",
+        label: "싱글 리그",
+        shortRule: "등급 무제한 · 3마리",
+        accent: "gray",
+        requirements: null
       })
     }),
     comprehensivePatterns: Object.freeze({
@@ -86,6 +93,14 @@ export function initializeUiDeck() {
     normalizeLeague(mode) {
       return this.definitions[mode] ? mode : "mega";
     },
+    /* 등급 제한이 없는 리그(메가·싱글)과 리그별 덱 장수. 싱글은 필드 1 + 후열 2 = 3마리. */
+    free(mode) {
+      mode = this.normalizeLeague(mode);
+      return mode === "mega" || mode === "duel";
+    },
+    deckSize(mode) {
+      return this.normalizeLeague(mode) === "duel" ? 3 : 4;
+    },
     normalizeComposition(value) {
       return this.comprehensivePatterns[value] ? value : "2234";
     },
@@ -94,7 +109,7 @@ export function initializeUiDeck() {
     },
     pattern(mode, composition = state_ui_deck.comprehensiveComposition) {
       mode = this.normalizeLeague(mode);
-      if (mode === "mega") return null;
+      if (this.free(mode)) return null;
       if (mode === "comprehensive") return this.comprehensivePatterns[this.normalizeComposition(composition)];
       return Object.freeze({
         id: mode,
@@ -111,7 +126,7 @@ export function initializeUiDeck() {
     },
     cardAllowed(cardRef, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
       const c = typeof cardRef === "string" ? state_catalog_cards.CARDS.find(x => x.id === cardRef) : cardRef;
-      return !!c && (this.normalizeLeague(mode) === "mega" || this.allowedGrades(mode, composition).has(c.grade));
+      return !!c && (this.free(mode) || this.allowedGrades(mode, composition).has(c.grade));
     },
     identityValid(ids) {
       if (!Array.isArray(ids) || new Set(ids).size !== ids.length) return false;
@@ -144,17 +159,17 @@ export function initializeUiDeck() {
       return out;
     },
     partialValid(ids, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
-      if (!this.identityValid(ids) || ids.length > 4) return false;
+      if (!this.identityValid(ids) || ids.length > this.deckSize(mode)) return false;
       mode = this.normalizeLeague(mode);
-      if (mode === "mega") return true;
+      if (this.free(mode)) return true;
       const req = this.requirements(mode, composition),
         counts = this.counts(ids, plusStarChoice, team);
       for (const [grade, n] of Object.entries(counts)) if (!(grade in req) || n > req[grade]) return false;
       return true;
     },
     completeValid(ids, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
-      if (!Array.isArray(ids) || ids.length !== 4 || !this.partialValid(ids, mode, composition, plusStarChoice, team)) return false;
-      if (this.normalizeLeague(mode) === "mega") return true;
+      if (!Array.isArray(ids) || ids.length !== this.deckSize(mode) || !this.partialValid(ids, mode, composition, plusStarChoice, team)) return false;
+      if (this.free(mode)) return true;
       const req = this.requirements(mode, composition),
         counts = this.counts(ids, plusStarChoice, team);
       return Object.entries(req).every(([grade, n]) => (counts[grade] || 0) === n);
@@ -189,7 +204,7 @@ export function initializeUiDeck() {
     },
     progressText(ids, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
       mode = this.normalizeLeague(mode);
-      if (mode === "mega") return `${ids.length}/4 · 자유 편성`;
+      if (this.free(mode)) return `${ids.length}/${this.deckSize(mode)} · 자유 편성`;
       const req = this.requirements(mode, composition),
         counts = this.counts(ids, plusStarChoice, team);
       return Object.entries(req).map(([grade, n]) => `${grade} ${counts[grade] || 0}/${n}`).join(" · ");
@@ -245,6 +260,7 @@ export function initializeUiDeck() {
       if (mode === "two") return "2☆ 캐릭터만 4장 선택";
       if (mode === "regular") return "2☆ 2장 + 3☆ 2장";
       if (mode === "comprehensive") return `종합 구성 · ${this.pattern(mode, composition).label}`;
+      if (mode === "duel") return "전체 등급 자유 편성 · 3마리 (필드 1 + 후열 2)";
       return "전체 등급 자유 편성";
     }
   });
@@ -434,6 +450,11 @@ export function leagueBannerMarkup(mode, className = "leagueTab") {
         mark: "M",
         rule: "전체 등급 자유 편성",
         slots: ["ALL RARITIES"]
+      },
+      duel: {
+        mark: "S",
+        rule: "등급 무제한, 3마리로 필드 1칸 승부",
+        slots: ["ALL ×3"]
       }
     },
     row = rows[mode],
@@ -492,7 +513,7 @@ export function syncLeagueSelectionSurface() {
     button.setAttribute("aria-pressed", String(active));
   });
   if (summary) {
-    summary.classList.remove("two", "regular", "comprehensive", "mega");
+    summary.classList.remove("two", "regular", "comprehensive", "mega", "duel");
     summary.classList.add(state_ui_deck.leagueSelection);
     summary.innerHTML = `<div><div class="league-summary-name">${def.label}</div><div class="league-summary-rule">${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}</div></div><div class="league-summary-progress">${state_ui_deck.LeagueFormatOwner.progressText(state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P")}</div>`;
   }
@@ -502,7 +523,8 @@ export function syncLeagueSelectionSurface() {
       two: "2☆컵",
       regular: "정규",
       comprehensive: "종합",
-      mega: "메가"
+      mega: "메가",
+      duel: "싱글"
     }[state_ui_deck.leagueSelection] || def.label;
     onlineButton.textContent = `온라인 · ${short}`;
   }
@@ -519,7 +541,7 @@ export function setLeague(mode, reset = true) {
   normalizeSetupFormsForLeague();
   const def = state_ui_deck.LeagueFormatOwner.definition(state_ui_deck.leagueSelection);
   state_ui_battle_state.$("#deckTitle").childNodes[0].textContent = `${def.label} 덱 편성 `;
-  state_ui_battle_state.$("#deckHelp").textContent = `${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}. 카드 4장을 선택합니다. 폼 캐릭터는 현재 리그에서 사용 가능한 폼만 전환됩니다.`;
+  state_ui_battle_state.$("#deckHelp").textContent = `${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}. 카드 ${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)}장을 선택합니다. 폼 캐릭터는 현재 리그에서 사용 가능한 폼만 전환됩니다.`;
   syncLeagueSelectionSurface();
   renderSetup(reset);
 }

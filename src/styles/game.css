@@ -5904,3 +5904,11 @@
 /* 게임 화면은 글자가 선택·복사되지 않게 한다(더블탭/길게누름 복붙 방지). 입력창과 채팅 메시지만 예외. */
 html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;user-select:text}
+
+/* ===== 싱글 리그(회색): 리그 배너 색 + 필드가 1칸이라 카드를 칸 전체 폭으로 키운다 ===== */
+.league-banner.duel{--league-accent:#aab3c2;--league-accent-soft:#e1e6ee;--league-glow:rgba(170,179,194,.3)}
+.league-banner.duel::before{background:repeating-linear-gradient(135deg,transparent 0 38px,rgba(170,179,194,.05) 38px 40px,transparent 40px 78px)}
+.slots:has(> .slot:only-child){grid-template-columns:1fr !important}
+.slots:has(> .slot:only-child) > .slot > .battle-unit-card .unit-stage{min-height:min(250px,42vw + 60px) !important;justify-content:flex-end}
+.slots:has(> .slot:only-child) > .slot > .battle-unit-card .char-emoji{flex:1 1 auto;width:100% !important;height:auto !important;min-height:0 !important;margin:0 !important;font-size:clamp(96px,30vw,168px) !important}
+.slots:has(> .slot:only-child) .unit-nameplate{font-size:clamp(15px,3.6vw,20px)}
