@@ -1143,7 +1143,6 @@ export function timePlayRecallVisual(v) {
   return Promise.allSettled(node.getAnimations().map(a => a.finished.catch(() => {}))).then(() => systems.AnimationEngine.unmountViewportFx(node));
 }
 
-/* 시작 연출 canonical owner: exact-once Horizon, monotonic timing, 약 4초. */
 
 export function listClockSkillActions(g, t, s) {
   let actions = [];

@@ -62,7 +62,7 @@ await check('curse consumes all attack decreases and preserves positive attack b
   assert.deepEqual(r,{undead:4,remaining:4,curses:1,consumed:true,dead:false,kills:0});
  });
  await check('persistent purple aura survives redraw and disappears on cure; skills render at the target',async page=>{
-  await page.waitForSelector('#horizonStartupIntro',{state:'detached'});
+  await page.waitForSelector('#startupIntro',{state:'detached'});
   await page.evaluate(()=>{const{g,w,target}=wellerFixture();probe.battle.game=g;document.querySelector('#setup').classList.remove('active');document.querySelector('#game').classList.add('active');probe.combat.applyStatus(g,w,'undead',4);probe.render();probe.battle.visualEvents=[{type:'wellerFx',phase:'graveDown',uid:w.uid,targetUid:target.uid,succeeds:true}];probe.playVisuals();});
   await page.waitForSelector('.weller-graveDown');assert.equal(await page.locator('.undead-aura .undead-wisp').count(),10);
   await page.waitForTimeout(650);await fs.mkdir('artifacts/weller',{recursive:true});await page.screenshot({path:'artifacts/weller/grave-down-mobile.png',fullPage:true});
