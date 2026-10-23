@@ -47,7 +47,7 @@ export function cloneAndSanitizeOnlineDeck(deck, league = onlineLeagueNow(), com
       c = state_catalog_cards.CARDS.find(x => x.id === id);
     if (!c || clean.includes(id) || !state_ui_deck.LeagueFormatOwner.cardAllowed(c, league, composition)) continue;
     if (!state_ui_deck.LeagueFormatOwner.partialValid([...clean, id], league, composition)) continue;
-    if (clean.length < 4) clean.push(id);
+    if (clean.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) clean.push(id);
   }
   return clean;
 }
@@ -487,7 +487,7 @@ export function rootOnlineRoomSelectCard(id) {
   if (!c || isInvaderCardId(id)) return;
   const league = onlineLeagueNow(),
     composition = onlineCompositionNow();
-  if (!state_ui_setup.DeckDraftApplication.toggleCard(id, 4, {
+  if (!state_ui_setup.DeckDraftApplication.toggleCard(id, state_ui_deck.LeagueFormatOwner.deckSize(league), {
     mode: league,
     composition,
     plusStar: state_ui_deck.plusStarSelection,
@@ -520,7 +520,7 @@ export function startOnlineRoomBattleOnce() {
     remoteDeck = [...lobbyState.remoteDeck];
   if (!onlineDeckIsReady(localDeck, league, localComposition, lobbyState.localPlusStar, "P") || !onlineDeckIsReady(remoteDeck, league, remoteComposition, lobbyState.remotePlusStar, "A")) {
     const state = document.getElementById("roomReadyState");
-    if (state) state.textContent = "양쪽 모두 현재 리그에 맞는 덱 4장을 선택해야 합니다.";
+    if (state) state.textContent = "양쪽 모두 현재 리그에 맞는 덱을 모두 선택해야 합니다.";
     return false;
   }
   if (!state_ui_deck.p2p?.connected || !state_ui_deck.p2p?.conn?.open) {

@@ -9,7 +9,7 @@
 <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
 <title>메가리그</title>
 
-<link rel="stylesheet" href="./assets/app.css?v=c0d34baf563d">
+<link rel="stylesheet" href="./assets/app.css?v=39ead600cb5f">
 </head>
 <body>
 <div aria-hidden="false" class="startup-intro" id="startupIntro">
@@ -24,6 +24,7 @@
 <button aria-pressed="false" class="leagueTab league-banner regular" data-league="regular"><span class="league-banner-top"><span class="league-mark">R</span><span class="league-banner-name">정규리그</span></span><span class="league-banner-rule">2☆ 두 장과 3☆ 두 장을 정확히 편성.</span><span class="league-banner-slots"><span class="league-slot">2☆ ×2</span><span class="league-slot">3☆ ×2</span></span></button>
 <button aria-pressed="false" class="leagueTab league-banner comprehensive" data-league="comprehensive"><span class="league-banner-top"><span class="league-mark">Σ</span><span class="league-banner-name">종합리그</span></span><span class="league-banner-rule">두 가지 등급 구성 중 하나를 먼저 고정하고 편성.</span><span class="league-banner-slots"><span class="league-slot">A · 2☆ ×2 + 3☆ + 4☆</span><span class="league-slot">B · 2☆ + 3☆ + 3.5☆ ×2</span></span></button>
 <button aria-pressed="true" class="leagueTab league-banner mega active" data-league="mega"><span class="league-banner-top"><span class="league-mark">M</span><span class="league-banner-name">메가리그</span></span><span class="league-banner-rule">등급 제한 없이 현재 전체 로스터를 사용하는 최상위 리그.</span><span class="league-banner-slots"><span class="league-slot">ALL RARITIES</span></span></button>
+<button aria-pressed="false" class="leagueTab league-banner duel" data-league="duel"><span class="league-banner-top"><span class="league-mark">S</span><span class="league-banner-name">싱글 리그</span></span><span class="league-banner-rule">등급 제한 없이 3마리로 필드 1칸 승부.</span><span class="league-banner-slots"><span class="league-slot">ALL ×3</span></span></button>
 </div>
 <div class="comprehensive-pattern-picker" hidden="" id="comprehensivePatternPicker">
 <button class="composition-choice active" data-composition="2234"><span><strong>구성 A · 2☆ ×2 + 3☆ + 4☆</strong><span>저등급 기반 + 4☆ 핵심 한 장</span></span><span class="composition-pips"><i>2☆ ×2</i><i>3☆</i><i>4☆</i></span></button>
@@ -47,6 +48,7 @@
 <option value="regular">정규리그</option>
 <option value="comprehensive">종합리그</option>
 <option selected="" value="mega">메가리그</option>
+<option value="duel">싱글 리그</option>
 </select>
 <label>AI 난이도<select id="difficulty">
 <option value="normal">보통 (2수)</option>
@@ -116,6 +118,6 @@
 
 <!-- InvaderPortalView R21: shared markup/state, original design preserved -->
 
-<script type="module" src="./assets/app.js?v=04df4b58e92c"></script>
+<script type="module" src="./assets/app.js?v=f0574ec02d20"></script>
 </body>
 </html>

@@ -822,33 +822,35 @@ export function newGame(pDeck, aDeck, opt = {}) {
       }, plusChoice),
       leagueComposition = leagueCompositions.P,
       seed = String(opt.seed || Date.now()),
+      /* 싱글 리그: 필드 1칸 + 후열 2장(3마리). 턴 순서도 양측 1슬롯씩만 돈다. */
+      duel = league === "duel",
       g = {
         teams: {
           P: {
-            field: [p[0], p[1]],
-            bench: [p[2], p[3]],
+            field: duel ? [p[0]] : [p[0], p[1]],
+            bench: duel ? [p[1], p[2]] : [p[2], p[3]],
             graveyard: [],
-            traps: [null, null],
+            traps: duel ? [null] : [null, null],
             switchUses: 0,
             plusStarSlotIds: p.filter(x => x.plusStar).map(x => x.deckSlotId),
             plusStarSlotId: p.find(x => x.plusStar)?.deckSlotId || null
           },
           A: {
-            field: [a[0], a[1]],
-            bench: [a[2], a[3]],
+            field: duel ? [a[0]] : [a[0], a[1]],
+            bench: duel ? [a[1], a[2]] : [a[2], a[3]],
             graveyard: [],
-            traps: [null, null],
+            traps: duel ? [null] : [null, null],
             switchUses: 0,
             plusStarSlotIds: a.filter(x => x.plusStar).map(x => x.deckSlotId),
             plusStarSlotId: a.find(x => x.plusStar)?.deckSlotId || null
           }
         },
         revealed: {
-          P: [p[0]?.uid, p[1]?.uid].filter(Boolean),
-          A: [a[0]?.uid, a[1]?.uid].filter(Boolean)
+          P: (duel ? [p[0]?.uid] : [p[0]?.uid, p[1]?.uid]).filter(Boolean),
+          A: (duel ? [a[0]?.uid] : [a[0]?.uid, a[1]?.uid]).filter(Boolean)
         },
         publicHistory: [],
-        order: [["P", 0], ["A", 0], ["P", 1], ["A", 1]],
+        order: duel ? [["P", 0], ["A", 0]] : [["P", 0], ["A", 0], ["P", 1], ["A", 1]],
         turn: 0,
         round: 1,
         turnSerial: 0,
@@ -884,11 +886,14 @@ export function newGame(pDeck, aDeck, opt = {}) {
     for (const t of ["P", "A"]) {
       g.teams[t].summons ||= [];
       g.teams[t].deathSerial ||= 0;
-      g.teams[t].pendingElixianResonance ||= [false, false];
+      g.teams[t].pendingElixianResonance ||= g.teams[t].field.map(() => false);
     }
     g.circuitChain = null;
     g.pendingSummonTurns ||= [];
-    if (opt?.firstTeam === "A") g.order = [["A", 0], ["P", 0], ["A", 1], ["P", 1]];else if (opt?.firstTeam === "P") g.order = [["P", 0], ["A", 0], ["P", 1], ["A", 1]];
+    if (opt?.firstTeam === "A" || opt?.firstTeam === "P") {
+      const first = opt.firstTeam, second = first === "P" ? "A" : "P";
+      g.order = duel ? [[first, 0], [second, 0]] : [[first, 0], [second, 0], [first, 1], [second, 1]];
+    }
     if (opt?.onlineCoin) g.onlineCoin = clone(opt.onlineCoin);
     syncAromaCombatFlags(g);
     for (const u of allReactiveEnergyUnits(g)) {

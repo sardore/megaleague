@@ -47,7 +47,7 @@ export function initializeUiSetup() {
         team: source.team || "P"
       });
     };
-    const toggleCard = (rawId, capacity = 4, context = null) => {
+    const toggleCard = (rawId, capacity = state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection), context = null) => {
       const rules = draftRules(context);
       const id = setupCardId(rawId);
       const card = state_catalog_cards.CARDS.find(entry => entry.id === id);
@@ -96,7 +96,7 @@ export function initializeUiSetup() {
           if (seen) continue;
           seen = true;
         }
-        if (!clean.includes(id) && clean.length < 4) clean.push(id);
+        if (!clean.includes(id) && clean.length < state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)) clean.push(id);
       }
       if (clean.length !== state_ui_battle_state.selected.length || clean.some((id, index) => state_ui_battle_state.selected[index] !== id)) state_ui_battle_state.selected.splice(0, state_ui_battle_state.selected.length, ...clean);
       normalizePlusStar();
@@ -108,7 +108,7 @@ export function initializeUiSetup() {
       normalizePlusStar();
       return snapshot();
     };
-    const applyInvader = (id, capacity = 4, context = null) => {
+    const applyInvader = (id, capacity = state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection), context = null) => {
       const rules = draftRules(context);
       if (!isInvaderCardId(id) || !state_ui_deck.LeagueFormatOwner.cardAllowed(id, rules.mode, rules.composition)) return Object.freeze({
         applied: false,
@@ -292,7 +292,7 @@ export function updateDeckSetup() {
       deck: state_ui_battle_state.selected,
       currentChoice: state_ui_deck.plusStarSelection,
       cardId: button.dataset.plusstarCard,
-      capacity: 4,
+      capacity: state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection),
       validate: (proposal, choice) => state_ui_deck.LeagueFormatOwner.partialValid(proposal, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, choice, "P"),
       commit: (nextDeck, nextChoice) => state_ui_setup.DeckDraftApplication.commit(nextDeck, nextChoice),
       feedback: message => {
@@ -324,7 +324,7 @@ export function updateDeckSetup() {
     x.dataset.selected = String(chosen);
   });
   const complete = state_ui_deck.LeagueFormatOwner.completeValid(state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P");
-  state_ui_battle_state.$("#deckCount").textContent = `${state_ui_battle_state.selected.length} / 4`;
+  state_ui_battle_state.$("#deckCount").textContent = `${state_ui_battle_state.selected.length} / ${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)}`;
   state_ui_battle_state.$("#deckCount").classList.toggle("valid", complete);
   state_ui_battle_state.$("#deckCount").classList.toggle("invalid", state_ui_battle_state.selected.length > 0 && !complete);
   state_ui_battle_state.$("#startBtn").disabled = !complete;
@@ -375,7 +375,7 @@ export function renderSetup(reset = true) {
     cardEl.onclick = event => {
       if (event?.target?.closest?.(".form-toggle,.plusstar-toggle")) return;
       if (cardEl.classList.contains("league-slot-blocked")) return;
-      if (!state_ui_setup.DeckDraftApplication.toggleCard(cardEl.dataset.id, 4)) return;
+      if (!state_ui_setup.DeckDraftApplication.toggleCard(cardEl.dataset.id)) return;
       updateDeckSetup();
     };
   });
@@ -404,7 +404,7 @@ export function deckScore(ids, league = "mega") {
     support = cs.filter(c => c.skills.some(s => s.tags.some(t => ["heal", "shield", "support"].includes(t)))).length,
     tanks = cs.filter(c => c.role.includes("탱커")).length,
     cheap = cs.filter(c => c.skills.some(s => s.tags.includes("damage") && costGap(makeUnit(c.id, "score"), s.cost) <= 1)).length;
-  const grade = league === "mega" ? cs.reduce((sum, c) => sum + gradeStrength(c), 0) : 0;
+  const grade = state_ui_deck.LeagueFormatOwner.free(league) ? cs.reduce((sum, c) => sum + gradeStrength(c), 0) : 0;
   return grade + roles * 10 + Math.min(1, support) * 12 + Math.min(1, tanks) * 12 + Math.min(2, cheap) * 5 + (expensive ? support * 6 : 0) + deckConflictPenalty(ids);
 }
 export function arrangeAIDeck(ids) {
@@ -428,10 +428,10 @@ export function buildAIDeck(seed, league = "mega", composition = state_ui_deck.c
   let rng = new RNG(seed + "-ai-deck"),
     deck = [],
     pool = [...poolForLeague(league, composition)];
-  while (deck.length < 4) {
+  while (deck.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) {
     const ranked = pool.filter(id => state_ui_deck.LeagueFormatOwner.partialValid([...deck, id], league, composition)).map(id => ({
       id,
-      score: deckScore([...deck, id], league) + rng.next() * (league === "mega" ? 12 : 4)
+      score: deckScore([...deck, id], league) + rng.next() * (state_ui_deck.LeagueFormatOwner.free(league) ? 12 : 4)
     })).sort((a, b) => b.score - a.score);
     if (!ranked.length) throw new Error(`AI deck composition exhausted: ${league}/${composition}/${deck.join(",")}`);
     const pick = ranked[0].id;
@@ -489,11 +489,11 @@ export function renderBattleBoard() {
       if (hidden) parts.push(`<div class="unknown-bench"><b>정체불명 후열</b><span>남은 카드 ${hidden}장</span></div>`);
       state_ui_battle_state.$(`#${pre}Bench`).innerHTML = parts.join("") || '<span class="muted">후열 없음</span>';
     } else state_ui_battle_state.$(`#${pre}Bench`).innerHTML = tm.bench.map((u, i) => unitHTML(u, t, i, true, "P")).join("") || '<span class="muted">후열 없음</span>';
-    state_ui_battle_state.$(`#${pre}Alive`).textContent = `생존 ${aliveUnits(tm).length}/4 · 교체 ${tm.switchUses || 0}/3`;
+    state_ui_battle_state.$(`#${pre}Alive`).textContent = `생존 ${aliveUnits(tm).length}/${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_battle_state.game.league)} · 교체 ${tm.switchUses || 0}/3`;
   }
   let turns = [];
-  for (let i = 0; i < 4; i++) {
-    let oi = (state_ui_battle_state.game.turn + i) % 4,
+  for (let i = 0; i < state_ui_battle_state.game.order.length; i++) {
+    let oi = (state_ui_battle_state.game.turn + i) % state_ui_battle_state.game.order.length,
       [t, s] = state_ui_battle_state.game.order[oi],
       u = unitAt(state_ui_battle_state.game, t, s);
     turns.push(`<span class="turntoken ${i ? "" : "now"}">${i ? "다음" : "현재"} ${t === localSide ? "내" : state_ui_battle_state.game.mode === "online" ? "상대" : "AI"}-${s + 1}: ${u && !u.dead ? u.name : "빈 슬롯"}</span>`);

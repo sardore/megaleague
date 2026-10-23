@@ -332,7 +332,7 @@ export function checkDeath(g, u, killer) {
   if (u && !wasDead && u.dead && team) {
     g.teams[team].deathSerial = (g.teams[team].deathSerial || 0) + 1;
     if (cardHasCapability(u, "resonanceTrait") && fieldSlot >= 0 && traitsActive(u)) {
-      g.teams[team].pendingElixianResonance ||= [false, false];
+      g.teams[team].pendingElixianResonance ||= g.teams[team].field.map(() => false);
       g.teams[team].pendingElixianResonance[fieldSlot] = true;
       log(g, `${u.name} 특성 · 잔향: 슬롯 ${fieldSlot + 1}의 다음 출전 아군에게 영구 턴 시작 HP 10 회복을 예약.`);
       queueVisual(g, {

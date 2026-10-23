@@ -207,11 +207,11 @@ export function showVictoryResult() {
             ${state_ui_results.ResultContributionPresentationOwner.html(state_ui_battle_state.game)}
             <div class="victory-stats">
               <span><b>총 행동</b><br>${state_ui_battle_state.game.stats.turns}</span>
-              <span><b>아군 생존</b><br>${mine.alive}/4</span>
+              <span><b>아군 생존</b><br>${mine.alive}/${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_battle_state.game.league)}</span>
               <span><b>가한 피해</b><br>${Math.round(mine.dealt)}</span>
               <span><b>받은 피해</b><br>${Math.round(mine.taken)}</span>
               <span><b>기술 사용</b><br>${mine.skills}회</span>
-              <span><b>적 생존</b><br>${enemy.alive}/4</span>
+              <span><b>적 생존</b><br>${enemy.alive}/${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_battle_state.game.league)}</span>
             </div>
             <div class="choice-list" style="justify-content:center">
               <button id="victoryField">전장 결과 보기</button>
@@ -299,7 +299,7 @@ export function showPvpResult() {
     theirs = pvpTeamStats(state_ui_battle_state.game, enemy),
     won = state_ui_battle_state.game.winner === local,
     history = pvpHistoryRecord(won);
-  state_ui_battle_state.$("#modalContent").innerHTML = `<div class="victory-window ${won ? "" : "defeat"}"><div class="victory-title">${won ? "VICTORY" : "DEFEAT"}</div><div class="victory-sub">온라인 대전에서 ${won ? "승리했습니다!" : "패배했습니다."}</div>${mvpResultHTML(state_ui_battle_state.game, local)}${state_ui_results.ResultContributionPresentationOwner.html(state_ui_battle_state.game)}</div><p>총 ${state_ui_battle_state.game.stats.turns}행동 · 공용 판정: 피해 난수 OFF</p><div class="stats"><span>내 생존 ${mine.alive}/4</span><span>가한 피해 ${Math.round(mine.dealt)}</span><span>받은 피해 ${Math.round(mine.taken)}</span><span>기술 ${mine.skills}회</span><span>상태 기여 ${Math.round(mine.status)}</span><span>실드 흡수 ${Math.round(mine.shield)}</span><span>에너지 방해 ${Math.round(mine.disrupt)}</span><span>교체 ${mine.switches}</span></div><h3>상대 요약</h3><p>생존 ${theirs.alive}/4 · 가한 피해 ${Math.round(theirs.dealt)} · 받은 피해 ${Math.round(theirs.taken)} · 기술 ${theirs.skills}회 · 교체 ${theirs.switches}</p><h3>이 기기 PvP 누적</h3><p>${history.matches}전 ${history.wins}승 ${history.losses}패 · 승률 ${history.matches ? Math.round(history.wins / history.matches * 100) : 0}%</p><div class="choice-list"><button id="pvpResultClose">전장 결과 보기</button><button id="pvpResultMenu">메인 메뉴</button></div>`;
+  state_ui_battle_state.$("#modalContent").innerHTML = `<div class="victory-window ${won ? "" : "defeat"}"><div class="victory-title">${won ? "VICTORY" : "DEFEAT"}</div><div class="victory-sub">온라인 대전에서 ${won ? "승리했습니다!" : "패배했습니다."}</div>${mvpResultHTML(state_ui_battle_state.game, local)}${state_ui_results.ResultContributionPresentationOwner.html(state_ui_battle_state.game)}</div><p>총 ${state_ui_battle_state.game.stats.turns}행동 · 공용 판정: 피해 난수 OFF</p><div class="stats"><span>내 생존 ${mine.alive}/${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_battle_state.game.league)}</span><span>가한 피해 ${Math.round(mine.dealt)}</span><span>받은 피해 ${Math.round(mine.taken)}</span><span>기술 ${mine.skills}회</span><span>상태 기여 ${Math.round(mine.status)}</span><span>실드 흡수 ${Math.round(mine.shield)}</span><span>에너지 방해 ${Math.round(mine.disrupt)}</span><span>교체 ${mine.switches}</span></div><h3>상대 요약</h3><p>생존 ${theirs.alive}/4 · 가한 피해 ${Math.round(theirs.dealt)} · 받은 피해 ${Math.round(theirs.taken)} · 기술 ${theirs.skills}회 · 교체 ${theirs.switches}</p><h3>이 기기 PvP 누적</h3><p>${history.matches}전 ${history.wins}승 ${history.losses}패 · 승률 ${history.matches ? Math.round(history.wins / history.matches * 100) : 0}%</p><div class="choice-list"><button id="pvpResultClose">전장 결과 보기</button><button id="pvpResultMenu">메인 메뉴</button></div>`;
   state_ui_battle_state.$("#modal").classList.add("open");
   state_ui_results.ResultContributionPresentationOwner.bind(state_ui_battle_state.$("#modalContent"), state_ui_battle_state.game);
   state_ui_battle_state.$("#pvpResultClose").onclick = () => state_ui_battle_state.$("#modal").classList.remove("open");
@@ -331,9 +331,9 @@ export function randomBattleDeck(r, league = "mega", composition = state_ui_deck
   composition = state_ui_deck.LeagueFormatOwner.normalizeComposition(composition);
   let pool = [...poolForLeague(league, composition)],
     d = [];
-  while (d.length < 4) {
+  while (d.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) {
     const valid = pool.filter(id => state_ui_deck.LeagueFormatOwner.partialValid([...d, id], league, composition)),
-      compatible = league === "mega" ? valid.filter(id => !severeDeckConflict([...d, id])) : valid,
+      compatible = state_ui_deck.LeagueFormatOwner.free(league) ? valid.filter(id => !severeDeckConflict([...d, id])) : valid,
       choices = compatible.length ? compatible : valid;
     if (!choices.length) throw new Error(`random deck composition exhausted: ${league}/${composition}/${d.join(",")}`);
     const id = r.pick(choices);
