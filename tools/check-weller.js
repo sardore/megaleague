@@ -64,13 +64,14 @@ await check('curse consumes all attack decreases and preserves positive attack b
  await check('persistent purple aura survives redraw and disappears on cure; skills render at the target',async page=>{
   await page.waitForSelector('#startupIntro',{state:'detached'});
   await page.evaluate(()=>{const{g,w,target}=wellerFixture();probe.battle.game=g;document.querySelector('#setup').classList.remove('active');document.querySelector('#game').classList.add('active');probe.combat.applyStatus(g,w,'undead',4);probe.render();probe.battle.visualEvents=[{type:'wellerFx',phase:'graveDown',uid:w.uid,targetUid:target.uid,succeeds:true}];probe.playVisuals();});
-  await page.waitForSelector('.weller-graveDown');assert.equal(await page.locator('.undead-aura').count(),1);await page.waitForTimeout(1800);const fireLit=await page.evaluate(()=>{const c=document.getElementById('undeadFireField');if(!c)return false;const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let n=0;for(let i=3;i<d.length;i+=4)if(d[i]>30)n++;return n>15;});assert.ok(fireLit,'aura fire particles are drawn');await page.screenshot({path:'artifacts/weller/aura-mobile.png',clip:{x:0,y:240,width:412,height:160}});
+  await page.waitForSelector('.weller-graveDown');assert.equal(await page.locator('.undead-aura').count(),1);assert.equal(await page.locator('.undead-aura .undead-wave').count(),3);await page.waitForTimeout(600);await page.screenshot({path:'artifacts/weller/aura-mobile.png',clip:{x:0,y:240,width:412,height:160}});
   await page.waitForTimeout(650);await fs.mkdir('artifacts/weller',{recursive:true});await page.screenshot({path:'artifacts/weller/grave-down-mobile.png',fullPage:true});
   await page.setViewportSize({width:1280,height:900});
   for(const phase of ['curse','graveUp','curseBurst','graveDown']){
     await page.evaluate(phase=>{document.querySelectorAll('.weller-fx').forEach(e=>e.remove());const g=probe.battle.game;probe.render();probe.battle.visualEvents=[{type:'wellerFx',phase,uid:g.teams.P.field[0].uid,targetUid:phase==='graveUp'?g.teams.P.field[0].uid:g.teams.A.field[0].uid,succeeds:true,stage:1}];probe.playVisuals();},phase);
     await page.waitForTimeout(550);await page.screenshot({path:`artifacts/weller/${phase}-desktop.png`,fullPage:true});
   }
+  await page.evaluate(()=>{document.querySelectorAll('.weller-fx').forEach(e=>e.remove());probe.render();});await page.waitForTimeout(1400);await page.locator('.battle-unit-card:has(.undead-aura)').first().screenshot({path:'artifacts/weller/aura-card.png'});
   const r=await page.evaluate(()=>{probe.render();const kept=document.querySelectorAll('.undead-aura').length;probe.combat.clearStatuses(probe.battle.game,probe.battle.game.teams.P.field[0]);probe.render();return{kept,ended:document.querySelectorAll('.undead-aura').length};});assert.deepEqual(r,{kept:1,ended:0});
  });
  await check('remote undead state rebuilds the aura and a retried effect renders once',async page=>{
