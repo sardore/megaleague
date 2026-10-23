@@ -34,6 +34,10 @@ export function initializeUiDeck() {
         label: "2☆ 컵",
         shortRule: "2☆ 4장",
         accent: "green",
+        mark: "II",
+        rule: "2☆ 캐릭터만으로 4장 편성",
+        slots: Object.freeze(["2☆ ×4"]),
+        short: "2☆컵",
         requirements: Object.freeze({
           "2☆": 4
         })
@@ -43,6 +47,10 @@ export function initializeUiDeck() {
         label: "정규리그",
         shortRule: "2☆ ×2 · 3☆ ×2",
         accent: "yellow",
+        mark: "R",
+        rule: "2☆ 두 장 + 3☆ 두 장",
+        slots: Object.freeze(["2☆ ×2", "3☆ ×2"]),
+        short: "정규",
         requirements: Object.freeze({
           "2☆": 2,
           "3☆": 2
@@ -53,6 +61,10 @@ export function initializeUiDeck() {
         label: "종합리그",
         shortRule: "선택한 등급 구성",
         accent: "orange",
+        mark: "Σ",
+        rule: "두 등급 구성 중 하나를 선택",
+        slots: Object.freeze(["A · 2☆ ×2 + 3☆ + 4☆", "B · 2☆ + 3☆ + 3.5☆ ×2"]),
+        short: "종합",
         requirements: null
       }),
       mega: Object.freeze({
@@ -60,6 +72,10 @@ export function initializeUiDeck() {
         label: "메가리그",
         shortRule: "등급 제한 없음",
         accent: "purple",
+        mark: "M",
+        rule: "전체 등급 자유 편성",
+        slots: Object.freeze(["ALL RARITIES"]),
+        short: "메가",
         requirements: null
       }),
       duel: Object.freeze({
@@ -67,6 +83,10 @@ export function initializeUiDeck() {
         label: "싱글 리그",
         shortRule: "등급 무제한 · 3마리",
         accent: "gray",
+        mark: "S",
+        rule: "등급 무제한, 3마리로 필드 1칸 승부",
+        slots: Object.freeze(["ALL ×3"]),
+        short: "싱글",
         requirements: null
       })
     }),
@@ -92,6 +112,10 @@ export function initializeUiDeck() {
     }),
     normalizeLeague(mode) {
       return this.definitions[mode] ? mode : "mega";
+    },
+    /* 리그 목록은 definitions 한 곳에서만 정의한다. 선택 화면·온라인 선택·옵션·약칭 모두 여기서 만든다. */
+    ids() {
+      return Object.keys(this.definitions);
     },
     /* 등급 제한이 없는 리그(메가·싱글)과 리그별 덱 장수. 싱글은 필드 1 + 후열 2 = 3마리. */
     free(mode) {
@@ -265,6 +289,7 @@ export function initializeUiDeck() {
     }
   });
   state_ui_deck.leagueSelection = "mega";
+  renderLeagueChooser();
   state_ui_deck.comprehensiveComposition = "2234";
   state_ui_deck.irumaForm = "iruma";
   state_ui_deck.bkenoForm = "bkeno";
@@ -430,42 +455,21 @@ export function poolForLeague(mode = state_ui_deck.leagueSelection, composition 
 }
 export function leagueBannerMarkup(mode, className = "leagueTab") {
   mode = state_ui_deck.LeagueFormatOwner.normalizeLeague(mode);
-  const rows = {
-      two: {
-        mark: "II",
-        rule: "2☆ 캐릭터만으로 4장 편성",
-        slots: ["2☆ ×4"]
-      },
-      regular: {
-        mark: "R",
-        rule: "2☆ 두 장 + 3☆ 두 장",
-        slots: ["2☆ ×2", "3☆ ×2"]
-      },
-      comprehensive: {
-        mark: "Σ",
-        rule: "두 등급 구성 중 하나를 선택",
-        slots: ["A · 2☆ ×2 + 3☆ + 4☆", "B · 2☆ + 3☆ + 3.5☆ ×2"]
-      },
-      mega: {
-        mark: "M",
-        rule: "전체 등급 자유 편성",
-        slots: ["ALL RARITIES"]
-      },
-      duel: {
-        mark: "S",
-        rule: "등급 무제한, 3마리로 필드 1칸 승부",
-        slots: ["ALL ×3"]
-      }
-    },
-    row = rows[mode],
-    def = state_ui_deck.LeagueFormatOwner.definition(mode),
+  const def = state_ui_deck.LeagueFormatOwner.definition(mode),
     active = mode === state_ui_deck.leagueSelection;
-  return `<button class="${className} league-banner ${mode}${active ? " active" : ""}" data-league="${mode}" aria-pressed="${active}"><span class="league-banner-top"><span class="league-mark">${row.mark}</span><span class="league-banner-name">${def.label}</span></span><span class="league-banner-rule">${row.rule}</span><span class="league-banner-slots">${row.slots.map(slot => `<span class="league-slot">${slot}</span>`).join("")}</span></button>`;
+  return `<button class="${className} league-banner ${mode}${active ? " active" : ""}" data-league="${mode}" aria-pressed="${active}"><span class="league-banner-top"><span class="league-mark">${def.mark}</span><span class="league-banner-name">${def.label}</span></span><span class="league-banner-rule">${def.rule}</span><span class="league-banner-slots">${def.slots.map(slot => `<span class="league-slot">${slot}</span>`).join("")}</span></button>`;
+}
+/* 설정 화면의 리그 배너와 숨김 select 옵션도 같은 정의에서 만든다(HTML에 리그를 따로 적지 않는다). */
+export function renderLeagueChooser() {
+  const chooser = state_ui_battle_state.$("#leagueChooser"),
+    select = state_ui_battle_state.$("#leagueMode");
+  if (chooser) chooser.innerHTML = state_ui_deck.LeagueFormatOwner.ids().map(mode => leagueBannerMarkup(mode)).join("");
+  if (select) select.innerHTML = state_ui_deck.LeagueFormatOwner.ids().map(mode => `<option value="${mode}">${state_ui_deck.LeagueFormatOwner.definition(mode).label}</option>`).join("");
 }
 export function onlineLeagueEntryHTML() {
   const def = state_ui_deck.LeagueFormatOwner.definition(state_ui_deck.leagueSelection);
   const pattern = state_ui_deck.leagueSelection === "comprehensive" ? state_ui_deck.LeagueFormatOwner.pattern("comprehensive", state_ui_deck.comprehensiveComposition) : null;
-  return `<div class="online-league-panel"><div class="online-league-panel-head"><b>온라인 리그</b><span>${def.label}${pattern ? ` · ${pattern.label}` : ""}</span></div><div class="online-league-chooser">${["two", "regular", "comprehensive", "mega"].map(mode => leagueBannerMarkup(mode, "onlineLeagueTab")).join("")}</div>${state_ui_deck.leagueSelection === "comprehensive" ? `<div class="comprehensive-pattern-picker online-composition-picker">${Object.values(state_ui_deck.LeagueFormatOwner.comprehensivePatterns).map(pattern => `<button class="composition-choice onlineCompositionChoice${pattern.id === state_ui_deck.comprehensiveComposition ? " active" : ""}" data-composition="${pattern.id}" aria-pressed="${pattern.id === state_ui_deck.comprehensiveComposition}"><span><strong>${pattern.id === "2234" ? "구성 A" : "구성 B"} · ${pattern.label}</strong><span>${pattern.id === "2234" ? "2☆ 기반 + 4☆ 핵심" : "3.5☆ 중심 균형 조합"}</span></span></button>`).join("")}</div>` : ""}</div>`;
+  return `<div class="online-league-panel"><div class="online-league-panel-head"><b>온라인 리그</b><span>${def.label}${pattern ? ` · ${pattern.label}` : ""}</span></div><div class="online-league-chooser">${state_ui_deck.LeagueFormatOwner.ids().map(mode => leagueBannerMarkup(mode, "onlineLeagueTab")).join("")}</div>${state_ui_deck.leagueSelection === "comprehensive" ? `<div class="comprehensive-pattern-picker online-composition-picker">${Object.values(state_ui_deck.LeagueFormatOwner.comprehensivePatterns).map(pattern => `<button class="composition-choice onlineCompositionChoice${pattern.id === state_ui_deck.comprehensiveComposition ? " active" : ""}" data-composition="${pattern.id}" aria-pressed="${pattern.id === state_ui_deck.comprehensiveComposition}"><span><strong>${pattern.id === "2234" ? "구성 A" : "구성 B"} · ${pattern.label}</strong><span>${pattern.id === "2234" ? "2☆ 기반 + 4☆ 핵심" : "3.5☆ 중심 균형 조합"}</span></span></button>`).join("")}</div>` : ""}</div>`;
 }
 export function bindOnlineLeagueEntryControls(root) {
   if (!root) return false;
@@ -513,19 +517,13 @@ export function syncLeagueSelectionSurface() {
     button.setAttribute("aria-pressed", String(active));
   });
   if (summary) {
-    summary.classList.remove("two", "regular", "comprehensive", "mega", "duel");
+    summary.classList.remove(...state_ui_deck.LeagueFormatOwner.ids());
     summary.classList.add(state_ui_deck.leagueSelection);
     summary.innerHTML = `<div><div class="league-summary-name">${def.label}</div><div class="league-summary-rule">${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}</div></div><div class="league-summary-progress">${state_ui_deck.LeagueFormatOwner.progressText(state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P")}</div>`;
   }
   const onlineButton = state_ui_battle_state.$("#onlineBtn");
   if (onlineButton) {
-    const short = {
-      two: "2☆컵",
-      regular: "정규",
-      comprehensive: "종합",
-      mega: "메가",
-      duel: "싱글"
-    }[state_ui_deck.leagueSelection] || def.label;
+    const short = def.short || def.label;
     onlineButton.textContent = `온라인 · ${short}`;
   }
 }
