@@ -183,7 +183,7 @@ export function finishInvaderApply() {
   state_ui_battle_state.$("#modal").classList.remove("open");
 }
 export function applyInvaderFromPortal(id) {
-  const application = state_ui_setup.DeckDraftApplication.applyInvader(id, 4);
+  const application = state_ui_setup.DeckDraftApplication.applyInvader(id);
   if (application.applied) {
     finishInvaderApply();
     return;
