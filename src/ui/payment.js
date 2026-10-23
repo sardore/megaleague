@@ -723,7 +723,7 @@ export function dispatchPlayerSkill(actions) {
     continueWith(actions, a.paymentPlan || null);
     return;
   }
-  let needsColorChoice = transformed.req.any > 0 || transformed.req.wb > 0;
+  let needsColorChoice = transformed.req.any > 0 || transformed.req.wb > 0 || transformed.req.rb > 0;
   if (needsColorChoice) {
     openManualPayment(actions, continueWith, `${card(u).skills.find(x => x.id === a.skill)?.name || "기술"} 코스트`);
     return;

@@ -6,6 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 import {chromium} from '@playwright/test';
 import './serve.js';
 const baselinePath=process.argv[2];
+const allowNewCards=process.argv.includes('--allow-new-cards');
 if(!baselinePath)throw new Error('Usage: node tools/check-feature-parity.js BASELINE_HTML_OR_CHECKOUT');
 const baselineDirectory=(await fs.stat(baselinePath)).isDirectory();
 const baseline=baselineDirectory?null:await fs.readFile(baselinePath);
@@ -28,9 +29,10 @@ try{
   const pageErrors=[];page.on('pageerror',e=>pageErrors.push(String(e)));
   await page.goto(baselineRun?'http://127.0.0.1:4174':'http://127.0.0.1:4173');
   if(!legacy)await page.waitForFunction(()=>!!window.Megaleague);
-  const result=await page.evaluate(({legacy})=>{
+  const result=await page.evaluate(({legacy,baselineIds})=>{
    const api=legacy?{CARDS,card,newGame,prepareCurrentTurn,unitAt,chooseAI,execute,legalActions,endTurn}:window.Megaleague;
-   const cards=JSON.parse(JSON.stringify(api.CARDS));
+   const comparisonCards=baselineIds?baselineIds.map(id=>api.CARDS.find(c=>c.id===id)):api.CARDS;
+   const cards=JSON.parse(JSON.stringify(comparisonCards));
    const snapshots=[],bossSnapshots=[],errors=[],actionCases=[],invalidActions=[];
    const hpEligible=(unit,action)=>{
     const skill=action.type==='skill'?api.card(unit).skills.find(s=>s.id===action.skill):null;
@@ -43,8 +45,8 @@ try{
     statuses:u.statuses,usedOnce:u.usedOnce,defense:u.defense,hour:u.timeHourDeg,minute:u.timeMinuteDeg,
     scheduled:u.scheduledAction?{kind:u.scheduledAction.kind,remaining:u.scheduledAction.remaining}:null,
    }:null));
-   for(let index=0;index<api.CARDS.length;index++){
-    const p=Array.from({length:4},(_,j)=>api.CARDS[(index+j)%api.CARDS.length].id),a=Array.from({length:4},(_,j)=>api.CARDS[(index+j+7)%api.CARDS.length].id);
+   for(let index=0;index<comparisonCards.length;index++){
+    const p=Array.from({length:4},(_,j)=>comparisonCards[(index+j)%comparisonCards.length].id),a=Array.from({length:4},(_,j)=>comparisonCards[(index+j+7)%comparisonCards.length].id);
     for(const variant of ['empty','mixed','red','white','blue','traitSeal','freeze','skillSeal','plus']){
      const fixture=api.newGame(p,a,{seed:`actions-${index}-${variant}`,mode:'ai',difficulty:'normal'});
      fixture.order=[['P',0],['A',0],['P',1],['A',1]];fixture.turn=0;fixture.preparedKey=null;
@@ -93,7 +95,7 @@ try{
     }
    }
    return {cards,snapshots,bossSnapshots,errors,actionCases,invalidActions};
-  },{legacy});
+  },{legacy,baselineIds:!baselineRun&&allowNewCards?results[0].cards.map(c=>c.id):null});
   assert.deepEqual(pageErrors,[],'application startup and simulation must not throw');
   results.push(result);await page.close();
  }

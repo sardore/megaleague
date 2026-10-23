@@ -1004,7 +1004,7 @@ export function initializeCatalogCards() {
         currentHP: effectiveUnit?.hp == null ? null : Number(effectiveUnit.hp),
         speed: Number(effectiveUnit?.speed ?? def.speed ?? 0),
         shield: Number(effectiveUnit?.shield ?? def.shield ?? 0),
-        traitDescription: String(def.trait || ""),
+        traitDescription: def.traitRules ? def.traitRules.filter(rule => !rule.consumedField || !effectiveUnit?.[rule.consumedField]).map(rule => rule.description).join(' ') : String(def.trait || ""),
         skills,
         visualModifiers: Object.freeze({
           plusStarGlow: plusStar,

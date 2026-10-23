@@ -1,4 +1,5 @@
 import { state_runtime_entities } from "../runtime/entities.js";
+import { healingBecomesDamage } from '../engine/status-rules.js';
 import { activeAbigate, isLocallyControlledTeam, isNonAttackSkill, resolvedSkillForAction } from "../app/controls.js";
 import { enemyTargets, other, unitAt } from "../engine/actions.js";
 import { applyStatus, dealDamage, findUnit, heal, nonAttackDamage, queueVisual, teamOf } from "../engine/combat.js";
@@ -129,11 +130,13 @@ export function healPoolWithOverflow(g, units, pool, splitPct = 50, source = nul
     healed = 0;
   for (let pass = 0; pass < 2 && remaining > 0.001; pass++) {
     for (let i = 0; i < units.length && remaining > 0.001; i++) {
+      if (units[i].dead) continue;
       let ask = pass === 0 ? Math.min(remaining, requested[i]) : remaining;
       if (ask <= 0) continue;
+      const inverted = healingBecomesDamage(units[i]);
       let got = heal(g, units[i], ask, source, meta);
       healed += got;
-      remaining -= got;
+      remaining -= inverted ? ask : got;
     }
   }
   return healed;

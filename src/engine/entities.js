@@ -21,7 +21,7 @@ import { state_runtime_config } from "../runtime/config.js";
 import { state_runtime_entities } from "../runtime/entities.js";
 import { effectiveSkillTarget, state_catalog_cards } from "../catalog/cards.js";
 import { other, unitAt } from "./actions.js";
-import { findUnit, teamOf } from "./combat.js";
+import { findUnit, hpBarrierStanceActive, teamOf } from "./combat.js";
 import { allEnergy, initializeDeployment, totalEnergy } from "./energy.js";
 import { syncAromaCombatFlags } from "../features/elixian.js";
 import { allReactiveEnergyUnits, initReactiveEnergyUnit, reactiveEnergyAmount, reactiveEnergyObservedKey, reactiveEnergyRule, syncReactiveEnergyMaxHp } from "../features/genocider.js";
@@ -38,7 +38,8 @@ export function initializeEngineEntities() {
     freeze: "냉동",
     traitSeal: "특성봉인",
     skillSeal: "기술봉인",
-    healSeal: "회복봉인"
+    healSeal: "회복봉인",
+    undead: '언데드'
   };
   state_engine_entities.PlusStarBannerPresentationOwner = (() => {
     const pending = new Set(),
@@ -685,12 +686,14 @@ export function resolveSkillTargets(g, t, s, u, skillRef, options = {}) {
     uid: x.uid
   } : null).filter(Boolean);
   const enemyTeam = other(t);
-  const enemies = (g.teams[enemyTeam]?.field || []).map((x, i) => x && !x.dead ? {
+  let enemies = (g.teams[enemyTeam]?.field || []).map((x, i) => x && !x.dead ? {
     team: enemyTeam,
     slot: i,
     uid: x.uid
   } : null).filter(Boolean);
   const effectiveTarget = effectiveSkillTarget(u, skill);
+  const taunters = singleTargetTaunters(g, t, u, skill);
+  if (taunters.length) enemies = enemies.filter(ref => taunters.includes(ref.uid));
   if (effectiveTarget === "enemyField") return enemies;
   switch (effectiveTarget) {
     case "self":
@@ -711,7 +714,7 @@ export function resolveSkillTargets(g, t, s, u, skillRef, options = {}) {
         return refs;
       }
     case "anyCharacter":
-      return [...own, ...enemies];
+      return taunters.length ? enemies : [...own, ...enemies];
     case "lowestEnergyEnemy":
       {
         if (!enemies.length) return [];
@@ -723,13 +726,31 @@ export function resolveSkillTargets(g, t, s, u, skillRef, options = {}) {
         team: enemyTeam,
         slot: i,
         uid: x?.uid || null
-      }));
+      })).filter(ref => !taunters.length || taunters.includes(ref.uid));
     case "enemyHealAlly":
     case "enemy":
       return enemies;
     default:
       return options.defaultEnemy ? enemies : [];
   }
+}
+export function singleTargetTaunters(g, actingTeam, actor, skill) {
+  const target = effectiveSkillTarget(actor, skill);
+  if (!['enemy', 'enemyHealAlly', 'enemySlot', 'lowestEnergyEnemy', 'anyCharacter'].includes(target)) return [];
+  return (g.teams[other(actingTeam)]?.field || []).filter(unit => hpBarrierStanceActive(g, unit) && card(unit).hpBarrierStance.tauntSingleTarget).map(unit => unit.uid);
+}
+export function battleActionConstraintsMet(g, t, s, action) {
+  const actor = unitAt(g, t, s);
+  if (!actor || actor.dead) return true;
+  if (hpBarrierStanceActive(g, actor)) {
+    const stance = card(actor).hpBarrierStance;
+    if (action?.type === 'skill' && stance.blockSkill || action?.type === 'switch' && stance.blockRetreat) return false;
+  }
+  if (action?.type !== 'skill') return true;
+  const skill = action.copySkill ? state_catalog_cards.CARDS.find(c => c.id === action.copyCard)?.skills.find(sk => sk.id === action.copySkill) : skillOf(actor, action.skill);
+  if (!skill) return false;
+  const taunters = singleTargetTaunters(g, t, actor, skill);
+  return !taunters.length || action.target?.team === other(t) && taunters.includes(unitAt(g, action.target.team, action.target.slot)?.uid);
 }
 export function resolvePlusStarChoice(choice, deck, team = "P") {
   const ids = Array.isArray(deck) ? deck : [];

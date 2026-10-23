@@ -1,6 +1,7 @@
 import { timePlayClockRotationOverlay } from "./clock-mirror.js";
 import { bossPlayTimeStrikeFx } from "../features/boss-raid.js";
 import { TimerManager } from "../runtime/timers.js";
+import { playWellerVisual } from './weller.js';
 
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_presentation_animations = {
@@ -1168,13 +1169,14 @@ export function playVisuals() {
   if (clocks.length) timeSetInputLock(true, true);
   const tracked = timeTrackVisualTimers(() => {
     const geno = [],
+      weller = [],
       elixian = [],
       fox = [],
       jc = [],
       rest = [];
     const jcTypes = new Set(["jcVineFx", "jcSummonFx", "jcSummonAction", "circuitRoundFx", "circuitArmsFx", "voltagePrepareFx", "voltageFailFx", "voltageBurstFx"]);
     for (const v of state_ui_battle_state.visualEvents) {
-      if (["genociderAbsorbFx", "genociderClawFx", "genociderExplosionFx"].includes(v?.type)) geno.push(v);else if (v?.type === "elixianPulseFx") elixian.push(v);else if (v?.type === "foxStrikeFx") fox.push(v);else if (v?.type === "deepTrioFx" && actionSkillHasEffect(v, "groundZero")) jc.push({
+      if (v?.type === 'wellerFx') weller.push(v);else if (["genociderAbsorbFx", "genociderClawFx", "genociderExplosionFx"].includes(v?.type)) geno.push(v);else if (v?.type === "elixianPulseFx") elixian.push(v);else if (v?.type === "foxStrikeFx") fox.push(v);else if (v?.type === "deepTrioFx" && actionSkillHasEffect(v, "groundZero")) jc.push({
         ...v,
         type: "groundZeroDelayed"
       });else if (jcTypes.has(v?.type)) jc.push(v);else rest.push(v);
@@ -1190,6 +1192,8 @@ export function playVisuals() {
     fox.forEach((v, i) => TimerManager.setTimeout(() => playFoxStrikeVisual(v), i * 70));
     jc.forEach((v, i) => TimerManager.setTimeout(() => playJcVisual(v), i * 70));
     const r = playVisualsCoreBase();
+    weller.forEach((event,i)=>TimerManager.setTimeout(()=>playWellerVisual(event),i*100));
+    if(weller.length) state_ui_battle_state.visualHoldMs=Math.max(state_ui_battle_state.visualHoldMs,weller.some(e=>e.phase==='graveDown')?1900:weller.some(e=>e.phase==='curseBurst'||e.phase==='graveUp')?1600:1000);
     if (geno.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 1050);
     if (fox.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 1100);
     if (jc.some(v => v.type === "groundZeroDelayed")) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 2100);else if (jc.length) state_ui_battle_state.visualHoldMs = Math.max(state_ui_battle_state.visualHoldMs, 1250);

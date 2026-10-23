@@ -5,7 +5,7 @@ export const state_engine_energy = {
 import { state_runtime_entities } from "../runtime/entities.js";
 import { downPressureSource, eternaLocksTeam } from "../app/controls.js";
 import { other } from "./actions.js";
-import { heal, nonAttackDamage, teamOf, traitsActive } from "./combat.js";
+import { heal, hpBarrierStanceActive, nonAttackDamage, teamOf, traitsActive } from "./combat.js";
 import { state_engine_effects } from "./effects.js";
 import { actionFaultHit, card, cardHasCapability } from "./entities.js";
 import { circuitIgnoresCostChanges, rawReqFromCost } from "../features/foxious.js";
@@ -49,6 +49,7 @@ export function switchCostText(u) {
   return n ? "*".repeat(n) : "무료";
 }
 export function canSwitch(g, t, u) {
+  if (hpBarrierStanceActive(g, u) && card(u).hpBarrierStance.blockRetreat) return false;
   if (g?.bossRaid && t === "A") return false;
   if (typeof eternaLocksTeam === "function" && eternaLocksTeam(g, t)) return false;
   let cost = switchCost(u),
@@ -134,8 +135,8 @@ export function initializeEngineEnergy() {
 export function costTokens(str = "") {
   let out = [];
   for (let i = 0; i < str.length;) {
-    if (str.slice(i, i + 4) === "WorB") {
-      out.push("WorB");
+    if (["WorB", "RorB"].includes(str.slice(i, i + 4))) {
+      out.push(str.slice(i, i + 4));
       i += 4;
     } else if ("RWB*".includes(str[i])) {
       out.push(str[i]);
@@ -150,10 +151,11 @@ export function parseCost(str) {
     W: 0,
     B: 0,
     any: 0,
-    wb: 0
+    wb: 0,
+    rb: 0
   };
   for (const c of costTokens(str)) {
-    if (c === "*") req.any++;else if (c === "WorB") req.wb++;else req[c]++;
+    if (c === "*") req.any++;else if (c === "WorB") req.wb++;else if (c === 'RorB') req.rb++;else req[c]++;
   }
   return req;
 }
@@ -170,6 +172,11 @@ export function canPayReq(u, r, actor = null) {
   }
   for (let i = 0; i < r.wb; i++) {
     let c = pool.W >= 1 - 1e-6 ? "W" : pool.B >= 1 - 1e-6 ? "B" : null;
+    if (!c) return false;
+    pool[c] -= 1;
+  }
+  for (let i = 0; i < (r.rb || 0); i++) {
+    const c = pool.R >= 1 - 1e-6 ? 'R' : pool.B >= 1 - 1e-6 ? 'B' : null;
     if (!c) return false;
     pool[c] -= 1;
   }
@@ -204,6 +211,8 @@ export function costGap(u, cost, actor = null) {
     pool.W -= useW;
     pool.B -= wb - useW;
     gap += r.wb - wb;
+    const rb = Math.min(r.rb || 0, pool.R + pool.B), useR = Math.min(pool.R, rb);
+    pool.R -= useR; pool.B -= rb - useR; gap += (r.rb || 0) - rb;
     return gap + Math.max(0, r.any - pool.R - pool.W - pool.B);
   }
   let r = parseCost(cost),
@@ -224,6 +233,8 @@ export function costGap(u, cost, actor = null) {
   pool.W -= useW;
   pool.B -= wb - useW;
   gap += r.wb - wb;
+  const rb = Math.min(r.rb || 0, pool.R + pool.B), useR = Math.min(pool.R, rb);
+  pool.R -= useR; pool.B -= rb - useR; gap += (r.rb || 0) - rb;
   gap += Math.max(0, r.any + (status(u, "poison") ? 1 : 0) - pool.R - pool.W - pool.B);
   return gap;
 }
@@ -255,6 +266,11 @@ export function spendReq(u, r, prefer = [], actor = null) {
       wbOrder = [...new Set([...prefer.filter(x => x === "W" || x === "B"), "W", "B"])];
     for (let i = 0; i < (r.wb || 0); i++) {
       let c = wbOrder.find(x => amountOf(x) >= 1 - 1e-6);
+      if (c) take(c, 1);
+    }
+    const rbOrder = [...new Set([...prefer.filter(x => x === 'R' || x === 'B'), 'R', 'B'])];
+    for (let i = 0; i < (r.rb || 0); i++) {
+      const c = rbOrder.find(x => amountOf(x) >= 1 - 1e-6);
       if (c) take(c, 1);
     }
     let anyOrder = [...new Set([...prefer, "R", "W", "B"])];
@@ -294,9 +310,10 @@ export function transformedSkillReq(g, t, u, cost) {
     W: 0,
     B: 0,
     any: 0,
-    wb: 0
+    wb: 0,
+    rb: 0
   };
-  for (const x of tokens) x === "*" ? r.any++ : x === "WorB" ? r.wb++ : r[x]++;
+  for (const x of tokens) x === "*" ? r.any++ : x === "WorB" ? r.wb++ : x === 'RorB' ? r.rb++ : r[x]++;
   return {
     req: r,
     tokens,
@@ -357,11 +374,16 @@ export function reqAcceptsCounts(r, c, u = null) {
     if (!col) return false;
     p[col] -= 1;
   }
+  for (let i = 0; i < Number(r.rb || 0); i++) {
+    const col = p.R >= 1 - 1e-6 ? 'R' : p.B >= 1 - 1e-6 ? 'B' : flexibleW && p.W >= 1 - 1e-6 ? 'W' : null;
+    if (!col) return false;
+    p[col] -= 1;
+  }
   return Math.floor(p.R + 1e-6) + Math.floor(p.W + 1e-6) + Math.floor(p.B + 1e-6) >= Number(r.any || 0);
 }
 export function findPaymentPlan(g, t, u, cost, actor = null, predicate = () => true) {
   let r = transformedSkillReq(g, t, u, cost).req,
-    need = r.R + r.W + r.B + r.wb + r.any,
+    need = r.R + r.W + r.B + r.wb + (r.rb || 0) + r.any,
     atoms = [];
   for (const e of energyStore(u, actor)) for (let x = 0; x < Math.round(e.a * 2); x++) atoms.push(e.c);
   let chosen = {
@@ -391,7 +413,7 @@ export function findPaymentPlan(g, t, u, cost, actor = null, predicate = () => t
 }
 export function allPaymentPlans(g, t, u, cost, actor = null) {
   let r = transformedSkillReq(g, t, u, cost).req,
-    need = r.R + r.W + r.B + r.wb + r.any,
+    need = r.R + r.W + r.B + r.wb + (r.rb || 0) + r.any,
     atoms = [];
   for (const e of energyStore(u, actor)) for (let x = 0; x < Math.round(e.a * 2); x++) atoms.push(e.c);
   let chosen = {

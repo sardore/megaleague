@@ -1,0 +1,20 @@
+import './combat-online-probe.js';
+import * as effects from '../../src/engine/effects.js';
+import * as execution from '../../src/engine/execution.js';
+import * as entities from '../../src/engine/entities.js';
+import * as energy from '../../src/engine/energy.js';
+import * as statusRules from '../../src/engine/status-rules.js';
+import * as actions from '../../src/engine/actions.js';
+import { registerCardDefinition } from '../../src/ui/deck.js';
+import { state_runtime_snapshots } from '../../src/runtime/snapshots.js';
+import { healPoolWithOverflow } from '../../src/features/character-rules.js';
+Object.assign(window.probe,{effects,execution,entities,energy,statusRules,actions,registerCardDefinition,state_runtime_snapshots,healPoolWithOverflow});
+window.wellerFixture=()=>{
+  const g=Megaleague.newGame(['weller','hermit','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'weller-test'});
+  g.order=[['P',0],['A',0],['P',1],['A',1]];g.turn=0;g.turnSerial=0;g.preparedKey=null;
+  probe.actions.prepareCurrentTurn(g);
+  const w=g.teams.P.field[0],target=g.teams.A.field[0];
+  const prepareOwn=()=>{g.turn=0;g.turnSerial++;g.preparedKey=null;probe.actions.prepareCurrentTurn(g);};
+  const apply=(id,t=target,sim=true)=>{const skill=probe.card(w).skills.find(s=>s.id===id);return probe.effectApply(g,w,t,skill.effects[0],skill,{team:'P',slot:0,sim,action:{}});};
+  return {g,w,target,prepareOwn,apply};
+};

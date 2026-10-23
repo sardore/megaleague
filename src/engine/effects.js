@@ -1,6 +1,8 @@
 import { applyClockEffect } from "../features/timeora.js";
 import { applyReactiveEnergyEffect } from "../features/genocider.js";
 import { applyResonanceEffect, syncAromaCombatFlags, elixianHpProtection, totalHpProtection } from "../features/elixian.js";
+import { applyWellerEffect } from '../features/weller.js';
+import { healingBecomesDamage, healingCapacity } from './status-rules.js';
 import { applyStrikeEffect } from "../features/foxious.js";
 import { applySummonEffect, circuitBlocksExternal, resolveVoltageBurst } from "../features/summons.js";
 import { applyDeepSeaEffect, grantEnergyWithDiscard } from "../features/character-rules.js";
@@ -212,13 +214,24 @@ export function consumeNaturalGatherProposal(g, t, s, u, amount, actor = null, p
   }
   return actual;
 }
+export function totalAttackDecrease(u) {
+  return Math.max(0, Number(u?.attackDecrease || 0), -Number(u?.attackMod || 0));
+}
+export function clearAttackDecreases(g, u) {
+  const amount = totalAttackDecrease(u);
+  u.attackMod = Number(u.attackMod || 0) + amount;
+  u.attackDecrease = 0;
+  log(g, `${u.name}: 공격력 감소 ${amount} 전부 제거.`);
+  return amount;
+}
 export function setAttack(g, u, delta) {
-  if (delta < 0 && traitsActive(u) && card(u).statDecreaseImmune) {
+  if (delta < 0 && traitsActive(u, g) && card(u).statDecreaseImmune) {
     log(g, `${u.name} 특성 · 능력치 감소 무효.`);
     queueCombatNotice(g, u, "공격 감소 무효", "immune");
     return 0;
   }
   const old = Number(u.attackMod || 0);
+  u.attackDecrease = totalAttackDecrease(u) + Math.max(0, -Number(delta || 0));
   u.attackMod = old + Number(delta || 0);
   log(g, `${u.name} 공격 ${old} → ${u.attackMod}.`);
   return u.attackMod - old;
@@ -242,26 +255,29 @@ export function setDefense(g, u, delta) {
 export function distributeHealPool(g, units, pool, source = null, meta = {}) {
   pool = Math.max(0, Math.round(pool));
   let healed = 0,
-    candidates = units.filter(u => u && !u.dead && u.hp < u.maxHp);
+    candidates = units.filter(u => healingCapacity(u) > 0);
   while (pool > 0 && candidates.length) {
+    const previousPool = pool;
     let share = Math.max(1, Math.floor(pool / candidates.length));
     for (const u of [...candidates]) {
       if (pool <= 0) break;
-      let got = heal(g, u, Math.min(share, pool), source, meta);
-      pool -= got;
+      const ask = Math.min(share, pool), inverted = healingBecomesDamage(u);
+      let got = heal(g, u, ask, source, meta);
+      pool -= inverted ? ask : got;
       healed += got;
     }
-    candidates = candidates.filter(u => u.hp < u.maxHp);
+    candidates = candidates.filter(u => healingCapacity(u) > 0);
+    if (pool === previousPool) break;
     if (candidates.length && !share) break;
   }
   return healed;
 }
-export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = null) {
+export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = null, options = {}) {
   amount = Math.max(0, combatInt(amount));
   u.hpProtectionBarriers ||= [];
   const source = sourceUid ? findUnit(g, sourceUid) : null;
   const kind = kindOverride || (cardHasCapability(source, "resonanceTrait") ? "elixian" : "standard");
-  const globalRoom = Math.max(0, combatInt(u.maxHp) - totalHpProtection(u));
+  const globalRoom = Math.max(0, (options.cap ?? combatInt(u.maxHp)) - totalHpProtection(u));
   const sourceRoom = kind === "elixian" ? Math.max(0, 80 - elixianHpProtection(u)) : Number.POSITIVE_INFINITY;
   const got = Math.max(0, Math.min(amount, globalRoom, sourceRoom));
   if (got > 0) {
@@ -269,6 +285,7 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
       amount: got,
       sourceUid,
       kind,
+      ...(options.decayPerTurn != null ? { decayPerTurn: options.decayPerTurn } : {}),
       lastHalvedEpoch: u.barrierTurnEpoch || 0
     });
   }
@@ -279,19 +296,19 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
   });
   return got;
 }
-export function halveHpProtectionBarriers(g, u) {
+export function decayHpProtectionBarriers(g, u) {
   if (!u.hpProtectionBarriers?.length) return;
   let changed = false,
     epoch = u.barrierTurnEpoch || 0;
   for (const x of u.hpProtectionBarriers) {
-    if (x.kind === "elixian") continue;
+    if (x.kind === "elixian" && x.decayPerTurn == null) continue;
     if ((x.lastHalvedEpoch ?? -1) >= epoch) continue;
-    x.amount = Math.floor(combatInt(x.amount) / 2);
+    x.amount = x.decayPerTurn != null ? Math.max(0, combatInt(x.amount) - Number(x.decayPerTurn)) : Math.floor(combatInt(x.amount) / 2);
     x.lastHalvedEpoch = epoch;
     changed = true;
   }
   u.hpProtectionBarriers = u.hpProtectionBarriers.filter(x => x.amount > 0.01);
-  if (changed) log(g, `${u.name}: 감소하는 HP 보호막만 각각 절반으로 감소(총 ${totalHpProtection(u)}).`);
+  if (changed) log(g, `${u.name}: HP 보호막의 차례 시작 감소 적용(총 ${totalHpProtection(u)}).`);
 }
 export function applySkillSeal(g, u, skillId, d, source) {
   if (u.scheduledAction?.kind === "bloom") {
@@ -507,30 +524,36 @@ export function distributeLifeRainPool(g, allies, pool, leftAmount = null, sourc
     overheal: pool
   };
   if (allies.length === 1) {
+    const inverted = healingBecomesDamage(allies[0]);
     const got = heal(g, allies[0], pool, source, meta);
     return {
       healed: got,
-      overheal: pool - got
+      overheal: inverted ? 0 : pool - got
     };
   }
   let left = Math.max(0, Math.min(pool, Math.round(leftAmount == null ? pool / 2 : leftAmount)));
   let requested = [left, pool - left],
     healed = 0,
+    converted = 0,
     carry = [0, 0];
   for (let i = 0; i < 2; i++) {
     if (status(allies[i], "healSeal")) {
       log(g, `${allies[i].name}: 라이프레인 배정 ${requested[i]}이 회복봉인으로 소멸.`);
       continue;
     }
-    const missing = Math.max(0, allies[i].maxHp - allies[i].hp);
+    const missing = healingCapacity(allies[i]);
     const ask = Math.min(requested[i], missing);
+    if (healingBecomesDamage(allies[i])) converted += ask;
     healed += heal(g, allies[i], ask, source, meta);
     carry[1 - i] += Math.max(0, requested[i] - ask);
   }
-  for (let i = 0; i < 2; i++) if (carry[i] > 0 && !status(allies[i], "healSeal")) healed += heal(g, allies[i], carry[i], source, meta);
+  for (let i = 0; i < 2; i++) if (carry[i] > 0 && !allies[i].dead && !status(allies[i], "healSeal")) {
+    if (healingBecomesDamage(allies[i])) converted += carry[i];
+    healed += heal(g, allies[i], carry[i], source, meta);
+  }
   return {
     healed,
-    overheal: Math.max(0, pool - healed)
+    overheal: Math.max(0, pool - healed - converted)
   };
 }
 export function lifeRain(g, actor, t, split = null, sim = false) {
@@ -997,6 +1020,9 @@ export function activateFullInvulnerabilityUntilOwnTurn(g, actor, sourceName = "
 }
 export function effectApply(g, actor, target, e, skill, ctx) {
   switch (e.type) {
+    case 'suppressedCurse':
+    case 'graveDown':
+      return applyWellerEffect(g, actor, target, e, skill, ctx);
     case "mysticBurst":
       return executeMysticBurst(g, actor, target, skill, ctx);
     case "mutualEnergyTrade":

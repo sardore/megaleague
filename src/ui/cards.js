@@ -1,5 +1,6 @@
 import { raidCardForUnit, formatRaidCardTooltip } from "../features/boss-raid.js";
 import { TimerManager } from "../runtime/timers.js";
+import { undeadAuraHTML } from '../presentation/weller.js';
 
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_ui_cards = {
@@ -7,7 +8,7 @@ export const state_ui_cards = {
   cardTooltipState: undefined
 };
 import { state_catalog_cards } from "../catalog/cards.js";
-import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
+import { eclipseBlocks, findUnit, hpBarrierStanceActive, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
 import { card, cardHasCapability, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
@@ -358,6 +359,7 @@ export function unitEffectBadgesHTML(u) {
     }),
     invulnerable = unitInvulnerabilityState(u);
   if (invulnerable) add(invulnerable.label, "invulnerable", invulnerable.title);
+  if (hpBarrierStanceActive(state_ui_battle_state.game, u)) add('점액막 · 피해 ½', 'guard', '단일 대상 기술 유도 · 기술 사용·후퇴 불가');
   if (u.scheduledAction?.kind === "bloom") add("CC 무효", "ccimmune", "피어나는생명 대기 중: 상태이상 적용 무효");
   for (const [sid, duration] of Object.entries(u.statuses || {})) {
     if (Number(duration) > 0) add(`${state_engine_entities.STATUS[sid] || sid} ${duration}`, "status", `${state_engine_entities.STATUS[sid] || sid} ${duration}턴`);
@@ -413,7 +415,7 @@ export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
     });
   const redClass = bossRedRole ? "red-timeora-card boss-red-live-card" : "";
   const stageClass = bossRedRole ? "unit-stage boss-red-live-stage" : "unit-stage";
-  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead" : ""}" data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div></div>`;
+  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead" : ""}" data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${unitBarsHTML(u)}<div class="${stageClass}">${undeadAuraHTML(u)}${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div></div>`;
 }
 export function safeCssValue(value) {
   const raw = String(value ?? "");

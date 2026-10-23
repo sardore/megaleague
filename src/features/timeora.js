@@ -15,7 +15,7 @@ export const state_features_timeora = {
 };
 import { state_catalog_cards } from "../catalog/cards.js";
 import { enemyTargets, other, unitAt, state_engine_actions } from "../engine/actions.js";
-import { dealDamage, findUnit, teamOf, traitsActive } from "../engine/combat.js";
+import { checkDeath, dealDamage, findUnit, teamOf, traitsActive } from "../engine/combat.js";
 import { memoryOptions, naturalColors } from "../engine/effects.js";
 import { canPayAction, energyStore, energyValue, findPaymentPlan, normalizeStore, status, totalEnergy, transformedSkillReq, triggerEnergyGainResult } from "../engine/energy.js";
 import { RNG, actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, firstSkillByTag, skillDefHasEffect, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillIdByTag, skillOf, state_engine_entities } from "../engine/entities.js";
@@ -501,6 +501,7 @@ export function timeApplyRecall(g, actor, target, skill, ctx) {
   };
   target.hp = Math.max(0, Math.min(target.maxHp, combatInt(snapshot.hp)));
   target.statuses = timeStatusClone(snapshot.statuses);
+  target.statusAppliedTurnSerial = target.statuses.undead ? { undead: g.turnSerial } : {};
   target.skillSeals = timeStatusClone(snapshot.skillSeals);
   target.shield = keep.shield;
   target.hpProtectionBarriers = keep.barriers;
@@ -530,6 +531,7 @@ export function timeApplyRecall(g, actor, target, skill, ctx) {
     } : {}),
     turnsAgo
   });
+  if (target.hp <= 0) checkDeath(g, target, actor);
   return swing;
 }
 export function timePotentialReactors(g, actor, paidGuess = 1, t = null, s = null) {
