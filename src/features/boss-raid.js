@@ -31,7 +31,7 @@ import { validFormDeck } from "../ui/setup.js";
 export function initializeFeaturesBossRaid() {
   BOSS_RAID_VERSION = "red-timeora-raid-r8";
   BOSS_LOBBY_PROTOCOL = "mega-red-timeora-raid-lobby-r8";
-  RED_TIMEORA_CARD = state_catalog_cards.C("red_timeora", "타임오러", 280, "동기화 시간 군단", "보스전", "붉은 동기화: 네 개체가 하나의 공용 운명의 시계를 사용한다. 직전에 기술을 사용한 상대의 행동에도 시계가 반응하며, 각 개체는 시간 가속과 타임프로텍트를 사용해 정렬을 최우선으로 행동한다.", [state_catalog_cards.S("timeRecall", "타임리콜", "**", "대상 하나의 HP와 상태이상을 2턴 전 자기 차례 시작 시점으로 되돌린다.", "anyCharacter", [{
+  RED_TIMEORA_CARD = state_catalog_cards.C("red_timeora", "타임오러", 280, "동기화 시간 군단", "보스전", "붉은 동기화: 네 개체가 하나의 운명의 시계를 공유한다. 바로 전 적 차례의 기술에도 반응한다. 시간 가속·타임프로텍트를 쓰며 정렬을 최우선으로 행동.", [state_catalog_cards.S("timeRecall", "타임리콜", "**", "대상 하나의 HP와 상태이상을 2턴 전 자기 차례 시작 시점으로 되돌린다.", "anyCharacter", [{
     type: "timeRecall"
   }], ["support", "rewind"], {
     nonAttack: true,

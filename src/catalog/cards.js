@@ -236,7 +236,7 @@ export function initializeCatalogCards() {
     amount: 160
   }, {
     type: "clearFieldEnergy"
-  }], ["damage", "energy", "fieldClear"]), state_catalog_cards.S("smackdown", "스맥다운", "***", "80D 후 선택한 대상 에너지를 제거하고 제거량×30만큼 양쪽에 피해. 이 피해는 실드를 우선 소모하며 초과 피해는 이월되지 않음.", "enemy", [{
+  }], ["damage", "energy", "fieldClear"]), state_catalog_cards.S("smackdown", "스맥다운", "***", "80D 후 선택한 대상의 에너지를 제거하고, 제거량×30 피해를 양쪽에 준다(실드 우선 소모, 초과 피해 이월 없음).", "enemy", [{
     type: "mutualEnergyTrade",
     baseDamage: 80,
     perEnergyDamage: 30,
@@ -303,10 +303,10 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 모든 개별 피해 -40. 즉시 상태이상 치료: 필드 아군에게 새 상태이상이 적용되면 제거하고 개당 HP20 회복. 회복 확산: 이루마가 아군을 회복하면, 그 대상의 회복 직전 잃은 HP의 1/3만큼 필드 아군 전체를 추가 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
+  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 모든 개별 피해 -40. 즉시 상태이상 치료: 필드 아군에게 새 상태이상이 걸리면 제거하고 개당 HP 20 회복. 회복 확산: 아군을 회복하면 그 대상이 직전에 잃은 HP의 1/3만큼 필드 아군 전체를 추가 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
     type: "shift",
     amount: 150
-  }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 필드 전체 0D, 방어 -10, 감속2. 이루마의 기술 처리 직전 현재 HP 1/3만큼을 회복 자원으로 만들어 필드 아군에게 원하는 비율로 분배.", "field", [{
+  }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 필드 전체 0D, 방어 -10, 감속2. 사용 직전 이루마 HP의 1/3을 회복량으로 삼아 필드 아군에게 원하는 비율로 분배.", "field", [{
     type: "lifeRain"
   }], ["damage", "heal", "status"])], {
     grade: "4☆",
@@ -380,7 +380,7 @@ export function initializeCatalogCards() {
     shieldProtector: true,
     skillHeal: 10,
     nullifyTrait: true
-  }), state_catalog_cards.C("flameflower", "화락나리", 190, "에너지 보정 지원", "메가리그", "검정 에너지 차단: 필드에 있는 동안 자기 진영의 후보가 2색 이상인 모든 무작위 에너지 수급에서 B가 제외된다. 획득 색이 하나로 고정된 수급에는 영향이 없다.", [state_catalog_cards.S("holyFlame", "성은의불꽃", "RW*", "100-대상 에너지×20D(최소0). 감소량만큼 자신 또는 필드 아군 회복.", "enemyHealAlly", [{
+  }), state_catalog_cards.C("flameflower", "화락나리", 190, "에너지 보정 지원", "메가리그", "검정 에너지 차단: 필드에 있는 동안 자기 진영의 2색 이상 무작위 에너지 수급에서 B를 제외한다. 색이 고정된 수급은 영향 없음.", [state_catalog_cards.S("holyFlame", "성은의불꽃", "RW*", "100-대상 에너지×20D(최소0). 감소량만큼 자신 또는 필드 아군 회복.", "enemyHealAlly", [{
     type: "holyFlame"
   }], ["damage", "heal"])], {
     grade: "3.5☆",
@@ -388,7 +388,7 @@ export function initializeCatalogCards() {
     formGroup: "horizon",
     baseFormId: "flameflower",
     formFamilyOrder: ["flameflower", "lunari", "horizintal"]
-  }), state_catalog_cards.C("lunari", "루나리", 190, "무작위 에너지·광역 약화", "메가리그", "붉은 에너지 차단: 필드에 있는 동안 자기 진영의 원래 후보가 2색 이상인 무작위 에너지 수급에서 R을 한 번만 제외한다. 고정 수급에는 영향이 없다.", [state_catalog_cards.S("lunaShard", "루나샤드", "***", "적 필드 전체. 배치 시작 시 각 대상 에너지 수를 고정해 80-에너지×20D(최소0), 이후 적 진영 공격력 -10.", "field", [{
+  }), state_catalog_cards.C("lunari", "루나리", 190, "무작위 에너지·광역 약화", "메가리그", "붉은 에너지 차단: 필드에 있는 동안 자기 진영의 2색 이상 무작위 에너지 수급에서 R을 한 번만 제외한다. 고정 수급은 영향 없음.", [state_catalog_cards.S("lunaShard", "루나샤드", "***", "적 필드 전체. 배치 시작 시 각 대상 에너지 수를 고정해 80-에너지×20D(최소0), 이후 적 진영 공격력 -10.", "field", [{
     type: "lunaShard"
   }], ["damage", "debuff", "field"])], {
     grade: "3.5☆",
@@ -396,7 +396,7 @@ export function initializeCatalogCards() {
     formGroup: "horizon",
     baseFormId: "flameflower",
     formFamilyOrder: ["flameflower", "lunari", "horizintal"]
-  }), state_catalog_cards.C("horizintal", "호리진탈", 250, "수평선 보호·형태 순환", "메가리그", "끝없는 수평선: 현재 HP가 현재 최대 HP 이상이면 같은 진영이 받는 최종 피해를 50%로 감소한다. 같은 피해 배치는 시작 시점 상태를 사용하며 중첩되지 않는다. 시간의 흐름: 자기 차례 종료 시 HP가 절반 이하이고 W와 B 수가 다르면 W 우세는 화락나리, B 우세는 루나리로 퇴화한다.", [state_catalog_cards.S("horizonSun", "호리진썬", "WR*", "40D 후 100D. 두 타격 뒤 화상 2턴.", "enemy", [{
+  }), state_catalog_cards.C("horizintal", "호리진탈", 250, "수평선 보호·형태 순환", "메가리그", "끝없는 수평선: HP가 최대 HP 이상이면 같은 진영이 받는 최종 피해 50% 감소(같은 피해 묶음은 시작 시점 기준, 중첩 없음). 시간의 흐름: 자기 차례 종료 시 HP가 절반 이하이고 W·B 수가 다르면 W 우세는 화락나리, B 우세는 루나리로 퇴화.", [state_catalog_cards.S("horizonSun", "호리진썬", "WR*", "40D 후 100D. 두 타격 뒤 화상 2턴.", "enemy", [{
     type: "horizonStrike",
     element: "sun",
     status: "burn"
@@ -445,7 +445,7 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("yggdrasil", "이그드라실", 210, "비례 피해·에너지 지원", "메가리그", "생명의 문턱: HP가 140 초과에서 140 이하가 되면 필드 전원의 에너지 1개를 제거한 뒤 WWWW를 얻는다(전투당 최대 2회). 치유의 빛: 에너지 획득 결과 정확히 1개 또는 3개면 아군 30 회복, 회복할 대상이 없으면 적에게 특성 피해 30.", [state_catalog_cards.S("lifeBurst", "라이프버스트", "***", "대상 현재 HP의 33% 피해. 방어와 피해 난수를 적용하지 않는다.", "enemy", [{
+  }), state_catalog_cards.C("yggdrasil", "이그드라실", 210, "비례 피해·에너지 지원", "메가리그", "생명의 문턱: HP가 140 초과에서 140 이하가 되면 필드 전원의 에너지 1개를 제거하고 WWWW를 얻는다(전투당 2회). 치유의 빛: 에너지를 정확히 1개 또는 3개 얻으면 아군 30 회복, 대상이 없으면 적에게 30 피해.", [state_catalog_cards.S("lifeBurst", "라이프버스트", "***", "대상 현재 HP의 33% 피해. 방어와 피해 난수를 적용하지 않는다.", "enemy", [{
     type: "proportionalDamage",
     basis: "current",
     ratio: 0.33
@@ -501,7 +501,7 @@ export function initializeCatalogCards() {
     type: "suctionPad"
   }], ["energy", "support"], {
     nonAttack: true
-  }), state_catalog_cards.S("eternaHeal", "이터너힐", "R*", "대상의 R 수×60D. 피해 후 대상의 R 전부 제거, 실질 피해 절반을 필드 아군에게 분배 회복하고 자신 또는 필드 아군에게 R 1 부여.", "enemy", [{
+  }), state_catalog_cards.S("eternaHeal", "이터너힐", "R*", "대상의 R 수×60D. 피해 후 대상의 R을 전부 제거하고, 실질 피해 절반을 필드 아군에게 나눠 회복. 자신 또는 필드 아군에게 R 1 부여.", "enemy", [{
     type: "eternaHeal"
   }], ["damage", "heal", "energy"])], {
     grade: "4☆",

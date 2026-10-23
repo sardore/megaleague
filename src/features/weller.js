@@ -9,9 +9,9 @@ import { registerCardDefinition } from '../ui/deck.js';
 export function initializeFeaturesWeller() {
   const { C, S } = state_catalog_cards;
   registerCardDefinition(C('weller', '웰러', 160, '불사·저주 탱커', '메가리그',
-    '점액막: HP 보호막을 보유하면 받는 피해 50% 감소. 상대 단일 대상 기술을 자신에게 집중시키고 기술 사용·후퇴 불가. 그레이브업: HP 0에서 사망 판정 전에 언데드 4턴과 HP 보호막 160을 얻는다. 다음 자기 차례 시작마다 보호막 40 감소·HP 40 회복, 총 4회. 발동 후 그레이브업 제거.', [
-      S('suppressedCurse', '억누른저주', 'RorB*', '대상 공격력 -10, 자신에게 매 자기 차례 시작 20씩 감소하는 HP 보호막 60. 다음 자기 차례 1·2턴째에 같은 대상 공격력 각각 -10. 3턴째에 대상의 전체 공격력 감소량×4D를 주고 공격력 감소를 전부 제거한다.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
-      S('graveDown', '그레이브다운', '****', '대상의 현재 HP가 자신의 현재 HP보다 낮으면 대상 HP를 즉시 0으로 만든다. 조건 미충족 시 실패한다.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
+    '점액막: HP 보호막이 있으면 받는 피해 50% 감소, 상대 단일 대상 기술을 자신에게 집중, 기술 사용·후퇴 불가. 그레이브업: HP 0이 되면 사망 대신 언데드 4턴과 HP 보호막 160을 얻고, 자기 차례 시작마다 보호막 40 감소·HP 40 회복(4회). 1회만 발동.', [
+      S('suppressedCurse', '억누른저주', 'RorB*', '대상 공격력 -10, 자신에게 HP 보호막 60(자기 차례 시작마다 20 감소). 이후 자기 차례 2번 동안 같은 대상 공격력 -10씩, 3번째 자기 차례에 대상의 공격력 감소량 합×4 피해를 주고 감소를 전부 제거.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
+      S('graveDown', '그레이브다운', '****', '대상의 HP가 자신의 HP보다 낮으면 대상 HP를 0으로 만든다. 아니면 실패.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
     ], { grade: '4☆', tags: ['zombie'], releaseOrder: 55,
       hpBarrierStance: { receivedDamageMultiplier: 0.5, tauntSingleTarget: true, blockSkill: true, blockRetreat: true }, graveUp: true,
       traitRules: [
