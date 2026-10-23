@@ -1,6 +1,6 @@
 import { state_catalog_cards } from '../catalog/cards.js';
-import { addHpProtectionBarrier, clearAttackDecreases, registerScheduledAction, setAttack, totalAttackDecrease } from '../engine/effects.js';
-import { applyHpZeroEffect, applyStatus, dealDamage, findUnit, heal, queueVisual, traitsActive } from '../engine/combat.js';
+import { addHpProtectionBarrier, clearAttackDecreases, registerScheduledAction, scheduledSlotRef, setAttack, totalAttackDecrease } from '../engine/effects.js';
+import { applyHpZeroEffect, applyStatus, dealDamage, heal, queueVisual, traitsActive } from '../engine/combat.js';
 import { card, cardHasCapability } from '../engine/entities.js';
 import { log } from '../presentation/audio.js';
 import { state_ui_cards } from '../ui/cards.js';
@@ -40,7 +40,7 @@ export function applyWellerEffect(g, actor, target, effect, skill, ctx = {}) {
     addHpProtectionBarrier(g, actor, 60, actor.uid, 'suppressedCurse', { decayPerTurn: 20 });
     // Same reserved-action path as every other delayed skill: while it is pending the owner is
     // locked into the automatic "scheduled" action and cannot gather, switch or cast.
-    registerScheduledAction(g, actor, { kind: 'suppressedCurse', targetUid: target.uid, elapsed: 0, remaining: 3, skillId: skill.id });
+    registerScheduledAction(g, actor, { kind: 'suppressedCurse', ...scheduledSlotRef(g, target), elapsed: 0, remaining: 3, skillId: skill.id });
     queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: actor.uid, targetUid: target.uid, stage: 0 });
     return 0;
   }
@@ -65,14 +65,10 @@ export function processWellerTurnStart(g, unit, sim = false) {
   }
 }
 
-// Runs on each of the owner's turns through executeScheduled: stacks at turns 1 and 2, bursts at turn 3.
-export function resolveSuppressedCurse(g, unit, sch, sim = false) {
-  const target = findUnit(g, sch.targetUid);
-  if (!target || target.dead) {
-    unit.scheduledAction = null;
-    log(g, `${unit.name}: 억누른저주 대상이 사라져 해소.`);
-    return;
-  }
+// Runs on each of the owner's turns through the common reserved-action path in executeScheduled:
+// the reservation tracks the enemy SLOT like every other delayed skill, and `target` is whoever occupies it now.
+// Stacks at turns 1 and 2, bursts at turn 3.
+export function resolveSuppressedCurse(g, unit, sch, target, sim = false) {
   sch.elapsed++;
   sch.remaining = Math.max(0, 3 - sch.elapsed);
   if (sch.elapsed < 3) {

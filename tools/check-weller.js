@@ -25,6 +25,17 @@ try{
   const r=await page.evaluate(()=>{const{g,w,target,prepareOwn,apply}=wellerFixture();apply('suppressedCurse');const rows=[],locks=[];const state=()=>JSON.stringify({a:target.attackMod,b:w.hpProtectionBarriers,c:w.scheduledAction?.elapsed,h:target.hp});for(let i=0;i<3;i++){prepareOwn();const before=state();probe.actions.prepareCurrentTurn(g);if(before!==state())throw Error('duplicate tick');const acts=Megaleague.legalActions(g,'P',0);locks.push(acts.map(a=>a.type).join());if(!Megaleague.execute(g,'P',0,acts[0],{sim:true}))throw Error('scheduled action refused');rows.push([target.attackMod,w.hpProtectionBarriers.reduce((s,l)=>s+l.amount,0)]);}return{rows,locks,pending:!!w.scheduledAction,raw:g.logs.filter(l=>String(l.msg).includes('억누른저주')).map(l=>l.msg)};});
   assert.deepEqual(r.locks,['scheduled','scheduled','scheduled']);assert.deepEqual(r.rows,[[-20,40],[-30,20],[0,0]]);assert.equal(r.pending,false);
  });
+ await check('curse is a slot reservation like every other delayed skill: it follows the enemy slot, and an emptied slot fizzles it',async page=>{
+  const r=await page.evaluate(()=>{
+    const slotCurse=(mutate)=>{const{g,w,target,prepareOwn,apply}=wellerFixture();apply('suppressedCurse');const ref={team:w.scheduledAction.targetTeam,slot:w.scheduledAction.targetSlot,uid:w.scheduledAction.targetUid};const heir=g.teams.A.bench[0];mutate(g,target,heir);let afterFirst=null;for(let i=0;i<3;i++){prepareOwn();const acts=Megaleague.legalActions(g,'P',0);Megaleague.execute(g,'P',0,acts[0],{sim:true});if(i===0)afterFirst=heir.attackMod;}return{ref,pending:!!w.scheduledAction,afterFirst,heirHp:heir.hp,heirMax:heir.maxHp,targetHp:target.hp,log:g.logs.map(l=>String(l.msg)).filter(m=>m.includes('슬롯')||m.includes('억누른저주')).slice(-2)};};
+    const follow=slotCurse((g,target,heir)=>{heir.attackMod=0;g.teams.A.field[0]=heir;heir.hp=heir.maxHp=300;});
+    const fizzle=slotCurse((g,target,heir)=>{target.dead=true;target.hp=0;});
+    return{follow,fizzle};
+  });
+  assert.equal(r.follow.ref.team,'A');assert.equal(r.follow.ref.slot,0);assert.equal('uid' in r.follow.ref&&r.follow.ref.uid!==undefined,false,'reservation must not carry a unit uid');
+  assert.equal(r.follow.pending,false);assert.equal(r.follow.afterFirst,-10,'the stack must land on the unit now occupying the reserved slot');
+  assert.equal(r.fizzle.pending,false);assert.ok(r.fizzle.log.some(m=>m.includes('슬롯')),'empty reserved slot must fizzle through the common path');
+ });
 await check('curse consumes all attack decreases and preserves positive attack bonuses',async page=>{
   const r=await page.evaluate(()=>{const{g,w,target,prepareOwn,apply}=wellerFixture();probe.effects.setAttack(g,target,50);probe.effects.setAttack(g,target,-20);apply('suppressedCurse',target,false);probe.battle.game=g;probe.battle.visualEvents=[];for(let i=0;i<3;i++){prepareOwn();Megaleague.execute(g,'P',0,Megaleague.legalActions(g,'P',0)[0]);}return{attack:target.attackMod,decrease:probe.effects.totalAttackDecrease(target),burst:probe.battle.visualEvents.find(e=>e.type==='wellerFx'&&e.phase==='curseBurst')?.rawAmount};});
   assert.deepEqual(r,{attack:50,decrease:0,burst:200});
