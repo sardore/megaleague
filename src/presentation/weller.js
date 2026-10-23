@@ -18,44 +18,46 @@ export function wellerVisualHold(events) {
   return events.reduce((hold, event) => Math.max(hold, timingOf(event.phase).hold), 0);
 }
 
+// One shared SVG turbulence filter: it displaces whatever it is applied to with slowly drifting
+// noise, which is what makes the aura and the rituals ripple irregularly instead of as clean shapes.
+const WAVE_SVG = `<svg id="undead-wave-defs" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<filter id="undead-wave" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.007 0.014" numOctaves="2" seed="7" result="n"><animate attributeName="baseFrequency" dur="7s" values="0.007 0.014;0.011 0.02;0.007 0.014" repeatCount="indefinite"/></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="weller-wave" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="0.016 0.022" numOctaves="3" seed="3" result="n"><animate attributeName="baseFrequency" dur="2.4s" values="0.016 0.022;0.026 0.034;0.016 0.022" repeatCount="indefinite"/></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="34" xChannelSelector="R" yChannelSelector="G"/></filter>
+</defs></svg>`;
+function ensureWaveFilters() {
+  if (typeof document === 'undefined' || !document.body || document.getElementById('undead-wave-defs')) return;
+  document.body.insertAdjacentHTML('beforeend', WAVE_SVG);
+}
+
 export function undeadAuraHTML(unit) {
   if (unit.dead || !isZombie(unit) || !(unit.statuses?.undead > 0)) return '';
+  ensureWaveFilters();
   // A shared animation clock preserves particle positions when a snapshot redraws cards.
   const time = performance.now() / 1000;
   // Last remaining turn: the aura gutters like a dying flame instead of showing text.
   const fading = unit.statuses.undead <= 1 ? ' fading' : '';
-  const hands = [14, 47, 79].map((x, i) => `<i class="undead-hand" style="--hand-x:${x}%;--hand-tilt:${i === 1 ? 0 : i ? 10 : -10}deg;--hand-delay:-${(time + i * 1.3) % 4.2}s"></i>`).join('');
-  const wisps = Array.from({ length: 10 }, (_, i) => `<i class="undead-wisp" style="--wisp-x:${8 + i * 8.4}%;--wisp-delay:-${(time + i * .217) % 2.6}s;--wisp-drift:${i % 2 ? 12 : -12}px"></i>`).join('');
+  const bands = [[16, 44, '', 0], [40, 50, ' green', 1.1], [64, 46, '', 2.2], [86, 38, ' green', .6]].map(([x, w, tone, d]) => `<i class="undead-band${tone}" style="--band-x:${x}%;--band-w:${w}%;--band-delay:-${(time + d) % 4.6}s"></i>`).join('');
+  const wisps = Array.from({ length: 10 }, (_, i) => `<i class="undead-wisp" style="--wisp-x:${4 + i * 9.4}%;--wisp-delay:-${(time + i * .217) % 2.6}s;--wisp-drift:${i % 2 ? 12 : -12}px"></i>`).join('');
   const embers = Array.from({ length: 4 }, (_, i) => `<i class="undead-ember" style="--ember-x:${18 + i * 21}%;--ember-delay:-${(time + i * .9) % 3.4}s"></i>`).join('');
-  return `<div class="undead-aura${fading}" aria-hidden="true" style="--aura-pulse-delay:-${time % 2}s"><i class="undead-fog"></i><div class="undead-floor"><i class="undead-sigil"></i><i class="undead-sigil inner"></i></div>${hands}${wisps}${embers}</div>`;
+  return `<div class="undead-aura${fading}" aria-hidden="true" style="--aura-pulse-delay:-${time % 2}s"><i class="undead-fog"></i><div class="undead-flow">${bands}${wisps}</div>${embers}</div>`;
 }
 
-const HAND_SLOTS = [
-  { x: 12, tilt: -16, size: .8, delay: 0 },
-  { x: 30, tilt: -7, size: 1, delay: 90 },
-  { x: 50, tilt: 0, size: 1.15, delay: 40 },
-  { x: 70, tilt: 8, size: 1, delay: 130 },
-  { x: 88, tilt: 17, size: .8, delay: 60 }
-];
-
-// Every phase is built from the same parts (rune floor, bony hands, souls, light) and
-// the phase class on .weller-fx decides which parts play and how. No text anywhere.
+// Rituals are fluid, not geometric: glow, rings, a rising column and soul tongues are all drawn
+// as soft gradients and then rippled by the shared turbulence filter. No text anywhere.
 function ritualHTML(phase, event) {
   const stage = Math.min(2, Number(event.stage) || 0);
-  const handCount = phase === 'curse' ? 2 + stage : phase === 'recovery' ? 0 : 5;
-  const hands = HAND_SLOTS.slice(0, handCount).map(h => `<i class="weller-hand" style="--hx:${h.x}%;--tilt:${h.tilt}deg;--hs:${h.size};--hd:${h.delay}ms"></i>`).join('');
   const soulCount = phase === 'recovery' ? 6 : 14;
   const souls = Array.from({ length: soulCount }, (_, i) => `<i class="weller-soul" style="--a0:${i * (360 / soulCount)}deg;--r0:${62 + i % 3 * 14}px;--sd:${i % 5 * 55}ms;--tone:${i % 3}"></i>`).join('');
-  const rings = phase === 'curse' ? Array.from({ length: stage }, (_, i) => `<i class="weller-rune stage" style="--ring:${i + 1}"></i>`).join('') : '';
+  const rings = phase === 'curse' ? Array.from({ length: stage }, (_, i) => `<i class="weller-ring stage" style="--ring:${i + 1}"></i>`).join('') : '';
   const tomb = phase === 'graveDown' || phase === 'graveUp' ? '<i class="weller-tomb"><i class="weller-lid"></i></i>' : '';
-  const skull = phase === 'curseBurst' || phase === 'graveDown' ? '<i class="weller-skull"><i class="weller-teeth"></i></i>' : '';
-  return `<div class="weller-ritual"><i class="weller-pool"></i><div class="weller-floor"><i class="weller-rune"></i><i class="weller-rune inner"></i><i class="weller-star"></i><i class="weller-star down"></i>${rings}<i class="weller-crack"></i></div>${hands}<i class="weller-pillar"></i>${skull}${tomb}<i class="weller-shock"></i><i class="weller-shock two"></i>${souls}<i class="weller-core"></i></div><i class="weller-flash"></i>`;
+  return `<div class="weller-ritual"><div class="weller-fluid"><i class="weller-pool"></i><div class="weller-floor"><i class="weller-ring"></i><i class="weller-ring inner"></i>${rings}</div><i class="weller-pillar"></i><i class="weller-shock"></i><i class="weller-shock two"></i>${souls}<i class="weller-core"></i></div>${tomb}</div><i class="weller-flash"></i>`;
 }
 
 // Arena shake on the beats that land hard; reuses the arena shake keyframes.
 const SHAKE = { curseBurst: 620, graveDown: 640 };
 
 export function playWellerVisual(event) {
+  ensureWaveFilters();
   const arena = document.querySelector('.arena');
   const source = state_presentation_coordinates.battleEntityElement(event.uid);
   const target = state_presentation_coordinates.battleEntityElement(event.targetUid || event.uid);

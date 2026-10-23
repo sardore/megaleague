@@ -4,24 +4,23 @@
 @property --ang{syntax:"<angle>";inherits:false;initial-value:0deg}
 @property --rad{syntax:"<length>";inherits:false;initial-value:0px}
 
-/* ---------- persistent undead aura ---------- */
+/* ---------- persistent undead aura ----------
+   Soft gradient tongues, rippled by the shared turbulence filter (#undead-wave) so the motion is
+   an irregular wave pattern rather than clean geometry. */
 .battle-unit-card:has(.undead-aura){border-color:#bb78ff!important;box-shadow:inset 0 -18px 30px #8c27c526,0 0 20px #8f40e64d}
-.undead-aura{position:absolute;inset:-12px -8px -4px;pointer-events:none;z-index:2;overflow:visible;isolation:isolate;filter:drop-shadow(0 0 7px #a752ff)}
+.undead-aura{position:absolute;inset:-12px -8px -4px;pointer-events:none;z-index:2;overflow:visible;isolation:isolate}
 .undead-aura::before{content:"";position:absolute;inset:16% 6% -10%;border-radius:50%;background:radial-gradient(ellipse at 50% 85%,#ac55ff55,transparent 68%);animation:undead-breathe 2s ease-in-out infinite;animation-delay:var(--aura-pulse-delay)}
 .undead-fog{position:absolute;left:-4%;right:-4%;bottom:-8%;height:26%;border-radius:50%;background:radial-gradient(ellipse at 50% 80%,#6c2fa855,#3a116033 45%,transparent 70%);filter:blur(4px);animation:undead-fog 3.2s ease-in-out infinite;animation-delay:var(--aura-pulse-delay)}
-.undead-floor{position:absolute;left:6%;right:6%;bottom:-2%;height:42%;transform:perspective(260px) rotateX(64deg);transform-origin:50% 100%}
-.undead-sigil{position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(#d8aaff 0 3deg,transparent 3deg 15deg);-webkit-mask:radial-gradient(circle,transparent 62%,#000 64% 74%,transparent 76%);mask:radial-gradient(circle,transparent 62%,#000 64% 74%,transparent 76%);opacity:.7;animation:undead-spin 14s linear infinite;animation-delay:var(--aura-pulse-delay)}
-.undead-sigil.inner{inset:20%;opacity:.5;animation-duration:9s;animation-direction:reverse;background:repeating-conic-gradient(#8dff6e 0 5deg,transparent 5deg 30deg)}
-.undead-hand{position:absolute;bottom:2%;left:var(--hand-x);width:20px;height:28px;margin-left:-10px;background:linear-gradient(0deg,#4a2a6e,#d8c8aa 55%,#f4ecd8);clip-path:polygon(22% 100%,22% 56%,12% 32%,19% 28%,29% 50%,32% 16%,40% 12%,43% 48%,48% 6%,57% 6%,57% 48%,62% 12%,70% 15%,68% 50%,78% 28%,86% 33%,76% 60%,80% 100%);transform-origin:50% 100%;opacity:0;animation:undead-hand 4.2s ease-in-out infinite;animation-delay:var(--hand-delay)}
-.undead-wisp{position:absolute;bottom:2%;left:var(--wisp-x);width:6px;height:28px;border-radius:60% 30% 65% 35%;background:linear-gradient(0deg,transparent,#a745f8 45%,#eac4ff);transform-origin:50% 100%;animation:undead-rise 2.6s ease-out infinite;animation-delay:var(--wisp-delay);opacity:0}
-.undead-wisp:nth-child(3n){width:3px;height:16px;background:#ecb6ff;box-shadow:0 0 9px #aa53fa}
+.undead-flow{position:absolute;inset:0;filter:url(#undead-wave) drop-shadow(0 0 6px #a752ff);-webkit-mask:linear-gradient(0deg,#000 30%,#000b 62%,transparent 100%);mask:linear-gradient(0deg,#000 30%,#000b 62%,transparent 100%)}
+.undead-band{position:absolute;left:calc(var(--band-x) - var(--band-w) / 2);width:var(--band-w);bottom:-4%;height:92%;background:radial-gradient(ellipse 52% 62% at 50% 100%,#b45cff,#7a2fd0aa 46%,transparent 76%);filter:blur(7px);opacity:.4;transform-origin:50% 100%;animation:undead-lick 4.6s ease-in-out infinite;animation-delay:var(--band-delay)}
+.undead-band.green{background:radial-gradient(ellipse 50% 58% at 50% 100%,#b7ff9a,#4fd23a99 46%,transparent 76%)}
+.undead-wisp{position:absolute;bottom:2%;left:var(--wisp-x);width:26px;height:74px;border-radius:50%;background:radial-gradient(ellipse at 50% 78%,#f3d9ffcc,#a745f8aa 46%,transparent 72%);filter:blur(3px);transform-origin:50% 100%;animation:undead-rise 2.6s ease-out infinite;animation-delay:var(--wisp-delay);opacity:0}
+.undead-wisp:nth-child(3n){width:18px;height:48px}
 .undead-ember{position:absolute;left:var(--ember-x);bottom:12%;width:7px;height:10px;border-radius:50% 50% 60% 60%;background:radial-gradient(circle at 50% 70%,#fff,#c8ff9c 40%,#6fe55a 75%);box-shadow:0 0 8px #7dff62;opacity:0;animation:undead-ember 3.4s ease-out infinite;animation-delay:var(--ember-delay)}
-.bench-card .undead-wisp{height:17px}.bench-card .undead-hand{width:14px;height:20px;margin-left:-7px}
+.bench-card .undead-wisp{height:44px}
 .undead-aura.fading{animation:undead-gutter 1.1s steps(1,end) infinite}
-.undead-aura.fading .undead-sigil{opacity:.3}
-@keyframes undead-spin{to{rotate:360deg}}
-@keyframes undead-hand{0%,12%{opacity:0;transform:translateY(70%) rotate(var(--hand-tilt)) scale(.8)}30%,62%{opacity:.78;transform:translateY(8%) rotate(var(--hand-tilt)) scale(1)}46%{transform:translateY(0) rotate(calc(var(--hand-tilt) + 6deg)) scale(1.04)}80%,100%{opacity:0;transform:translateY(80%) rotate(var(--hand-tilt)) scale(.85)}}
-@keyframes undead-rise{0%{opacity:0;transform:translate3d(0,0,0) scale(.35) rotate(-12deg)}18%{opacity:.85}70%{opacity:.5}100%{opacity:0;transform:translate3d(var(--wisp-drift),-62px,0) scale(.15,1.4) rotate(22deg)}}
+@keyframes undead-lick{0%{transform:scale(.9,.55);opacity:.3}45%{transform:scale(1.05,1);opacity:.95}100%{transform:scale(.85,.6);opacity:.3}}
+@keyframes undead-rise{0%{opacity:0;transform:translate3d(0,0,0) scale(.6,.5)}20%{opacity:.8}70%{opacity:.4}100%{opacity:0;transform:translate3d(var(--wisp-drift),-64px,0) scale(.35,1.3)}}
 @keyframes undead-breathe{50%{opacity:.5;transform:scale(1.1,1.08)}}
 @keyframes undead-fog{50%{opacity:.55;transform:scaleX(1.12) translateY(-3px)}}
 @keyframes undead-ember{0%{opacity:0;transform:translate(0,0) scale(.5)}15%{opacity:.95}100%{opacity:0;transform:translate(10px,-48px) scale(.9)}}
@@ -30,121 +29,88 @@
 /* ---------- ritual layer ---------- */
 .weller-fx{position:absolute;inset:0;z-index:80;pointer-events:none;overflow:visible;contain:layout style}
 .weller-ritual{position:absolute;left:var(--weller-x);top:var(--weller-y);width:150px;height:150px;margin:-75px 0 0 -75px;filter:drop-shadow(0 0 12px #9a3dff)}
+.weller-fluid{position:absolute;inset:0;filter:url(#weller-wave)}
 .weller-flash{position:absolute;inset:0;background:radial-gradient(circle at var(--weller-x) var(--weller-y),#f0dcff 0,#9a3dffaa 22%,transparent 60%);opacity:0}
 .arena.weller-shake{animation:groundZeroArenaShake .52s steps(2,end)}
-
-/* ground: glow pool + tilted rune floor */
 .weller-pool{position:absolute;left:-14%;right:-14%;top:48%;height:46%;border-radius:50%;background:radial-gradient(ellipse,#8d34e8aa,#4a1480 48%,transparent 72%);opacity:0;animation:w-fade var(--t) both}
 .weller-floor{position:absolute;left:0;right:0;top:48%;height:46%;transform:perspective(330px) rotateX(62deg)}
-.weller-rune,.weller-star,.weller-crack{position:absolute;inset:0;opacity:0}
-.weller-rune{border-radius:50%;background:repeating-conic-gradient(#e6c4ff 0 2.5deg,transparent 2.5deg 12deg);-webkit-mask:radial-gradient(circle,transparent 66%,#000 67% 76%,transparent 77%);mask:radial-gradient(circle,transparent 66%,#000 67% 76%,transparent 77%);animation:w-rune var(--t) cubic-bezier(.2,.7,.2,1) both}
-.weller-rune.inner{inset:17%;background:repeating-conic-gradient(#8dff6e 0 4deg,transparent 4deg 24deg);-webkit-mask:radial-gradient(circle,transparent 70%,#000 72% 82%,transparent 84%);mask:radial-gradient(circle,transparent 70%,#000 72% 82%,transparent 84%);animation-direction:reverse}
-.weller-rune.stage{inset:calc(-9% * var(--ring));background:repeating-conic-gradient(#cf92ff 0 4deg,transparent 4deg 16deg);animation-delay:calc(var(--ring) * 90ms)}
-.weller-star{inset:10%;background:linear-gradient(#e7c4ff,#a456f5);clip-path:polygon(evenodd,50% 3%,95% 82%,5% 82%,50% 3%,50% 8.3%,90.5% 79.4%,9.5% 79.4%,50% 8.3%,50% 3%);animation:w-star var(--t) ease-out both}
-.weller-star.down{clip-path:polygon(evenodd,50% 97%,95% 18%,5% 18%,50% 97%,50% 91.7%,90.5% 20.6%,9.5% 20.6%,50% 91.7%,50% 97%)}
-.weller-crack{inset:-6%;border-radius:50%;background:repeating-conic-gradient(from 8deg,#b9ff9e 0 .9deg,transparent .9deg 31deg);-webkit-mask:radial-gradient(circle,transparent 8%,#000 10% 62%,transparent 70%);mask:radial-gradient(circle,transparent 8%,#000 10% 62%,transparent 70%);display:none}
-
-/* bony hands clawing out of the floor */
-.weller-hand{position:absolute;left:var(--hx);top:52%;width:calc(26px * var(--hs));height:calc(38px * var(--hs));margin-left:calc(-13px * var(--hs));background:linear-gradient(0deg,#42215f,#d8c8aa 50%,#f6eedb);clip-path:polygon(22% 100%,22% 56%,12% 32%,19% 28%,29% 50%,32% 16%,40% 12%,43% 48%,48% 6%,57% 6%,57% 48%,62% 12%,70% 15%,68% 50%,78% 28%,86% 33%,76% 60%,80% 100%);transform-origin:50% 100%;opacity:0;animation:w-hand-reach var(--t) cubic-bezier(.2,.8,.25,1) both;animation-delay:var(--hd)}
-
-/* souls: spiral around the circle (registered --ang/--rad make the orbit smooth) */
-.weller-soul{position:absolute;left:50%;top:62%;width:6px;height:13px;margin:-6px 0 0 -3px;border-radius:50% 50% 55% 55%;background:radial-gradient(circle at 50% 70%,#fff,#e8c6ff 40%,#a350ff);box-shadow:0 0 9px #b46aff;opacity:0;--ang:var(--a0);--rad:var(--r0);transform:rotate(var(--ang)) translateX(var(--rad)) rotate(calc(var(--ang) * -1));animation:w-soul-in var(--t) ease-in both;animation-delay:var(--sd)}
-.weller-soul[style*="--tone:1"]{background:radial-gradient(circle at 50% 70%,#fff,#c8ff9c 40%,#58e043);box-shadow:0 0 9px #6fe55a}
-
-/* light: pillar, skull, core, shockwaves */
-.weller-pillar{position:absolute;left:24%;right:24%;bottom:38%;height:150%;background:linear-gradient(0deg,#a644ffcc,#e2b6ff77 45%,transparent 92%);clip-path:polygon(18% 100%,0 24%,28% 44%,50% 0,72% 44%,100% 24%,82% 100%);transform-origin:50% 100%;opacity:0;animation:w-pillar var(--t) both}
-.weller-skull{position:absolute;left:50%;top:-6%;width:44px;height:46px;margin-left:-22px;border-radius:50% 50% 42% 42%/58% 58% 42% 42%;background:radial-gradient(circle at 32% 44%,#16051f 0 7px,transparent 8px),radial-gradient(circle at 68% 44%,#16051f 0 7px,transparent 8px),radial-gradient(ellipse at 50% 64%,#16051f 0 3px,transparent 4px),linear-gradient(#f6eedb,#cdbddb);box-shadow:0 0 22px #b05bff,inset 0 -6px 10px #7a4aa855;opacity:0;animation:w-skull var(--t) both}
-.weller-teeth{position:absolute;left:24%;right:24%;bottom:-6px;height:10px;border-radius:0 0 4px 4px;background:repeating-linear-gradient(90deg,#f1e8d2 0 4px,#2a0f3a 4px 5px)}
-.weller-core{position:absolute;left:50%;top:60%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:radial-gradient(circle,#fff 0,#f2d2ff 24%,#a02eef88 56%,transparent 72%);box-shadow:0 0 28px #a02eef;opacity:0;animation:w-core var(--t) both}
-.weller-shock{position:absolute;left:8%;right:8%;top:52%;height:40%;border-radius:50%;border:3px solid #e5b4ff;box-shadow:0 0 14px #b05bff,inset 0 0 14px #8d34e8aa;transform:perspective(330px) rotateX(62deg);opacity:0;animation:w-shock var(--t) ease-out both}
+.weller-ring{position:absolute;inset:0;border-radius:50%;border:6px solid #d9a8ff;box-shadow:0 0 16px #a52afa,inset 0 0 20px #a52afa99;opacity:0;animation:w-ring var(--t) cubic-bezier(.2,.7,.2,1) both}
+.weller-ring.inner{inset:17%;border-color:#8dff6e;box-shadow:0 0 14px #4fd23a,inset 0 0 16px #4fd23a88;animation-delay:80ms}
+.weller-ring.stage{inset:calc(-9% * var(--ring));border-width:4px;border-color:#cf92ff;animation-delay:calc(var(--ring) * 90ms)}
+.weller-soul{position:absolute;left:50%;top:62%;width:8px;height:17px;margin:-8px 0 0 -4px;border-radius:50%;background:radial-gradient(ellipse at 50% 72%,#fff,#e8c6ff 42%,#a350ff 72%,transparent);filter:blur(.6px);opacity:0;--ang:var(--a0);--rad:var(--r0);transform:rotate(var(--ang)) translateX(var(--rad)) rotate(calc(var(--ang) * -1));animation:w-soul-in var(--t) ease-in both;animation-delay:var(--sd)}
+.weller-soul[style*="--tone:1"]{background:radial-gradient(ellipse at 50% 72%,#fff,#c8ff9c 42%,#58e043 72%,transparent)}
+.weller-pillar{position:absolute;left:26%;right:26%;bottom:38%;height:150%;border-radius:50% 50% 0 0/22% 22% 0 0;background:linear-gradient(0deg,#a644ffdd,#e2b6ff88 45%,transparent 92%);filter:blur(6px);transform-origin:50% 100%;opacity:0;animation:w-pillar var(--t) both}
+.weller-core{position:absolute;left:50%;top:60%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:radial-gradient(circle,#fff 0,#f2d2ff 24%,#a02eef88 56%,transparent 72%);opacity:0;animation:w-core var(--t) both}
+.weller-shock{position:absolute;left:8%;right:8%;top:52%;height:40%;border-radius:50%;border:5px solid #e5b4ff;box-shadow:0 0 14px #b05bff,inset 0 0 14px #8d34e8aa;transform:perspective(330px) rotateX(62deg);opacity:0;animation:w-shock var(--t) ease-out both}
 .weller-shock.two{border-color:#9bff7e;box-shadow:0 0 12px #5fe048;animation-delay:140ms}
+.weller-curse-link{position:absolute;height:12px;transform-origin:0 50%;border-radius:6px;background:linear-gradient(90deg,#f0dcff,#a350ff 40%,#58e043 70%,#a350ff);filter:url(#weller-wave) blur(1px) drop-shadow(0 0 8px #b15fff);animation:w-link 800ms both}
 
 /* tomb (graveDown / graveUp) */
 .weller-tomb{position:absolute;left:34%;top:4%;width:32%;height:62%;border:2px solid #bc85eb;border-radius:46% 46% 6% 6%;background:linear-gradient(110deg,#6a4086,#100b1b 55%,#3a1b54);box-shadow:inset 0 0 14px #a56aca66,0 0 30px #9326ed;opacity:0}
 .weller-tomb::before,.weller-tomb::after{content:"";position:absolute;left:50%;background:#d9b2fb;border-radius:2px;box-shadow:0 0 9px #a56aca;transform:translateX(-50%)}
 .weller-tomb::before{top:18%;width:6px;height:44%}.weller-tomb::after{top:32%;width:24px;height:6px}
-.weller-lid{position:absolute;inset:-2px;border-radius:inherit;background:repeating-linear-gradient(115deg,transparent 0 9px,#b9ff9e 9px 10px,transparent 10px 24px);opacity:0}
+.weller-lid{position:absolute;inset:-2px;border-radius:inherit;background:radial-gradient(ellipse at 50% 60%,#d9ffc8cc,#59e03c66 50%,transparent 72%);opacity:0}
 
 /* ---------- phases ---------- */
-/* curse: seal draws itself on the target, hands reach, souls are drawn inward */
 .weller-curse{--t:1000ms}
-.weller-curse .weller-pillar,.weller-curse .weller-skull,.weller-curse .weller-star.down,.weller-curse .weller-shock.two{display:none}
+.weller-curse .weller-pillar,.weller-curse .weller-shock.two{display:none}
 .weller-curse .weller-core{width:36px;height:36px;margin:-18px;top:58%}
 .weller-curse .weller-shock{animation-delay:380ms}
-.weller-curse-link{position:absolute;height:6px;transform-origin:0 50%;background:repeating-linear-gradient(90deg,#e8c6ff 0 5px,#6a2499 5px 7px,#9bff7e 7px 9px,#6a2499 9px 12px);box-shadow:0 0 12px #b15fff;border-radius:3px;animation:w-link 800ms both}
 
-/* curseBurst: everything snaps shut, skull screams up the pillar, shockwave + flash */
 .weller-curseBurst{--t:1550ms}
 .weller-curseBurst .weller-soul{animation-duration:760ms;--r0:92px}
-.weller-curseBurst .weller-hand{animation-name:w-hand-grab}
-.weller-curseBurst .weller-rune{animation-name:w-rune-burst}
+.weller-curseBurst .weller-ring{animation-name:w-ring-burst}
 .weller-curseBurst .weller-core{animation-name:w-core-burst}
 .weller-curseBurst .weller-shock{animation-delay:620ms}.weller-curseBurst .weller-shock.two{animation-delay:760ms}
-.weller-curseBurst .weller-pillar{animation-delay:600ms}.weller-curseBurst .weller-skull{animation-delay:640ms}
+.weller-curseBurst .weller-pillar{animation-delay:600ms}
 .weller-curseBurst .weller-flash{animation:w-flash 520ms ease-out 600ms both}
 
-/* graveDown: tomb drops from above, slams, dust wave, souls are sucked underground */
 .weller-graveDown{--t:1900ms}
 .weller-graveDown .weller-core{display:none}
 .weller-graveDown .weller-tomb{animation:w-tomb-drop var(--t) cubic-bezier(.3,.7,.2,1) both}
-.weller-graveDown .weller-hand{animation-name:w-hand-grab}
 .weller-graveDown .weller-pillar{animation-delay:640ms}
-.weller-graveDown .weller-skull{animation-delay:700ms;top:-14%}
 .weller-graveDown .weller-shock{animation-delay:560ms}.weller-graveDown .weller-shock.two{animation-delay:700ms}
 .weller-graveDown .weller-soul{animation-name:w-soul-down;animation-delay:calc(560ms + var(--sd))}
 .weller-graveDown .weller-flash{animation:w-flash 480ms ease-out 560ms both}
-.weller-graveDown .weller-crack{display:block;animation:w-crack var(--t) ease-out both;animation-delay:540ms}
 .weller-graveDown.failed .weller-tomb{animation:w-tomb-fail var(--t) ease-out both;filter:grayscale(.7)}
-.weller-graveDown.failed .weller-pillar,.weller-graveDown.failed .weller-skull,.weller-graveDown.failed .weller-soul,.weller-graveDown.failed .weller-flash,.weller-graveDown.failed .weller-shock.two,.weller-graveDown.failed .weller-crack{display:none}
-.weller-graveDown.failed .weller-hand{animation-name:w-hand-reach}
+.weller-graveDown.failed .weller-pillar,.weller-graveDown.failed .weller-soul,.weller-graveDown.failed .weller-flash,.weller-graveDown.failed .weller-shock.two{display:none}
 
-/* graveUp: tomb lid cracks, green light erupts, the soul rises back into the unit */
 .weller-graveUp{--t:1600ms}
 .weller-graveUp .weller-tomb{animation:w-tomb-open var(--t) ease-out both}
 .weller-graveUp .weller-lid{animation:w-lid var(--t) ease-out both}
-.weller-graveUp .weller-pillar{background:linear-gradient(0deg,#6dff52cc,#d9ffc877 45%,transparent 92%);animation-delay:420ms}
-.weller-graveUp .weller-core{background:radial-gradient(circle,#fff 0,#e1ffd2 24%,#59e03c88 56%,transparent 72%);box-shadow:0 0 30px #59e03c;animation-name:w-core-rebirth;top:46%}
+.weller-graveUp .weller-pillar{background:linear-gradient(0deg,#6dff52dd,#d9ffc888 45%,transparent 92%);animation-delay:420ms}
+.weller-graveUp .weller-core{background:radial-gradient(circle,#fff 0,#e1ffd2 24%,#59e03c88 56%,transparent 72%);animation-name:w-core-rebirth;top:46%}
 .weller-graveUp .weller-soul{animation-name:w-soul-up;animation-delay:calc(480ms + var(--sd))}
-.weller-graveUp .weller-hand{animation-name:w-hand-release}
 .weller-graveUp .weller-shock{animation-delay:460ms}.weller-graveUp .weller-shock.two{animation-delay:600ms}
 .weller-graveUp .weller-flash{background:radial-gradient(circle at var(--weller-x) var(--weller-y),#f0ffe6 0,#59e03c99 22%,transparent 60%);animation:w-flash 520ms ease-out 460ms both}
 
-/* recovery: small calm green pulse */
 .weller-recovery{--t:1000ms}
 .weller-recovery .weller-ritual{scale:.7}
-.weller-recovery .weller-star,.weller-recovery .weller-pillar,.weller-recovery .weller-skull,.weller-recovery .weller-shock.two,.weller-recovery .weller-core{display:none}
-.weller-recovery .weller-soul{animation-name:w-soul-up;animation-delay:var(--sd);background:radial-gradient(circle at 50% 70%,#fff,#c8ff9c 40%,#58e043);box-shadow:0 0 9px #6fe55a}
+.weller-recovery .weller-pillar,.weller-recovery .weller-shock.two,.weller-recovery .weller-core{display:none}
+.weller-recovery .weller-soul{animation-name:w-soul-up;animation-delay:var(--sd);background:radial-gradient(ellipse at 50% 72%,#fff,#c8ff9c 42%,#58e043 72%,transparent)}
 .weller-recovery .weller-shock{border-color:#9bff7e;box-shadow:0 0 12px #5fe048;animation-delay:100ms}
 
-/* undeadApply: circle contracts onto the unit and the aura is seeded */
 .weller-undeadApply{--t:1000ms}
-.weller-undeadApply .weller-pillar,.weller-undeadApply .weller-skull,.weller-undeadApply .weller-shock.two{display:none}
-.weller-undeadApply .weller-rune{animation-name:w-rune-contract}
-.weller-undeadApply .weller-hand{animation-name:w-hand-release}
+.weller-undeadApply .weller-pillar,.weller-undeadApply .weller-shock.two{display:none}
+.weller-undeadApply .weller-ring{animation-name:w-ring-contract}
 .weller-undeadApply .weller-core{animation-name:w-core-rebirth;top:52%}
 .weller-undeadApply .weller-soul{animation-duration:700ms}
 .weller-undeadApply .weller-shock{animation-delay:380ms}
 
 /* ---------- keyframes ---------- */
 @keyframes w-fade{0%{opacity:0}25%,70%{opacity:1}100%{opacity:0}}
-@keyframes w-rune{0%{opacity:0;scale:1.9;rotate:-120deg}22%{opacity:1}80%{opacity:1;scale:1;rotate:60deg}100%{opacity:0;scale:.8;rotate:95deg}}
-@keyframes w-rune-burst{0%{opacity:0;scale:1.2;rotate:0deg}30%{opacity:1;scale:1;rotate:140deg}56%{opacity:1;scale:.6;rotate:300deg}64%{opacity:1;scale:1.1;rotate:330deg}100%{opacity:0;scale:2;rotate:520deg}}
-@keyframes w-rune-contract{0%{opacity:0;scale:2.1;rotate:-60deg}35%{opacity:1}100%{opacity:0;scale:.3;rotate:200deg}}
-@keyframes w-star{0%{opacity:0;scale:.3;rotate:-90deg}30%,70%{opacity:.85;scale:1;rotate:0deg}100%{opacity:0;scale:1.2;rotate:30deg}}
-@keyframes w-hand-reach{0%,10%{opacity:0;transform:translateY(70%) rotate(var(--tilt))}32%,70%{opacity:1;transform:translateY(-14%) rotate(var(--tilt))}50%{transform:translateY(-22%) rotate(calc(var(--tilt) + 7deg))}100%{opacity:0;transform:translateY(80%) rotate(var(--tilt))}}
-@keyframes w-hand-grab{0%,8%{opacity:0;transform:translateY(80%) rotate(var(--tilt)) scale(1)}28%{opacity:1;transform:translateY(-30%) rotate(var(--tilt)) scale(1.05)}50%{opacity:1;transform:translateY(-34%) rotate(var(--tilt)) scale(1.05)}58%{transform:translateY(-28%) rotate(var(--tilt)) scale(.78,.9)}80%{opacity:1;transform:translateY(-10%) rotate(var(--tilt)) scale(.78,.9)}100%{opacity:0;transform:translateY(90%) rotate(var(--tilt)) scale(.7)}}
-@keyframes w-hand-release{0%{opacity:0;transform:translateY(-20%) rotate(var(--tilt)) scale(.8,.9)}18%{opacity:1}55%{opacity:1;transform:translateY(-34%) rotate(var(--tilt)) scale(1.1)}100%{opacity:0;transform:translateY(-70%) rotate(calc(var(--tilt) * 2)) scale(1.1)}}
+@keyframes w-ring{0%{opacity:0;scale:1.9}22%{opacity:1}80%{opacity:1;scale:1}100%{opacity:0;scale:.8}}
+@keyframes w-ring-burst{0%{opacity:0;scale:1.3}30%{opacity:1;scale:1}56%{opacity:1;scale:.55}64%{opacity:1;scale:1.1}100%{opacity:0;scale:2}}
+@keyframes w-ring-contract{0%{opacity:0;scale:2.1}35%{opacity:1}100%{opacity:0;scale:.3}}
 @keyframes w-soul-in{0%{opacity:0;--ang:var(--a0);--rad:var(--r0)}20%{opacity:1}85%{opacity:1}100%{opacity:0;--ang:calc(var(--a0) + 240deg);--rad:6px}}
 @keyframes w-soul-down{0%{opacity:0;--ang:var(--a0);--rad:var(--r0);translate:0 0}18%{opacity:1}80%{opacity:1}100%{opacity:0;--ang:calc(var(--a0) + 200deg);--rad:4px;translate:0 18px}}
 @keyframes w-soul-up{0%{opacity:0;--ang:var(--a0);--rad:6px;translate:0 14px}15%{opacity:1}100%{opacity:0;--ang:calc(var(--a0) + 160deg);--rad:calc(var(--r0) * .6);translate:0 -86px}}
 @keyframes w-pillar{0%{opacity:0;transform:scale(.2,0)}35%{opacity:.35;transform:scale(.6,.55)}52%{opacity:1;transform:scale(1,1.15)}100%{opacity:0;transform:scale(1.5,1.5)}}
-@keyframes w-skull{0%,12%{opacity:0;translate:0 50px;scale:.5}38%{opacity:1;translate:0 -6px;scale:1.15}52%{opacity:1;translate:0 -14px;scale:1}100%{opacity:0;translate:0 -52px;scale:1.5}}
 @keyframes w-core{0%{opacity:0;scale:1.6}25%,65%{opacity:1;scale:1}100%{opacity:0;scale:.5}}
 @keyframes w-core-burst{0%{opacity:0;scale:.5}30%,50%{opacity:1;scale:1}56%{opacity:1;scale:.4}64%{opacity:1;scale:1.9}100%{opacity:0;scale:.1}}
 @keyframes w-core-rebirth{0%{opacity:0;translate:0 40px;scale:.3}30%,62%{opacity:1;translate:0 -6px;scale:1.1}100%{opacity:0;translate:0 -56px;scale:.6}}
 @keyframes w-shock{0%,35%{opacity:0;scale:.15}42%{opacity:1}100%{opacity:0;scale:2.3}}
 @keyframes w-flash{0%{opacity:0}18%{opacity:.42}100%{opacity:0}}
-@keyframes w-crack{0%,5%{opacity:0;scale:.2}22%{opacity:1;scale:1}70%{opacity:.9;scale:1.06}100%{opacity:0;scale:1.15}}
 @keyframes w-link{0%{opacity:0;clip-path:inset(0 100% 0 0)}30%{opacity:1;clip-path:inset(0)}100%{opacity:0;clip-path:inset(0 0 0 100%)}}
 @keyframes w-tomb-drop{0%,14%{opacity:0;transform:translateY(-130px) scale(.6) rotate(-6deg)}30%{opacity:1;transform:translateY(-70px) scale(.9) rotate(-2deg)}38%{opacity:1;transform:translateY(8px) scale(1.12,.86)}44%,62%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(38px) scale(.7)}}
 @keyframes w-tomb-fail{0%,14%{opacity:0;transform:translateY(-80px) rotate(-6deg)}34%{opacity:.5;transform:translateY(0) rotate(-8deg)}38%{transform:translateY(-6px) rotate(-12deg)}50%,66%{opacity:.4;transform:translateY(0) rotate(10deg)}100%{opacity:0;transform:translateY(24px) rotate(16deg)}}
@@ -152,8 +118,8 @@
 @keyframes w-lid{0%,30%{opacity:0}46%,100%{opacity:1}}
 
 @media(prefers-reduced-motion:reduce){
-  .undead-wisp,.undead-ember,.undead-hand,.undead-sigil{animation:none}.undead-wisp{opacity:.4}
-  .undead-aura::before,.undead-fog{animation:none}
-  .weller-soul,.weller-curse-link,.weller-skull{display:none}.weller-ritual{filter:none}
+  .undead-wisp,.undead-ember,.undead-band{animation:none}.undead-wisp{opacity:.4}.undead-band{opacity:.5}
+  .undead-aura::before,.undead-fog{animation:none}.undead-flow,.weller-fluid{filter:none}
+  .weller-soul,.weller-curse-link{display:none}.weller-ritual{filter:none}
   .arena.weller-shake{animation:none}
 }
