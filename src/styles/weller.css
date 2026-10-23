@@ -5,10 +5,17 @@
 @property --rad{syntax:"<length>";inherits:false;initial-value:0px}
 
 /* ---------- persistent undead aura ----------
-   The aura element only marks the card; the flames are particles drawn by presentation/fire.js on #undeadFireField. */
+   Translucent violet swells rolling along the foot of the card (waves built in presentation/weller.js). */
 .battle-unit-card:has(.undead-aura){border-color:#bb78ff!important;box-shadow:inset 0 -18px 30px #8c27c526,0 0 20px #8f40e64d}
-.undead-aura{position:absolute;inset:-12px -8px -4px;pointer-events:none}
-#undeadFireField{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:40}
+.undead-aura{position:absolute;left:0;right:0;bottom:0;height:52%;pointer-events:none;overflow:hidden;border-radius:inherit;-webkit-mask:linear-gradient(0deg,#000 20%,#000a 62%,transparent);mask:linear-gradient(0deg,#000 20%,#000a 62%,transparent)}
+.undead-wave{position:absolute;left:0;bottom:0;width:200%;height:100%;animation:undead-roll 6s linear infinite}
+.undead-wave:nth-child(2){animation-duration:9s;animation-direction:reverse;bottom:-4%}
+.undead-wave:nth-child(3){animation-duration:13s;bottom:-8%}
+.undead-aura::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 80% 70% at 50% 100%,#b06bff33,transparent 72%);animation:undead-swell 3.4s ease-in-out infinite}
+.undead-aura.fading{animation:undead-gutter 1.1s steps(1,end) infinite}
+@keyframes undead-roll{to{transform:translateX(-50%)}}
+@keyframes undead-swell{50%{opacity:.45}}
+@keyframes undead-gutter{0%{opacity:1}45%{opacity:.35}60%{opacity:.9}80%{opacity:.25}}
 
 /* ---------- ritual layer ---------- */
 .weller-fx{position:absolute;inset:0;z-index:80;pointer-events:none;overflow:visible;contain:layout style}
@@ -102,7 +109,7 @@
 @keyframes w-lid{0%,30%{opacity:0}46%,100%{opacity:1}}
 
 @media(prefers-reduced-motion:reduce){
-  .weller-fluid{filter:none}
+  .undead-wave,.undead-aura::after{animation:none}.weller-fluid{filter:none}
   .weller-soul,.weller-curse-link{display:none}.weller-ritual{filter:none}
   .arena.weller-shake{animation:none}
 }

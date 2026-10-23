@@ -5,12 +5,11 @@ import { transformedSkillReq } from "../engine/energy.js";
 import { cardHasCapability, skillOf } from "../engine/entities.js";
 import { reactiveEnergyRule, syncReactiveEnergyMaxHp } from "../features/genocider.js";
 import { timeFieldTimeoras, timeIsAligned, timeNormDeg, timeSetInputLock, timeShouldClockReact, state_features_timeora } from "../features/timeora.js";
-import { startIntroFire, startUndeadAuraField } from "./fire.js";
+import { startIntroFire } from "./fire.js";
 import { systems } from "../runtime/systems.js";
 import { state_ui_battle_state } from "../ui/battle-state.js";
 import { showCardTooltip, state_ui_cards } from "../ui/cards.js";
 export function initializePresentationIntroductions() {
-  startUndeadAuraField();
   /* 시작 연출(업데이트 판) canonical owner: exact-once, monotonic timing, 약 4초. */
   (function startStartupIntro() {
     const intro = document.getElementById("startupIntro");
