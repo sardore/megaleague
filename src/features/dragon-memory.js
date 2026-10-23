@@ -181,13 +181,7 @@ export function dmChooseMemoryOption(option) {
       uniqueTargets.push(a.target);
     }
   }
-  const noChoice = ["self", "field"].includes(option.skill.target) || uniqueTargets.length === 1;
   state_ui_battle_state.$("#modal").classList.remove("open");
-  if (noChoice) {
-    state_features_dragon_memory.dmPendingFlow.stage = "payment";
-    dispatchPlayerSkill(actions);
-    return;
-  }
   state_features_dragon_memory.dmPendingFlow.stage = "target";
   state_ui_targeting.TargetSelectionApplication.begin({
     actions,

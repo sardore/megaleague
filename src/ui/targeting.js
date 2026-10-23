@@ -27,9 +27,39 @@ export function initializeUiTargeting() {
       reason = "target-selection"
     }) => {
       if (!Array.isArray(actions) || !actions.length) return false;
+      /* 고를 대상이 하나(또는 없음)면 선택 화면을 열지 않고 바로 진행한다. 대상 선택은 이 한 곳에서만 판단한다. */
+      const seen = new Set(),
+        unique = (Array.isArray(targets) ? targets : []).filter(target => {
+          if (!target) return false;
+          const key = `${target.team}:${target.slot}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      if (unique.length <= 1) {
+        state_ui_battle_state.pendingSkill = {
+          actions,
+          targets: unique,
+          slotTarget: !!slotTarget
+        };
+        if (unique.length === 1) choose(unique[0]);else {
+          clearPending({
+            reason: "no-target-selection",
+            restoreActionPhase: false,
+            releaseTargetLock: true
+          });
+          if (state_features_dragon_memory.dmPendingFlow) state_features_dragon_memory.dmPendingFlow.stage = "payment";
+          dispatchPlayerSkill(actions);
+        }
+        return Object.freeze({
+          ok: true,
+          reason: unique.length ? "auto-single-target" : "auto-no-target",
+          ...snapshot()
+        });
+      }
       state_ui_battle_state.pendingSkill = {
         actions,
-        targets: Array.isArray(targets) ? targets : [],
+        targets: unique,
         slotTarget: !!slotTarget
       };
       render();
@@ -117,20 +147,12 @@ export function initializeUiTargeting() {
 }
 export function chooseOrExecute(candidates, slotTarget = false) {
   let [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn];
-  if (candidates.length === 1 || !candidates.some(x => x.target?.team !== t)) {
+  if (!candidates.some(x => x.target?.team !== t)) {
     dispatchPlayerSkill(candidates);
   } else {
-    let seenTargets = new Set(),
-      targets = candidates.map(x => x.target).filter(x => {
-        if (!x) return false;
-        let key = `${x.team}:${x.slot}`;
-        if (seenTargets.has(key)) return false;
-        seenTargets.add(key);
-        return true;
-      });
     state_ui_targeting.TargetSelectionApplication.begin({
       actions: candidates,
-      targets,
+      targets: candidates.map(x => x.target),
       slotTarget,
       reason: "skill-target-selection"
     });
