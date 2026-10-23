@@ -189,16 +189,18 @@ export function startUndeadAuraField() {
         const fading = el.classList.contains('fading');
         const gutter = fading ? 0.35 + 0.3 * Math.abs(Math.sin(clock * 5.3 + r.left)) : 1;
         const base = r.width;
+        /* Status read, not spectacle: a few small spirit flames drift up off the card's lower edge,
+           so the unit art, HP bar and badges stay fully legible. */
         out.push({
           key: el,
-          x0: r.left + r.width * 0.1, x1: r.right - r.width * 0.1,
-          y: r.bottom - 8,
-          power: 0.6 * gutter,
-          alpha: 0.5,
-          rise: Math.min(r.height * 0.55, 64),
-          size: Math.max(12, base * 0.2),
-          rate: Math.max(26, base * 0.7),
-          life: 0.9
+          x0: r.left + r.width * 0.12, x1: r.right - r.width * 0.12,
+          y: r.bottom - 16,
+          power: gutter,
+          alpha: 2.2,
+          rise: Math.min(r.height * 0.34, 46),
+          size: 10,
+          rate: 9 + r.width * 0.07,
+          life: 1.9
         });
       }
       return out;
