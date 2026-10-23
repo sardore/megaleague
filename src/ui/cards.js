@@ -104,6 +104,7 @@ export function scheduledInfoHTML(u, ownerTeam = null) {
       rubyFollow: "파이어스톰 후속 공격",
       zigzag: "지그재그굴착",
       hurricane: "허리케인 다이브",
+      suppressedCurse: "억누른저주",
       delayedAttack: card(u).skills.find(skill => skill.id === a.skillId)?.name || "예약 공격"
     },
     target = "";

@@ -1,7 +1,7 @@
 import { applyClockEffect } from "../features/timeora.js";
 import { applyReactiveEnergyEffect } from "../features/genocider.js";
 import { applyResonanceEffect, syncAromaCombatFlags, elixianHpProtection, totalHpProtection } from "../features/elixian.js";
-import { applyWellerEffect } from '../features/weller.js';
+import { applyWellerEffect, resolveSuppressedCurse } from '../features/weller.js';
 import { healingBecomesDamage, healingCapacity } from './status-rules.js';
 import { applyStrikeEffect } from "../features/foxious.js";
 import { applySummonEffect, circuitBlocksExternal, resolveVoltageBurst } from "../features/summons.js";
@@ -726,6 +726,10 @@ export function executeScheduled(g, t, s, u, sim = false) {
         return true;
       }
       resolveVoltageBurst(g, t, u, target, skill, sim);
+      return true;
+    }
+    if (sch.kind === "suppressedCurse") {
+      resolveSuppressedCurse(g, u, sch, sim);
       return true;
     }
     const scheduledKind = sch.kind;

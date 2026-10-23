@@ -1,5 +1,5 @@
 import { state_catalog_cards } from '../catalog/cards.js';
-import { addHpProtectionBarrier, clearAttackDecreases, setAttack, totalAttackDecrease } from '../engine/effects.js';
+import { addHpProtectionBarrier, clearAttackDecreases, registerScheduledAction, setAttack, totalAttackDecrease } from '../engine/effects.js';
 import { applyHpZeroEffect, applyStatus, dealDamage, findUnit, heal, queueVisual, traitsActive } from '../engine/combat.js';
 import { card, cardHasCapability } from '../engine/entities.js';
 import { log } from '../presentation/audio.js';
@@ -38,8 +38,9 @@ export function applyWellerEffect(g, actor, target, effect, skill, ctx = {}) {
   if (effect.type === 'suppressedCurse') {
     setAttack(g, target, -10);
     addHpProtectionBarrier(g, actor, 60, actor.uid, 'suppressedCurse', { decayPerTurn: 20 });
-    actor.delayedCurses ||= [];
-    actor.delayedCurses.push({ targetUid: target.uid, elapsed: 0, skillId: skill.id });
+    // Same reserved-action path as every other delayed skill: while it is pending the owner is
+    // locked into the automatic "scheduled" action and cannot gather, switch or cast.
+    registerScheduledAction(g, actor, { kind: 'suppressedCurse', targetUid: target.uid, elapsed: 0, remaining: 3, skillId: skill.id });
     queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: actor.uid, targetUid: target.uid, stage: 0 });
     return 0;
   }
@@ -62,20 +63,27 @@ export function processWellerTurnStart(g, unit, sim = false) {
     queueVisual(g, { type: 'wellerFx', phase: 'recovery', uid: unit.uid, targetUid: unit.uid, remaining: recovery.remaining });
     if (!recovery.remaining) unit.graveUpRecovery = null;
   }
-  for (const curse of unit.delayedCurses || []) {
-    const target = findUnit(g, curse.targetUid);
-    if (!target || target.dead) { curse.elapsed = 3; continue; }
-    curse.elapsed++;
-    if (curse.elapsed < 3) {
-      setAttack(g, target, -10);
-      queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: unit.uid, targetUid: target.uid, stage: curse.elapsed });
-    } else {
-      const amount = totalAttackDecrease(target) * 4;
-      const skill = card(unit).skills.find(s => s.id === curse.skillId) || { id: curse.skillId, name: '억누른저주', tags: ['damage'] };
-      queueVisual(g, { type: 'wellerFx', phase: 'curseBurst', uid: unit.uid, targetUid: target.uid, rawAmount: amount });
-      dealDamage(g, unit, target, { amount }, skill, sim);
-      clearAttackDecreases(g, target);
-    }
+}
+
+// Runs on each of the owner's turns through executeScheduled: stacks at turns 1 and 2, bursts at turn 3.
+export function resolveSuppressedCurse(g, unit, sch, sim = false) {
+  const target = findUnit(g, sch.targetUid);
+  if (!target || target.dead) {
+    unit.scheduledAction = null;
+    log(g, `${unit.name}: 억누른저주 대상이 사라져 해소.`);
+    return;
   }
-  if (unit.delayedCurses) unit.delayedCurses = unit.delayedCurses.filter(c => c.elapsed < 3);
+  sch.elapsed++;
+  sch.remaining = Math.max(0, 3 - sch.elapsed);
+  if (sch.elapsed < 3) {
+    setAttack(g, target, -10);
+    queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: unit.uid, targetUid: target.uid, stage: sch.elapsed });
+    return;
+  }
+  const amount = totalAttackDecrease(target) * 4;
+  const skill = card(unit).skills.find(x => x.id === sch.skillId) || { id: sch.skillId, name: '억누른저주', tags: ['damage'] };
+  unit.scheduledAction = null;
+  queueVisual(g, { type: 'wellerFx', phase: 'curseBurst', uid: unit.uid, targetUid: target.uid, rawAmount: amount });
+  dealDamage(g, unit, target, { amount }, skill, sim);
+  clearAttackDecreases(g, target);
 }
