@@ -2582,15 +2582,6 @@
         padding: 5px !important;
         overflow: visible !important;
       }
-      .battle-unit-card.active-turn {
-        border-color: transparent !important;
-        box-shadow: 0 0 0 3px var(--warn), 0 0 18px rgba(255,200,87,.35) !important;
-        border-radius: 14px;
-      }
-      .battle-unit-card.targetable {
-        box-shadow: 0 0 0 3px var(--ok), 0 0 18px rgba(77,204,136,.32) !important;
-        border-radius: 14px;
-      }
       .battle-unit-card .unit-stage,
       .battle-unit-card.field-card .unit-stage,
       .battle-unit-card.bench-card .unit-stage {
@@ -5076,11 +5067,6 @@
     .boss-phase-readout { font-weight:1000; letter-spacing:.02em; color:#ff5368!important; }
   
 
-    body.boss-raid-active .side .slot.boss-active-slot {
-      border:1px dashed #515c6d!important;
-      box-shadow:inset 0 0 0 3px var(--warn),0 0 18px rgba(255,200,87,.42)!important;
-      border-radius:6px!important;
-    }
     .red-timeora-card .unit-stage {
       position:relative!important;
       overflow:visible!important;
@@ -5229,8 +5215,6 @@
     text-align:center !important;
   }
 
-  .battle-unit-card.choice-target-selected,
-  .slot.choice-target-selected > .battle-unit-card,
   .summon-card.choice-target-selected {
     border-color:#55ff9a !important;
     outline:3px solid #55ff9a !important;
@@ -5794,27 +5778,6 @@
     #game.screen.active .arena { overflow-x: clip !important; }
   }
 
-  /* bossInteractionVisualR44Style: consolidated visual rules */
-/* Single source of truth for boss card state outlines. */
-  body.boss-raid-active .side .slot.boss-active-slot {
-    border-color: transparent !important;
-    box-shadow: none !important;
-    background: transparent !important;
-  }
-  body.boss-raid-active .arena .battle-unit-card.targetable {
-    box-shadow: 0 0 0 3px var(--ok), 0 0 20px rgba(77,204,136,.52) !important;
-    border-radius: 14px !important;
-    cursor: pointer !important;
-  }
-  body.boss-raid-active .arena .battle-unit-card.choice-target-selected {
-    outline: 0 !important;
-    box-shadow: 0 0 0 3px #68b9ff, 0 0 22px rgba(74,168,255,.56) !important;
-    border-radius: 14px !important;
-  }
-  body.boss-raid-active .arena .battle-unit-card.active-turn:not(.targetable):not(.choice-target-selected) {
-    box-shadow: 0 0 0 3px var(--warn), 0 0 18px rgba(255,200,87,.40) !important;
-    border-radius: 14px !important;
-  }
   #modal.open .boss-reward-shell,
   #modal.open .boss-reward-grid,
   #modal.open .boss-reward-card { pointer-events: auto !important; }
@@ -5925,4 +5888,15 @@
     linear-gradient(180deg,var(--g-main) 0%,var(--g-main) 52%,var(--g-sub) 82%,var(--g-sub2) 100%) border-box !important;
   box-shadow:0 0 10px color-mix(in srgb,var(--g-main) 40%,transparent) !important}
 .slot:has(> .battle-unit-card.dead[class*="grade-t"]){opacity:.5}
-.slot:has(> .active-turn[class*="grade-t"]){outline:3px solid var(--warn);outline-offset:2px}
+
+/* ===== 카드칸 단일 규칙: 칸(.slot / 후열 카드)이 프레임을 그리고, 전장 카드는 칸 안쪽을 빈틈·여백 없이 꽉 채운다.
+   현재 턴·대상 지정·선택 표시는 전부 같은 카드 안쪽(inset)에 그려서 프레임과 항상 같은 모양·위치가 된다. ===== */
+:root{--cell-r:8px;--cell-bw:2px}
+.side .slot{padding:0 !important;display:grid !important;border-radius:var(--cell-r) !important;border-width:var(--cell-bw) !important;overflow:hidden !important}
+.side .slot > .battle-unit-card{height:100% !important;min-height:0 !important;border-radius:calc(var(--cell-r) - var(--cell-bw)) !important}
+.side .bench .battle-unit-card.bench-card{border-radius:var(--cell-r) !important}
+.battle-unit-card.active-turn{box-shadow:inset 0 0 0 3px var(--warn),inset 0 0 18px rgba(255,200,87,.4) !important}
+.battle-unit-card.targetable{box-shadow:inset 0 0 0 3px var(--ok),inset 0 0 18px rgba(77,204,136,.4) !important;cursor:pointer}
+.battle-unit-card.choice-target-selected,.slot.choice-target-selected > .battle-unit-card{box-shadow:inset 0 0 0 3px #55ff9a,inset 0 0 22px rgba(55,255,145,.45) !important;outline:0 !important}
+.slot.targetable{border-color:var(--ok) !important}
+.slot:has(> .dead){opacity:.5}
