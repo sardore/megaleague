@@ -8,7 +8,7 @@ export const state_ui_cards = {
   cardTooltipState: undefined
 };
 import { state_catalog_cards } from "../catalog/cards.js";
-import { eclipseBlocks, findUnit, hpBarrierStanceActive, teamOf } from "../engine/combat.js";
+import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
 import { card, cardHasCapability, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
@@ -104,6 +104,7 @@ export function scheduledInfoHTML(u, ownerTeam = null) {
       rubyFollow: "파이어스톰 후속 공격",
       zigzag: "지그재그굴착",
       hurricane: "허리케인 다이브",
+      suppressedCurse: "억누른저주",
       delayedAttack: card(u).skills.find(skill => skill.id === a.skillId)?.name || "예약 공격"
     },
     target = "";
@@ -359,7 +360,6 @@ export function unitEffectBadgesHTML(u) {
     }),
     invulnerable = unitInvulnerabilityState(u);
   if (invulnerable) add(invulnerable.label, "invulnerable", invulnerable.title);
-  if (hpBarrierStanceActive(state_ui_battle_state.game, u)) add('점액막 · 피해 ½', 'guard', '단일 대상 기술 유도 · 기술 사용·후퇴 불가');
   if (u.scheduledAction?.kind === "bloom") add("CC 무효", "ccimmune", "피어나는생명 대기 중: 상태이상 적용 무효");
   for (const [sid, duration] of Object.entries(u.statuses || {})) {
     if (Number(duration) > 0) add(`${state_engine_entities.STATUS[sid] || sid} ${duration}`, "status", `${state_engine_entities.STATUS[sid] || sid} ${duration}턴`);

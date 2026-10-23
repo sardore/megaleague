@@ -176,7 +176,6 @@ export function effectsHTML(u) {
   let e = [];
   if (u.graveUpConsumed) e.push('그레이브업: 발동 후 제거됨');
   if (u.graveUpRecovery?.remaining) e.push(`그레이브업 회복: 자기 차례 시작 HP +40 · ${u.graveUpRecovery.remaining}회 남음`);
-  if (u.delayedCurses?.length) e.push(`억누른저주: ${u.delayedCurses.map(c => `${Math.max(0,3-c.elapsed)} 자기 차례 뒤 해방`).join(', ')}`);
   if (u.speedDelayTurns > 0) e.push(`Speed ${card(u).speed}: 출전 지연 ${u.speedDelayTurns}턴`);
   if (u.hideHits) e.push(`모래숨기: 다음 공격 타격 ${u.hideHits}회 -30`);
   if (u.queuedHeals?.length) e.push(`예약 회복: ${u.queuedHeals.map(x => `${combatInt(x.amount)}×${combatInt(x.remaining)}`).join(", ")}`);

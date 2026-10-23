@@ -150,7 +150,18 @@ export function openTargetEnergyInteraction(actions, target) {
     effect = skill?.effects?.find(e => e?.type === "mutualEnergyTrade") || {},
     picked = new Set(),
     entries = collectTargetEnergyEntries(target),
-    maxPicks = transfer ? Math.max(1, Number(skill?.interaction?.count || 1)) : Infinity;
+    maxPicks = transfer ? Math.max(1, Number(skill?.interaction?.count || 1)) : Infinity,
+    commit = action => {
+      state_ui_battle_state.$("#modal").classList.remove("open");
+      const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn];
+      if (execute(state_ui_battle_state.game, t, s, action)) afterAction();
+    };
+  // Nothing to pick from: the rest of the skill (damage etc.) still happens, so run it without an empty chooser.
+  if (!entries.length) return commit({
+    ...base,
+    interactionAmount: 0,
+    interactionPlan: []
+  });
   state_ui_battle_state.$("#modalContent").innerHTML = `<h2>${escapeUIHTML(skill?.name || "기술")} · 에너지 ${transfer ? "강탈" : "제거"}</h2><p>${target.name}의 ${transfer ? "강탈할" : "제거할"} 에너지 아이콘을 선택하세요.</p><div class="energy interaction-energy"></div><div id="interactionPreview" class="effect-box"></div><button id="interactionConfirm">확정</button>`;
   const box = state_ui_battle_state.$("#modalContent .interaction-energy"),
     preview = state_ui_battle_state.$("#interactionPreview"),
@@ -181,19 +192,14 @@ export function openTargetEnergyInteraction(actions, target) {
   renderPreview();
   confirm.onclick = () => {
     if (transfer && picked.size !== maxPicks) return;
-    const n = renderPreview(),
-      plan = [...picked].map(i => ({
+    const n = renderPreview();
+    commit({
+      ...base,
+      interactionAmount: n,
+      interactionPlan: [...picked].map(i => ({
         ...entries[i]
-      })),
-      a = {
-        ...base,
-        interactionAmount: n,
-        interactionPlan: plan
-      };
-    state_ui_battle_state.$("#modal").classList.remove("open");
-    const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
-      executed = execute(state_ui_battle_state.game, t, s, a);
-    if (executed) afterAction();
+      }))
+    });
   };
   state_ui_battle_state.$("#modal").classList.add("open");
 }

@@ -410,71 +410,90 @@ export function listCostVariantActions(g, t, s) {
   }
   return a;
 }
-export function listEnergyInteractionActions(g, t, s) {
-  let u = unitAt(g, t, s),
-    a = [];
-  if (!u || u.dead) return a;
-  const energyInteractionSkills = card(u).skills.filter(x => ["targetEnergyRemoval", "targetEnergyTransfer"].includes(x.interaction?.kind));
-  if (!firstSkillByEffect(u, "mysticBurst") && !energyInteractionSkills.length) return a;
-  const interactionSkillIds = new Set(energyInteractionSkills.map(skill => skill.id));
-  let mystic = firstSkillByEffect(u, "mysticBurst");
-  if (!status(u, "freeze") && !status(u, "skillSeal") && !u.skillSeals?.[skillIdByEffect(u, "mysticBurst")]) {
-    let pool = {
-      R: 0,
-      W: 0,
-      B: 0
+const TARGET_ENERGY_KINDS = ["targetEnergyRemoval", "targetEnergyTransfer"];
+function listMysticBurstActions(g, t, u) {
+  const mystic = firstSkillByEffect(u, "mysticBurst");
+  if (!mystic || u.skillSeals?.[skillIdByEffect(u, "mysticBurst")]) return [];
+  const pool = {
+    R: 0,
+    W: 0,
+    B: 0
+  };
+  u.energy.forEach(e => pool[e.c] += e.a);
+  const actions = [];
+  for (const plan of allPaymentPlans(g, t, u, "WB*")) {
+    const left = {
+      R: Math.floor(pool.R - plan.R + 0.001),
+      W: Math.floor(pool.W - plan.W + 0.001),
+      B: Math.floor(pool.B - plan.B + 0.001)
     };
-    u.energy.forEach(e => pool[e.c] += e.a);
-    for (const plan of allPaymentPlans(g, t, u, "WB*")) {
-      let left = {
-        R: Math.floor(pool.R - plan.R + 0.001),
-        W: Math.floor(pool.W - plan.W + 0.001),
-        B: Math.floor(pool.B - plan.B + 0.001)
-      };
-      for (let r = 0; r <= left.R; r++) for (let w = 0; w <= left.W; w++) for (let b = 0; b <= left.B; b++) for (const tar of enemyTargets(g, t)) a.push({
-        type: "skill",
-        skill: skillIdByEffectGlobal("mysticBurst"),
-        target: tar,
-        paymentPlan: plan,
-        extraColors: {
-          R: r,
-          W: w,
-          B: b
-        },
-        label: `미스틱버스트 · 추가 ${"R".repeat(r)}${"W".repeat(w)}${"B".repeat(b) || "없음"}`
-      });
-    }
-    for (const interactionSkill of energyInteractionSkills) {
-      if (u.skillSeals?.[interactionSkill.id] || !skillRequirementsMet(u, interactionSkill) || !canPayAction(g, t, u, interactionSkill.cost)) continue;
-      for (const tar of resolveSkillTargets(g, t, s, u, interactionSkill)) {
-        const target = unitAt(g, tar.team, tar.slot),
-          kind = interactionSkill.interaction?.kind;
-        if (!target || target.dead) continue;
-        if (kind === "targetEnergyRemoval") {
-          const step = Number(interactionSkill.interaction?.step || 0.5);
-          for (let n = 0; n <= allEnergy(target) + 0.001; n += step) a.push({
-            type: "skill",
-            skill: interactionSkill.id,
-            target: tar,
-            interactionAmount: +n.toFixed(1),
-            label: `${interactionSkill.name} · 에너지 ${n} 제거`
-          });
-        } else if (kind === "targetEnergyTransfer") {
-          for (const entry of collectTargetEnergyEntries(target)) a.push({
-            type: "skill",
-            skill: interactionSkill.id,
-            target: tar,
-            interactionAmount: Number(entry.a || 0),
-            interactionPlan: [{
-              ...entry
-            }],
-            label: `${interactionSkill.name} · ${entry.c}${entry.a === 0.5 ? "½" : ""} 강탈`
-          });
-        }
-      }
+    for (let r = 0; r <= left.R; r++) for (let w = 0; w <= left.W; w++) for (let b = 0; b <= left.B; b++) for (const tar of enemyTargets(g, t)) actions.push({
+      type: "skill",
+      skill: skillIdByEffectGlobal("mysticBurst"),
+      target: tar,
+      paymentPlan: plan,
+      extraColors: {
+        R: r,
+        W: w,
+        B: b
+      },
+      label: `미스틱버스트 · 추가 ${"R".repeat(r)}${"W".repeat(w)}${"B".repeat(b) || "없음"}`
+    });
+  }
+  return actions;
+}
+// A target that holds no energy still takes the skill's damage: the energy part simply has nothing to pick,
+// so it yields one plain action instead of making the whole skill unusable.
+function targetEnergyActions(skill, tar, target) {
+  const kind = skill.interaction?.kind;
+  if (kind === "targetEnergyRemoval") {
+    const step = Number(skill.interaction?.step || 0.5),
+      actions = [];
+    for (let n = 0; n <= allEnergy(target) + 0.001; n += step) actions.push({
+      type: "skill",
+      skill: skill.id,
+      target: tar,
+      interactionAmount: +n.toFixed(1),
+      label: `${skill.name} · 에너지 ${n} 제거`
+    });
+    return actions;
+  }
+  const entries = collectTargetEnergyEntries(target);
+  if (!entries.length) return [{
+    type: "skill",
+    skill: skill.id,
+    target: tar,
+    interactionAmount: 0,
+    interactionPlan: [],
+    label: skill.name
+  }];
+  return entries.map(entry => ({
+    type: "skill",
+    skill: skill.id,
+    target: tar,
+    interactionAmount: Number(entry.a || 0),
+    interactionPlan: [{
+      ...entry
+    }],
+    label: `${skill.name} · ${entry.c}${entry.a === 0.5 ? "½" : ""} 강탈`
+  }));
+}
+function listTargetEnergyActions(g, t, s, u) {
+  const actions = [];
+  for (const skill of card(u).skills) {
+    if (!TARGET_ENERGY_KINDS.includes(skill.interaction?.kind)) continue;
+    if (u.skillSeals?.[skill.id] || !skillRequirementsMet(u, skill) || !canPayAction(g, t, u, skill.cost)) continue;
+    for (const tar of resolveSkillTargets(g, t, s, u, skill)) {
+      const target = unitAt(g, tar.team, tar.slot);
+      if (target && !target.dead) actions.push(...targetEnergyActions(skill, tar, target));
     }
   }
-  return a;
+  return actions;
+}
+export function listEnergyInteractionActions(g, t, s) {
+  const u = unitAt(g, t, s);
+  if (!u || u.dead || status(u, "freeze") || status(u, "skillSeal")) return [];
+  return [...listMysticBurstActions(g, t, u), ...listTargetEnergyActions(g, t, s, u)];
 }
 export { effectApply } from "./effects.js";
 function rosterActionAllowed(g, team, slot, actor, action) {
@@ -486,7 +505,7 @@ function rosterActionAllowed(g, team, slot, actor, action) {
   return true;
 }
 function usesActionVariants(unit, skill) {
-  if (skillDefHasTag(skill, "copy") || ["targetEnergyRemoval", "targetEnergyTransfer"].includes(skill.interaction?.kind)) return true;
+  if (skillDefHasTag(skill, "copy") || TARGET_ENERGY_KINDS.includes(skill.interaction?.kind)) return true;
   const types = new Set(skill.effects.map(effect => effect.type));
   if (["lightCandelabra", "hurricaneDive", "mysticBurst", "suctionPad", "abyssCannon", "abyssVortex", "junglesVineWhip", "circuitArmsBlade", "circuitVoltageBurst", "foxStrike"].some(type => types.has(type))) return true;
   if (types.has("grandField") && skill.target === "lowestEnergyEnemy") return true;

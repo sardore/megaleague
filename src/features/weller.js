@@ -1,5 +1,5 @@
 import { state_catalog_cards } from '../catalog/cards.js';
-import { addHpProtectionBarrier, clearAttackDecreases, setAttack, totalAttackDecrease } from '../engine/effects.js';
+import { addHpProtectionBarrier, clearAttackDecreases, registerScheduledAction, setAttack, totalAttackDecrease } from '../engine/effects.js';
 import { applyHpZeroEffect, applyStatus, dealDamage, findUnit, heal, queueVisual, traitsActive } from '../engine/combat.js';
 import { card, cardHasCapability } from '../engine/entities.js';
 import { log } from '../presentation/audio.js';
@@ -9,9 +9,9 @@ import { registerCardDefinition } from '../ui/deck.js';
 export function initializeFeaturesWeller() {
   const { C, S } = state_catalog_cards;
   registerCardDefinition(C('weller', '웰러', 160, '불사·저주 탱커', '메가리그',
-    '점액막: HP 보호막을 보유하면 받는 피해 50% 감소. 상대 단일 대상 기술을 자신에게 집중시키고 기술 사용·후퇴 불가. 그레이브업: HP 0에서 사망 판정 전에 언데드 4턴과 HP 보호막 160을 얻는다. 다음 자기 차례 시작마다 보호막 40 감소·HP 40 회복, 총 4회. 발동 후 그레이브업 제거.', [
-      S('suppressedCurse', '억누른저주', 'RorB*', '대상 공격력 -10, 자신에게 매 자기 차례 시작 20씩 감소하는 HP 보호막 60. 다음 자기 차례 1·2턴째에 같은 대상 공격력 각각 -10. 3턴째에 대상의 전체 공격력 감소량×4D를 주고 공격력 감소를 전부 제거한다.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
-      S('graveDown', '그레이브다운', '****', '대상의 현재 HP가 자신의 현재 HP보다 낮으면 대상 HP를 즉시 0으로 만든다. 조건 미충족 시 실패한다.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
+    '점액막: HP 보호막이 있으면 받는 피해 50% 감소, 상대 단일 대상 기술을 자신에게 집중, 기술 사용·후퇴 불가. 그레이브업: HP 0이 되면 사망 대신 언데드 4턴과 HP 보호막 160을 얻고, 자기 차례 시작마다 보호막 40 감소·HP 40 회복(4회). 1회만 발동.', [
+      S('suppressedCurse', '억누른저주', 'RorB*', '대상 공격력 -10, 자신에게 HP 보호막 60(자기 차례 시작마다 20 감소). 이후 자기 차례 2번 동안 같은 대상 공격력 -10씩, 3번째 자기 차례에 대상의 공격력 감소량 합×4 피해를 주고 감소를 전부 제거.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
+      S('graveDown', '그레이브다운', '****', '대상의 HP가 자신의 HP보다 낮으면 대상 HP를 0으로 만든다. 아니면 실패.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
     ], { grade: '4☆', tags: ['zombie'], releaseOrder: 55,
       hpBarrierStance: { receivedDamageMultiplier: 0.5, tauntSingleTarget: true, blockSkill: true, blockRetreat: true }, graveUp: true,
       traitRules: [
@@ -38,8 +38,9 @@ export function applyWellerEffect(g, actor, target, effect, skill, ctx = {}) {
   if (effect.type === 'suppressedCurse') {
     setAttack(g, target, -10);
     addHpProtectionBarrier(g, actor, 60, actor.uid, 'suppressedCurse', { decayPerTurn: 20 });
-    actor.delayedCurses ||= [];
-    actor.delayedCurses.push({ targetUid: target.uid, elapsed: 0, skillId: skill.id });
+    // Same reserved-action path as every other delayed skill: while it is pending the owner is
+    // locked into the automatic "scheduled" action and cannot gather, switch or cast.
+    registerScheduledAction(g, actor, { kind: 'suppressedCurse', targetUid: target.uid, elapsed: 0, remaining: 3, skillId: skill.id });
     queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: actor.uid, targetUid: target.uid, stage: 0 });
     return 0;
   }
@@ -62,20 +63,27 @@ export function processWellerTurnStart(g, unit, sim = false) {
     queueVisual(g, { type: 'wellerFx', phase: 'recovery', uid: unit.uid, targetUid: unit.uid, remaining: recovery.remaining });
     if (!recovery.remaining) unit.graveUpRecovery = null;
   }
-  for (const curse of unit.delayedCurses || []) {
-    const target = findUnit(g, curse.targetUid);
-    if (!target || target.dead) { curse.elapsed = 3; continue; }
-    curse.elapsed++;
-    if (curse.elapsed < 3) {
-      setAttack(g, target, -10);
-      queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: unit.uid, targetUid: target.uid, stage: curse.elapsed });
-    } else {
-      const amount = totalAttackDecrease(target) * 4;
-      const skill = card(unit).skills.find(s => s.id === curse.skillId) || { id: curse.skillId, name: '억누른저주', tags: ['damage'] };
-      queueVisual(g, { type: 'wellerFx', phase: 'curseBurst', uid: unit.uid, targetUid: target.uid, rawAmount: amount });
-      dealDamage(g, unit, target, { amount }, skill, sim);
-      clearAttackDecreases(g, target);
-    }
+}
+
+// Runs on each of the owner's turns through executeScheduled: stacks at turns 1 and 2, bursts at turn 3.
+export function resolveSuppressedCurse(g, unit, sch, sim = false) {
+  const target = findUnit(g, sch.targetUid);
+  if (!target || target.dead) {
+    unit.scheduledAction = null;
+    log(g, `${unit.name}: 억누른저주 대상이 사라져 해소.`);
+    return;
   }
-  if (unit.delayedCurses) unit.delayedCurses = unit.delayedCurses.filter(c => c.elapsed < 3);
+  sch.elapsed++;
+  sch.remaining = Math.max(0, 3 - sch.elapsed);
+  if (sch.elapsed < 3) {
+    setAttack(g, target, -10);
+    queueVisual(g, { type: 'wellerFx', phase: 'curse', uid: unit.uid, targetUid: target.uid, stage: sch.elapsed });
+    return;
+  }
+  const amount = totalAttackDecrease(target) * 4;
+  const skill = card(unit).skills.find(x => x.id === sch.skillId) || { id: sch.skillId, name: '억누른저주', tags: ['damage'] };
+  unit.scheduledAction = null;
+  queueVisual(g, { type: 'wellerFx', phase: 'curseBurst', uid: unit.uid, targetUid: target.uid, rawAmount: amount });
+  dealDamage(g, unit, target, { amount }, skill, sim);
+  clearAttackDecreases(g, target);
 }

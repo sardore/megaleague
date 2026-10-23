@@ -22,7 +22,7 @@ import { registerCardDefinition, state_ui_deck } from "../ui/deck.js";
 import { executeChosenPlayerAction, openManualPayment } from "../ui/payment.js";
 import { openChoice } from "../ui/results.js";
 export function initializeFeaturesFoxious() {
-  state_features_foxious.FOXIOUS_CARD = state_catalog_cards.C("foxious", "폭시어스", 60, "순환형 실드 딜러", "메가리그", "", [state_catalog_cards.S("foxStrike", "스트라이크", "* or **", "1코스트 또는 2코스트 방식을 선택한다. 일반 공격은 항상 80D. 어떤 방식으로 사용해도 단일 요구색이 W→B→R→W로 전환된다. 현재 요구색과 같은 색 2개를 **로 지불하면 140D.", "enemy", [{
+  state_features_foxious.FOXIOUS_CARD = state_catalog_cards.C("foxious", "폭시어스", 60, "순환형 실드 딜러", "메가리그", "", [state_catalog_cards.S("foxStrike", "스트라이크", "* or **", "* 또는 **로 사용. 80D, 현재 요구색과 같은 색 2개로 **를 지불하면 140D. 사용할 때마다 단일 요구색이 W→B→R→W로 순환.", "enemy", [{
     type: "foxStrike"
   }], ["damage", "energy"])], {
     grade: "4☆",
@@ -166,13 +166,6 @@ export function playFoxStrikeVisual(v) {
     if (pop) {
       pop.style.left = `${to.x}px`;
       pop.style.top = `${to.y - 30}px`;
-    }
-    if (v.next) {
-      const cyc = visualNode(arena, "fox-strike-cycle", `다음 ${v.next}`, 1150);
-      positionFx(cyc, {
-        x: from.x,
-        y: from.y - 28
-      });
     }
   }, 190);
 }

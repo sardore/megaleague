@@ -355,10 +355,6 @@ export function positionFx(node, point) {
   if (!node || !point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
   node.style.setProperty("--fx-x", `${point.x}px`);
   node.style.setProperty("--fx-y", `${point.y}px`);
-  if (node.classList?.contains("fox-strike-cycle")) {
-    node.style.setProperty("left", `${point.x}px`, "important");
-    node.style.setProperty("top", `${point.y}px`, "important");
-  }
   return true;
 }
 export function playInstantUnitPopup(v, delay = 0) {

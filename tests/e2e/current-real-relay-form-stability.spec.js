@@ -5,7 +5,7 @@ const APP = process.env.CP32_CURRENT_APP_URL || 'http://127.0.0.1:4173/?relay=ws
 async function waitStartupClear(page) {
   await page.goto(APP, { waitUntil: 'domcontentloaded' });
   await page.locator('#deckCards .card').first().waitFor({ state: 'visible', timeout: 30000 });
-  await page.locator('.horizon-startup-intro').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+  await page.locator('.startup-intro').waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
 }
 
 async function familySurface(page, group) {

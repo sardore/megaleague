@@ -21,12 +21,12 @@ try{
   const r=await page.evaluate(()=>['R','B'].map(color=>{const{g,w,target}=wellerFixture();w.energy=[{c:color,a:1},{c:'W',a:1}];const action=Megaleague.legalActions(g,'P',0).find(a=>a.skill==='suppressedCurse');const ok=Megaleague.execute(g,'P',0,action,{sim:true});return{ok,cost:probe.card(w).skills[0].cost,grade:probe.card(w).grade,zombie:probe.statusRules.isZombie(w),energy:probe.energy.totalEnergy(w),attack:target.attackMod,barrier:w.hpProtectionBarriers.reduce((s,l)=>s+l.amount,0)};}));
   for(const x of r)assert.deepEqual(x,{ok:true,cost:'RorB*',grade:'4☆',zombie:true,energy:0,attack:-10,barrier:60});
  });
- await check('curse stacks at 1/2 turns, bursts at 3, and preparation is idempotent',async page=>{
-  const r=await page.evaluate(()=>{const{g,w,target,prepareOwn,apply}=wellerFixture();apply('suppressedCurse');const rows=[];for(let i=0;i<3;i++){prepareOwn();const snapshot=JSON.stringify({a:target.attackMod,b:w.hpProtectionBarriers,c:w.delayedCurses,h:target.hp});probe.actions.prepareCurrentTurn(g);if(snapshot!==JSON.stringify({a:target.attackMod,b:w.hpProtectionBarriers,c:w.delayedCurses,h:target.hp}))throw Error('duplicate tick');rows.push([target.attackMod,w.hpProtectionBarriers.reduce((s,l)=>s+l.amount,0)]);}return{rows,curses:w.delayedCurses.length,raw:g.logs.filter(l=>String(l.msg).includes('억누른저주')).map(l=>l.msg)};});
-  assert.deepEqual(r.rows,[[-20,40],[-30,20],[0,0]]);assert.equal(r.curses,0);
+ await check('curse stacks at 1/2 turns, bursts at 3, locks the owner like other reserved skills, and preparation is idempotent',async page=>{
+  const r=await page.evaluate(()=>{const{g,w,target,prepareOwn,apply}=wellerFixture();apply('suppressedCurse');const rows=[],locks=[];const state=()=>JSON.stringify({a:target.attackMod,b:w.hpProtectionBarriers,c:w.scheduledAction?.elapsed,h:target.hp});for(let i=0;i<3;i++){prepareOwn();const before=state();probe.actions.prepareCurrentTurn(g);if(before!==state())throw Error('duplicate tick');const acts=Megaleague.legalActions(g,'P',0);locks.push(acts.map(a=>a.type).join());if(!Megaleague.execute(g,'P',0,acts[0],{sim:true}))throw Error('scheduled action refused');rows.push([target.attackMod,w.hpProtectionBarriers.reduce((s,l)=>s+l.amount,0)]);}return{rows,locks,pending:!!w.scheduledAction,raw:g.logs.filter(l=>String(l.msg).includes('억누른저주')).map(l=>l.msg)};});
+  assert.deepEqual(r.locks,['scheduled','scheduled','scheduled']);assert.deepEqual(r.rows,[[-20,40],[-30,20],[0,0]]);assert.equal(r.pending,false);
  });
- await check('curse consumes all attack decreases and preserves positive attack bonuses',async page=>{
-  const r=await page.evaluate(()=>{const{g,w,target,prepareOwn,apply}=wellerFixture();probe.effects.setAttack(g,target,50);probe.effects.setAttack(g,target,-20);apply('suppressedCurse',target,false);probe.battle.game=g;probe.battle.visualEvents=[];prepareOwn();prepareOwn();prepareOwn();return{attack:target.attackMod,decrease:probe.effects.totalAttackDecrease(target),burst:probe.battle.visualEvents.find(e=>e.type==='wellerFx'&&e.phase==='curseBurst')?.rawAmount};});
+await check('curse consumes all attack decreases and preserves positive attack bonuses',async page=>{
+  const r=await page.evaluate(()=>{const{g,w,target,prepareOwn,apply}=wellerFixture();probe.effects.setAttack(g,target,50);probe.effects.setAttack(g,target,-20);apply('suppressedCurse',target,false);probe.battle.game=g;probe.battle.visualEvents=[];for(let i=0;i<3;i++){prepareOwn();Megaleague.execute(g,'P',0,Megaleague.legalActions(g,'P',0)[0]);}return{attack:target.attackMod,decrease:probe.effects.totalAttackDecrease(target),burst:probe.battle.visualEvents.find(e=>e.type==='wellerFx'&&e.phase==='curseBurst')?.rawAmount};});
   assert.deepEqual(r,{attack:50,decrease:0,burst:200});
  });
  await check('slime mitigation shares prediction, attack and nonattack paths',async page=>{
@@ -34,7 +34,7 @@ try{
   assert.deepEqual(r,{mean:50,barrier:10,hp:160});
  });
  await check('barrier blocks skills and retreat in both enumeration and command execution',async page=>{
-  const r=await page.evaluate(()=>{const{g,w,target,apply}=wellerFixture();apply('suppressedCurse');w.energy=[{c:'R',a:4}];const before=probe.energy.totalEnergy(w),actions=Megaleague.legalActions(g,'P',0);const ok=Megaleague.execute(g,'P',0,{type:'skill',skill:'graveDown',target:{team:'A',slot:0,uid:target.uid}},{sim:true});const sw=Megaleague.execute(g,'P',0,{type:'switch',bench:0},{sim:true});return{actions:actions.map(a=>a.type),ok,sw,same:before===probe.energy.totalEnergy(w)};});
+  const r=await page.evaluate(()=>{const{g,w,target}=wellerFixture();probe.effects.addHpProtectionBarrier(g,w,60,w.uid,'suppressedCurse',{decayPerTurn:20});w.energy=[{c:'R',a:4}];const before=probe.energy.totalEnergy(w),actions=Megaleague.legalActions(g,'P',0);const ok=Megaleague.execute(g,'P',0,{type:'skill',skill:'graveDown',target:{team:'A',slot:0,uid:target.uid}},{sim:true});const sw=Megaleague.execute(g,'P',0,{type:'switch',bench:0},{sim:true});return{actions:actions.map(a=>a.type),ok,sw,same:before===probe.energy.totalEnergy(w)};});
   assert.ok(r.actions.includes('gather'));assert.ok(!r.actions.includes('skill')&&!r.actions.includes('switch'));assert.equal(r.ok,false);assert.equal(r.sw,false);assert.equal(r.same,true);
  });
  await check('single targets redirect while area skills and suppressed traits remain valid',async page=>{
@@ -58,11 +58,11 @@ try{
   assert.deepEqual(r,{equal:160,dead:true,shield:900,held:true,undead:4,barrier:160});
  });
  await check('snapshot restore retains recovery, curse schedule, consumed trait and undead',async page=>{
-  const r=await page.evaluate(()=>{const{g,w,apply}=wellerFixture();apply('suppressedCurse');probe.combat.nonAttackDamage(g,w,999,'lethal');probe.battle.game=g;const state=probe.serializeOnlineGame();const restored=probe.state_runtime_snapshots.OnlineSnapshotEngine.restoreState(state,{source:'test'});const u=restored.teams.P.field[0];probe.combat.checkDeath(restored,u);return{undead:u.statuses.undead,remaining:u.graveUpRecovery.remaining,curses:u.delayedCurses.length,consumed:u.graveUpConsumed,dead:u.dead,kills:restored.teams.P.deathSerial||0};});
+  const r=await page.evaluate(()=>{const{g,w,apply}=wellerFixture();apply('suppressedCurse');probe.combat.nonAttackDamage(g,w,999,'lethal');probe.battle.game=g;const state=probe.serializeOnlineGame();const restored=probe.state_runtime_snapshots.OnlineSnapshotEngine.restoreState(state,{source:'test'});const u=restored.teams.P.field[0];probe.combat.checkDeath(restored,u);return{undead:u.statuses.undead,remaining:u.graveUpRecovery.remaining,curses:u.scheduledAction?.kind==='suppressedCurse'?1:0,consumed:u.graveUpConsumed,dead:u.dead,kills:restored.teams.P.deathSerial||0};});
   assert.deepEqual(r,{undead:4,remaining:4,curses:1,consumed:true,dead:false,kills:0});
  });
  await check('persistent purple aura survives redraw and disappears on cure; skills render at the target',async page=>{
-  await page.waitForSelector('#horizonStartupIntro',{state:'detached'});
+  await page.waitForSelector('#startupIntro',{state:'detached'});
   await page.evaluate(()=>{const{g,w,target}=wellerFixture();probe.battle.game=g;document.querySelector('#setup').classList.remove('active');document.querySelector('#game').classList.add('active');probe.combat.applyStatus(g,w,'undead',4);probe.render();probe.battle.visualEvents=[{type:'wellerFx',phase:'graveDown',uid:w.uid,targetUid:target.uid,succeeds:true}];probe.playVisuals();});
   await page.waitForSelector('.weller-graveDown');assert.equal(await page.locator('.undead-aura .undead-wisp').count(),10);
   await page.waitForTimeout(650);await fs.mkdir('artifacts/weller',{recursive:true});await page.screenshot({path:'artifacts/weller/grave-down-mobile.png',fullPage:true});

@@ -9,16 +9,16 @@ import { systems } from "../runtime/systems.js";
 import { state_ui_battle_state } from "../ui/battle-state.js";
 import { showCardTooltip, state_ui_cards } from "../ui/cards.js";
 export function initializePresentationIntroductions() {
-  /* 시작 연출 canonical owner: exact-once Horizon, monotonic timing, 약 4초. */
-  (function startHorizonIntro() {
-    const intro = document.getElementById("horizonStartupIntro");
-    if (!intro || systems.__horizonStartupIntroPlayed) {
+  /* 시작 연출(업데이트 판) canonical owner: exact-once, monotonic timing, 약 4초. */
+  (function startStartupIntro() {
+    const intro = document.getElementById("startupIntro");
+    if (!intro || systems.__startupIntroPlayed) {
       intro?.remove();
       return;
     }
-    systems.__horizonStartupIntroPlayed = true;
+    systems.__startupIntroPlayed = true;
     const start = performance.now();
-    systems.__horizonIntroTiming = {
+    systems.__startupIntroTiming = {
       start,
       end: null,
       durationMs: null,
@@ -39,7 +39,7 @@ export function initializePresentationIntroductions() {
     const monitor = nativeSetInterval(() => {
       const now = performance.now(),
         gap = now - last;
-      if (gap > 140) systems.__horizonIntroTiming.eventLoopStalls.push(Math.round(gap));
+      if (gap > 140) systems.__startupIntroTiming.eventLoopStalls.push(Math.round(gap));
       last = now;
     }, 100);
     const onHide = () => {
@@ -62,10 +62,10 @@ export function initializePresentationIntroductions() {
         timeSetInputLock(false, false);
       } catch (error) {
         document.body.classList.remove("time-input-locked");
-        systems.__megaRecordRecoveredError?.(error, "startHorizonIntro.finish");
+        systems.__megaRecordRecoveredError?.(error, "startStartupIntro.finish");
       }
       const end = performance.now();
-      Object.assign(systems.__horizonIntroTiming, {
+      Object.assign(systems.__startupIntroTiming, {
         end,
         durationMs: end - start
       });
