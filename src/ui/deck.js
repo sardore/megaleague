@@ -31,6 +31,7 @@ export function initializeUiDeck() {
     definitions: Object.freeze({
       two: Object.freeze({
         id: "two",
+        size: 4,
         label: "2☆ 컵",
         shortRule: "2☆ 4장",
         accent: "green",
@@ -44,6 +45,7 @@ export function initializeUiDeck() {
       }),
       regular: Object.freeze({
         id: "regular",
+        size: 4,
         label: "정규리그",
         shortRule: "2☆ ×2 · 3☆ ×2",
         accent: "yellow",
@@ -58,6 +60,7 @@ export function initializeUiDeck() {
       }),
       comprehensive: Object.freeze({
         id: "comprehensive",
+        size: 4,
         label: "종합리그",
         shortRule: "선택한 등급 구성",
         accent: "orange",
@@ -69,6 +72,7 @@ export function initializeUiDeck() {
       }),
       mega: Object.freeze({
         id: "mega",
+        size: 4,
         label: "메가리그",
         shortRule: "등급 제한 없음",
         accent: "purple",
@@ -80,6 +84,7 @@ export function initializeUiDeck() {
       }),
       duel: Object.freeze({
         id: "duel",
+        size: 3,
         label: "싱글 리그",
         shortRule: "등급 무제한 · 3마리",
         accent: "gray",
@@ -123,7 +128,7 @@ export function initializeUiDeck() {
       return mode === "mega" || mode === "duel";
     },
     deckSize(mode) {
-      return this.normalizeLeague(mode) === "duel" ? 3 : 4;
+      return this.definition(mode).size;
     },
     normalizeComposition(value) {
       return this.comprehensivePatterns[value] ? value : "2234";

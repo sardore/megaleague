@@ -979,7 +979,7 @@ export function onlineRoomReadyText() {
     remoteComposition = onlineRemoteCompositionNow();
   const mine = onlineDeckIsReady(state_ui_battle_state.selected, league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam());
   const theirs = onlineDeckIsReady(state_ui_deck.p2p.remoteDeck, league, remoteComposition, state_ui_deck.p2p.remotePlusStar, onlineRemoteTeam());
-  return `${state_ui_deck.LeagueFormatOwner.definition(league).label}${league === "comprehensive" ? ` · ${state_ui_deck.LeagueFormatOwner.pattern(league, composition).label}` : ""} · 내 덱 ${state_ui_battle_state.selected.length}/4${mine ? " · 준비 완료" : ""} · 상대 덱 ${state_ui_deck.p2p.remoteDeck?.length || 0}/4${theirs ? " · 준비 완료" : ""}`;
+  return `${state_ui_deck.LeagueFormatOwner.definition(league).label}${league === "comprehensive" ? ` · ${state_ui_deck.LeagueFormatOwner.pattern(league, composition).label}` : ""} · 내 덱 ${state_ui_battle_state.selected.length}/${state_ui_deck.LeagueFormatOwner.deckSize(league)}${mine ? " · 준비 완료" : ""} · 상대 덱 ${state_ui_deck.p2p.remoteDeck?.length || 0}/${state_ui_deck.LeagueFormatOwner.deckSize(league)}${theirs ? " · 준비 완료" : ""}`;
 }
 export function refreshOnlineRoomControls() {
   const state = document.getElementById("roomReadyState");
@@ -1014,7 +1014,7 @@ export function applyOnlineInvader(id) {
     plusStar: state_ui_deck.plusStarSelection,
     team: onlineLocalTeam()
   };
-  const application = state_ui_setup.DeckDraftApplication.applyInvader(id, 4, context);
+  const application = state_ui_setup.DeckDraftApplication.applyInvader(id, state_ui_deck.LeagueFormatOwner.deckSize(league), context);
   if (application.applied) {
     finishOnlineInvaderEdit();
     return;
