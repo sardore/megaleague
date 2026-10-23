@@ -5912,3 +5912,17 @@
   .arena .battle-unit-card.clock-stopped-owner {
     filter: grayscale(1) saturate(0) brightness(.72) !important;
   }
+
+/* ===== 등급별 카드 색: 기존 카드칸(전장 .slot / 후열 카드 자체)을 직접 채운다. 메인컬러 면 + 위→아래 메인→서브 테두리 ===== */
+.slot:has(> .grade-t30),.battle-unit-card.grade-t30{--g-main:#ffd23f;--g-sub:#ffe680;--g-sub2:#ffe680}
+.slot:has(> .grade-t35),.battle-unit-card.grade-t35{--g-main:#5cc8ff;--g-sub:#a6e4ff;--g-sub2:#a6e4ff}
+.slot:has(> .grade-t40),.battle-unit-card.grade-t40{--g-main:#ff8a1f;--g-sub:#ffd23f;--g-sub2:#ffd23f}
+.slot:has(> .grade-t45),.battle-unit-card.grade-t45{--g-main:#a45cff;--g-sub:#4f7dff;--g-sub2:#5cd6ff}
+.slot:has(> [class*="grade-t"]),.battle-unit-card.bench-card[class*="grade-t"]{
+  border:2px solid transparent !important;
+  background:
+    linear-gradient(165deg,color-mix(in srgb,var(--g-main) 34%,#0d1219),color-mix(in srgb,var(--g-main) 10%,#0d1219) 58%,color-mix(in srgb,var(--g-sub) 26%,#0d1219)) padding-box,
+    linear-gradient(180deg,var(--g-main) 0%,var(--g-main) 52%,var(--g-sub) 82%,var(--g-sub2) 100%) border-box !important;
+  box-shadow:0 0 10px color-mix(in srgb,var(--g-main) 40%,transparent) !important}
+.slot:has(> .battle-unit-card.dead[class*="grade-t"]){opacity:.5}
+.slot:has(> .active-turn[class*="grade-t"]){outline:3px solid var(--warn);outline-offset:2px}

@@ -403,6 +403,13 @@ export function unitBarsHTML(u) {
   }
   return `<div class="unit-hud"><div class="unit-bar hp-bar" aria-label="HP ${hp}/${maxHp}${barrier ? `, HP 보호막 ${barrier}` : ""}"><span class="unit-bar-fill hp-fill" style="width:${hpPct}%"></span>${overlay}<span class="unit-bar-value">${hp}/${maxHp}</span></div>${shieldLayerHTML(shield, maxHp)}${unitEnergyHudHTML(u)}</div>`;
 }
+/* 등급별 카드 프레임 색: 3☆ 노랑 · 3.5☆ 하늘 · 4☆ 주황+노랑 · 4.5☆ 보라+파랑·하늘. 플러스스타는 +0.5☆로 본다. */
+export function gradeTierClass(c, effectiveCard) {
+  const base = Number.parseFloat(String(c?.grade || ""));
+  if (!Number.isFinite(base)) return "";
+  const tier = base + (effectiveCard?.plusStar ? 0.5 : 0);
+  return tier >= 3 ? `grade-t${Math.round(tier * 10)}` : "";
+}
 export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
   if (u?.dead) return bench ? "" : `<div class="card muted" data-dead-slot="${u.uid}"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
   if (!u) return `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
@@ -416,7 +423,7 @@ export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
     });
   const redClass = bossRedRole ? "red-timeora-card boss-red-live-card" : "";
   const stageClass = bossRedRole ? "unit-stage boss-red-live-stage" : "unit-stage";
-  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead" : ""}" data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div></div>`;
+  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${gradeTierClass(c, effectiveCard)} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead" : ""}" data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div></div>`;
 }
 export function safeCssValue(value) {
   const raw = String(value ?? "");
