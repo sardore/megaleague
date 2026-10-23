@@ -5909,6 +5909,16 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .league-banner.duel{--league-accent:#aab3c2;--league-accent-soft:#e1e6ee;--league-glow:rgba(170,179,194,.3)}
 .league-banner.duel::before{background:repeating-linear-gradient(135deg,transparent 0 38px,rgba(170,179,194,.05) 38px 40px,transparent 40px 78px)}
 .slots:has(> .slot:only-child){grid-template-columns:1fr !important}
-.slots:has(> .slot:only-child) > .slot > .battle-unit-card .unit-stage{min-height:min(250px,42vw + 60px) !important;justify-content:flex-end}
-.slots:has(> .slot:only-child) > .slot > .battle-unit-card .char-emoji{flex:1 1 auto;width:100% !important;height:auto !important;min-height:0 !important;margin:0 !important;font-size:clamp(96px,30vw,168px) !important}
-.slots:has(> .slot:only-child) .unit-nameplate{font-size:clamp(15px,3.6vw,20px)}
+/* 싱글 리그 카드: 위에 HUD, 아래 왼쪽 캐릭터 · 오른쪽 기술 목록 */
+.slots:has(> .slot:only-child) > .slot > .battle-unit-card{display:grid !important;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:auto 1fr;column-gap:8px;align-items:stretch}
+.slots:has(> .slot:only-child) > .slot > .battle-unit-card > .unit-hud{grid-column:1 / -1}
+.slots:has(> .slot:only-child) > .slot > .battle-unit-card .unit-stage{grid-column:1;min-height:0 !important;justify-content:flex-end}
+.slots:has(> .slot:only-child) > .slot > .battle-unit-card .char-emoji{flex:1 1 auto;width:100% !important;height:auto !important;min-height:0 !important;margin:0 !important;font-size:clamp(64px,19vw,104px) !important}
+.slots:has(> .slot:only-child) .unit-nameplate{font-size:clamp(13px,3.2vw,17px)}
+.unit-skill-list{grid-column:2;display:flex;flex-direction:column;gap:5px;min-height:0;overflow:auto;padding:2px 3px 2px 0;font-size:11px;line-height:1.3;position:relative;z-index:4}
+.unit-skill-list .skill-line{padding:4px 6px;border-radius:6px;background:rgba(255,255,255,.06)}
+.unit-skill-list .skill-heading{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.unit-skill-list .skill-heading b{font-size:12px}
+.unit-skill-list .cost{font-weight:800;opacity:.85}
+.unit-skill-list .tiny{margin-top:2px;opacity:.85;font-size:10.5px}
+.slots:has(> .slot:only-child){max-width:min(100%,520px)}

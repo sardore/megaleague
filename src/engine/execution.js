@@ -460,7 +460,7 @@ export function endTurn(g, t, s, usedSkill) {
       nonAttackDamage(g, u, raw, "결판 압박");
       g.noDamageTurns = streak;
     }
-    g.turn = (g.turn + 1) % 4;
+    g.turn = (g.turn + 1) % g.order.length;
     g.turnSerial++;
     g.preparedKey = null;
     g.dualActorController = null;
