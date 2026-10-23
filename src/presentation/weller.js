@@ -29,21 +29,12 @@ function ensureWaveFilters() {
   document.body.insertAdjacentHTML('beforeend', WAVE_SVG);
 }
 
-/* Translucent violet swells rolling across the foot of the card. Each layer is a seamless double-period wave that
-   slides sideways at its own speed, so the surface reads as water moving rather than a loop restarting. */
-function waveLayer(amp, y, phase, fill, crest) {
-  let d = `M0 ${y}`;
-  for (let x = 0; x <= 400; x += 10) d += `L${x} ${(y + Math.sin((x / 100) * Math.PI + phase) * amp + Math.sin((x / 50) * Math.PI + phase * 2.3) * amp * .28).toFixed(1)}`;
-  const line = d.replace(/^M0 [\d.]+L/, 'M');
-  return `<svg class="undead-wave" viewBox="0 0 400 100" preserveAspectRatio="none"><path d="${d}L400 100L0 100Z" fill="${fill}"/>${crest ? `<path d="${line}" fill="none" stroke="${crest}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>` : ''}</svg>`;
-}
-const UNDEAD_WAVES = waveLayer(9, 42, 0, '#7a2fd055', '#d9b8ff99') + waveLayer(7, 50, 2.1, '#a45cff44', '#c9a0ff66') + waveLayer(6, 58, 4.2, '#5a1fb066', '');
-
+/* The aura is pure markup; weller.css draws feathered violet swells inside the card (nothing crosses its border). */
 export function undeadAuraHTML(unit) {
   if (unit.dead || !isZombie(unit) || !(unit.statuses?.undead > 0)) return '';
   // Last remaining turn: the swell gutters instead of showing text.
   const fading = unit.statuses.undead <= 1 ? ' fading' : '';
-  return `<div class="undead-aura${fading}" aria-hidden="true">${UNDEAD_WAVES}</div>`;
+  return `<div class="undead-aura${fading}" aria-hidden="true"><i class="uw c"></i><i class="uw a"></i><i class="uw b"></i></div>`;
 }
 
 // Rituals are fluid, not geometric: glow, rings, a rising column and soul tongues are all drawn
