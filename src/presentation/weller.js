@@ -31,15 +31,10 @@ function ensureWaveFilters() {
 
 export function undeadAuraHTML(unit) {
   if (unit.dead || !isZombie(unit) || !(unit.statuses?.undead > 0)) return '';
-  ensureWaveFilters();
-  // A shared animation clock preserves particle positions when a snapshot redraws cards.
-  const time = performance.now() / 1000;
-  // Last remaining turn: the aura gutters like a dying flame instead of showing text.
+  // Markup only marks where the fire burns; presentation/fire.js owns one continuous particle field for every aura,
+  // so redrawing a card never restarts its flames. The last remaining turn gutters like a dying flame.
   const fading = unit.statuses.undead <= 1 ? ' fading' : '';
-  const bands = [[16, 44, '', 0], [40, 50, ' green', 1.1], [64, 46, '', 2.2], [86, 38, ' green', .6]].map(([x, w, tone, d]) => `<i class="undead-band${tone}" style="--band-x:${x}%;--band-w:${w}%;--band-delay:-${(time + d) % 4.6}s"></i>`).join('');
-  const wisps = Array.from({ length: 10 }, (_, i) => `<i class="undead-wisp" style="--wisp-x:${4 + i * 9.4}%;--wisp-delay:-${(time + i * .217) % 2.6}s;--wisp-drift:${i % 2 ? 12 : -12}px"></i>`).join('');
-  const embers = Array.from({ length: 4 }, (_, i) => `<i class="undead-ember" style="--ember-x:${18 + i * 21}%;--ember-delay:-${(time + i * .9) % 3.4}s"></i>`).join('');
-  return `<div class="undead-aura${fading}" aria-hidden="true" style="--aura-pulse-delay:-${time % 2}s"><i class="undead-fog"></i><div class="undead-flow">${bands}${wisps}</div>${embers}</div>`;
+  return `<div class="undead-aura${fading}" aria-hidden="true"></div>`;
 }
 
 // Rituals are fluid, not geometric: glow, rings, a rising column and soul tongues are all drawn

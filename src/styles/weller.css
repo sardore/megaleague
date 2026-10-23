@@ -5,26 +5,10 @@
 @property --rad{syntax:"<length>";inherits:false;initial-value:0px}
 
 /* ---------- persistent undead aura ----------
-   Soft gradient tongues, rippled by the shared turbulence filter (#undead-wave) so the motion is
-   an irregular wave pattern rather than clean geometry. */
+   The aura element only marks the card; the flames are particles drawn by presentation/fire.js on #undeadFireField. */
 .battle-unit-card:has(.undead-aura){border-color:#bb78ff!important;box-shadow:inset 0 -18px 30px #8c27c526,0 0 20px #8f40e64d}
-.undead-aura{position:absolute;inset:-12px -8px -4px;pointer-events:none;z-index:2;overflow:visible;isolation:isolate}
-.undead-aura::before{content:"";position:absolute;inset:16% 6% -10%;border-radius:50%;background:radial-gradient(ellipse at 50% 85%,#ac55ff55,transparent 68%);animation:undead-breathe 2s ease-in-out infinite;animation-delay:var(--aura-pulse-delay)}
-.undead-fog{position:absolute;left:-4%;right:-4%;bottom:-8%;height:26%;border-radius:50%;background:radial-gradient(ellipse at 50% 80%,#6c2fa855,#3a116033 45%,transparent 70%);filter:blur(4px);animation:undead-fog 3.2s ease-in-out infinite;animation-delay:var(--aura-pulse-delay)}
-.undead-flow{position:absolute;inset:0;filter:url(#undead-wave) drop-shadow(0 0 6px #a752ff);-webkit-mask:linear-gradient(0deg,#000 30%,#000b 62%,transparent 100%);mask:linear-gradient(0deg,#000 30%,#000b 62%,transparent 100%)}
-.undead-band{position:absolute;left:calc(var(--band-x) - var(--band-w) / 2);width:var(--band-w);bottom:-4%;height:92%;background:radial-gradient(ellipse 52% 62% at 50% 100%,#b45cff,#7a2fd0aa 46%,transparent 76%);filter:blur(7px);opacity:.4;transform-origin:50% 100%;animation:undead-lick 4.6s ease-in-out infinite;animation-delay:var(--band-delay)}
-.undead-band.green{background:radial-gradient(ellipse 50% 58% at 50% 100%,#b7ff9a,#4fd23a99 46%,transparent 76%)}
-.undead-wisp{position:absolute;bottom:2%;left:var(--wisp-x);width:26px;height:74px;border-radius:50%;background:radial-gradient(ellipse at 50% 78%,#f3d9ffcc,#a745f8aa 46%,transparent 72%);filter:blur(3px);transform-origin:50% 100%;animation:undead-rise 2.6s ease-out infinite;animation-delay:var(--wisp-delay);opacity:0}
-.undead-wisp:nth-child(3n){width:18px;height:48px}
-.undead-ember{position:absolute;left:var(--ember-x);bottom:12%;width:7px;height:10px;border-radius:50% 50% 60% 60%;background:radial-gradient(circle at 50% 70%,#fff,#c8ff9c 40%,#6fe55a 75%);box-shadow:0 0 8px #7dff62;opacity:0;animation:undead-ember 3.4s ease-out infinite;animation-delay:var(--ember-delay)}
-.bench-card .undead-wisp{height:44px}
-.undead-aura.fading{animation:undead-gutter 1.1s steps(1,end) infinite}
-@keyframes undead-lick{0%{transform:translateY(10%) scale(.85,.45);opacity:0}22%{opacity:.95}100%{transform:translateY(-16%) scale(.8,1.2);opacity:0}}
-@keyframes undead-rise{0%{opacity:0;transform:translate3d(0,0,0) scale(.6,.5)}20%{opacity:.8}70%{opacity:.4}100%{opacity:0;transform:translate3d(var(--wisp-drift),-64px,0) scale(.35,1.3)}}
-@keyframes undead-breathe{50%{opacity:.5;transform:scale(1.1,1.08)}}
-@keyframes undead-fog{50%{opacity:.55;transform:scaleX(1.12) translateY(-3px)}}
-@keyframes undead-ember{0%{opacity:0;transform:translate(0,0) scale(.5)}15%{opacity:.95}100%{opacity:0;transform:translate(10px,-48px) scale(.9)}}
-@keyframes undead-gutter{0%{opacity:1}45%{opacity:.35}60%{opacity:.9}80%{opacity:.25}}
+.undead-aura{position:absolute;inset:-12px -8px -4px;pointer-events:none}
+#undeadFireField{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:40}
 
 /* ---------- ritual layer ---------- */
 .weller-fx{position:absolute;inset:0;z-index:80;pointer-events:none;overflow:visible;contain:layout style}
@@ -118,8 +102,7 @@
 @keyframes w-lid{0%,30%{opacity:0}46%,100%{opacity:1}}
 
 @media(prefers-reduced-motion:reduce){
-  .undead-wisp,.undead-ember,.undead-band{animation:none}.undead-wisp{opacity:.4}.undead-band{opacity:.5}
-  .undead-aura::before,.undead-fog{animation:none}.undead-flow,.weller-fluid{filter:none}
+  .weller-fluid{filter:none}
   .weller-soul,.weller-curse-link{display:none}.weller-ritual{filter:none}
   .arena.weller-shake{animation:none}
 }
