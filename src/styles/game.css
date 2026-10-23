@@ -5900,3 +5900,7 @@
 .battle-unit-card.choice-target-selected,.slot.choice-target-selected > .battle-unit-card{box-shadow:inset 0 0 0 3px #55ff9a,inset 0 0 22px rgba(55,255,145,.45) !important;outline:0 !important}
 .slot.targetable{border-color:var(--ok) !important}
 .slot:has(> .dead){opacity:.5}
+
+/* 게임 화면은 글자가 선택·복사되지 않게 한다(더블탭/길게누름 복붙 방지). 입력창과 채팅 메시지만 예외. */
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;user-select:text}
