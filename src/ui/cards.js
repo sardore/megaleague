@@ -404,6 +404,7 @@ export function unitBarsHTML(u) {
   return `<div class="unit-hud"><div class="unit-bar hp-bar" aria-label="HP ${hp}/${maxHp}${barrier ? `, HP 보호막 ${barrier}` : ""}"><span class="unit-bar-fill hp-fill" style="width:${hpPct}%"></span>${overlay}<span class="unit-bar-value">${hp}/${maxHp}</span></div>${shieldLayerHTML(shield, maxHp)}${unitEnergyHudHTML(u)}</div>`;
 }
 export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
+  if (u?.dead) return bench ? "" : `<div class="card muted" data-dead-slot="${u.uid}"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
   if (!u) return `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
   const bossRedRole = !!(u.bossRed || state_ui_battle_state.game?.bossRaid && team === "A" && cardHasCapability(u, "fateClock"));
   if (bossRedRole) u.bossRed = true;
