@@ -22,7 +22,11 @@ export function undeadAuraHTML(unit) {
   if (unit.dead || !isZombie(unit) || !(unit.statuses?.undead > 0)) return '';
   // A shared animation clock preserves particle positions when a snapshot redraws cards.
   const time = performance.now() / 1000;
-  return `<div class="undead-aura" aria-hidden="true" style="--aura-pulse-delay:-${time % 2}s"><i class="undead-halo"></i><i class="undead-halo second"></i>${Array.from({length:10},(_,i)=>`<i class="undead-wisp" style="--wisp-x:${8+i*8.4}%;--wisp-delay:-${(time+i*.217)%2.6}s;--wisp-drift:${i%2?12:-12}px"></i>`).join('')}</div>`;
+  // Last remaining turn: the aura gutters like a dying flame instead of showing text.
+  const fading = unit.statuses.undead <= 1 ? ' fading' : '';
+  const wisps = Array.from({ length: 10 }, (_, i) => `<i class="undead-wisp" style="--wisp-x:${8 + i * 8.4}%;--wisp-delay:-${(time + i * .217) % 2.6}s;--wisp-drift:${i % 2 ? 12 : -12}px"></i>`).join('');
+  const embers = Array.from({ length: 4 }, (_, i) => `<i class="undead-ember" style="--ember-x:${18 + i * 21}%;--ember-delay:-${(time + i * .9) % 3.4}s"></i>`).join('');
+  return `<div class="undead-aura${fading}" aria-hidden="true" style="--aura-pulse-delay:-${time % 2}s"><i class="undead-fog"></i><i class="undead-halo"></i><i class="undead-halo second"></i>${wisps}${embers}</div>`;
 }
 
 function ritualHTML(phase, event) {
