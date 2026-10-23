@@ -93,8 +93,8 @@ export function initializePresentationIntroductions() {
       if (done) return;
       intro.classList.add("ending");
       finishTimer = nativeSetTimeout(finish, 700);
-    }, 3650);
-    watchdogTimer = nativeSetTimeout(finish, 5200);
+    }, 4300);
+    watchdogTimer = nativeSetTimeout(finish, 5900);
   })();
 
   /* PC 길게 누르기/우클릭에서도 타임오러의 실시간 소형 시계를 고정 표시한다. */
