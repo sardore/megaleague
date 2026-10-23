@@ -2111,17 +2111,6 @@
         filter: grayscale(0.5);
         cursor: not-allowed;
       }
-      .interaction-energy button {
-        width: 40px;
-        height: 40px;
-        margin: 5px;
-        border-radius: 50%;
-      }
-      .interaction-energy button.chosen {
-        box-shadow:
-          0 0 0 3px var(--warn),
-          0 0 16px var(--warn);
-      }
       .arena.no-field-motion:before,
       .arena.no-field-motion:after {
         transition: none !important;
