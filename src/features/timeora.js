@@ -34,7 +34,7 @@ import { state_ui_cards } from "../ui/cards.js";
 import { registerCardDefinition, state_ui_deck } from "../ui/deck.js";
 import { localTeamFor } from "../ui/setup.js";
 export function initializeFeaturesTimeora() {
-  state_features_timeora.TIMEORA_CARD = state_catalog_cards.C("timeora", "타임오러", 280, "시간 제어·특성 정지 드래곤", "메가리그", "시간 가속: 에너지 모으기 첫 결과를 유지하면 총 1.5E, 버리면 1회 재추첨. 타임프로텍트: 필드에 있는 동안 자신과 아군 방어 +20. 운명의 시계: 모든 기술에 쓴 에너지 1E마다 시침 +30°(타임오러 자신의 기술이면 분침도 +90°). 바로 전 적 차례의 기술은 무시. 두 바늘이 겹치거나 정반대면 시계 주인 외 모든 필드의 특성이 정지하고, 양 진영이 동시에 정렬되면 서로 상쇄. 특성봉인·상대 정렬로 정지된 시계는 움직이지 않는다.", [state_catalog_cards.S("timeRecall", "타임리콜", "**", "대상 하나의 HP·상태이상을 2턴 전 자기 차례 시작 시점으로 되돌린다. 실드·추가 HP바·에너지·최대 HP·사용 횟수·시계는 유지.", "anyCharacter", [{
+  state_features_timeora.TIMEORA_CARD = state_catalog_cards.C("timeora", "타임오러", 280, "시간 제어·특성 정지 드래곤", "메가리그", "시간 가속: 에너지 모으기 첫 결과 유지 시 총 1.5E, 버리면 1회 재추첨. 타임프로텍트: 필드 중 자신·아군 방어 +20. 운명의 시계: 기술에 쓴 에너지 1E당 시침 +30°(자기 기술은 분침 +90°, 직전 적 기술 제외). 두 바늘이 겹치거나 반대면 시계 주인 외 특성 정지, 양측 동시 정렬 시 상쇄. 특성봉인·상대 정렬 중 시계 정지.", [state_catalog_cards.S("timeRecall", "타임리콜", "**", "대상 1명의 HP·상태이상을 2턴 전 자기 차례 시작 시점으로 복구. 실드·추가 HP바·에너지·최대 HP·사용 횟수·시계 유지.", "anyCharacter", [{
     type: "timeRecall"
   }], ["support", "rewind"], {
     nonAttack: true,
