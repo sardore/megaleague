@@ -415,8 +415,37 @@ function duelSkillListHTML(effectiveCard, bench) {
   if (bench || state_ui_battle_state.game?.league !== "duel" || !effectiveCard?.skills?.length) return "";
   return `<div class="unit-skill-list">${effectiveCard.skills.map(sk => `<div class="skill-line"><span class="skill-heading"><b>${sk.name}</b><span class="cost">${sk.cost || "없음"}</span></span><div class="tiny">${sk.description || ""}</div></div>`).join("")}</div>`;
 }
+/* 죽은 유닛 카드는 사망을 일으킨 행동의 연출(기술·피해 표시)이 끝날 때까지 화면에 남겨 두고 서서히 사라지게 한다.
+   연출은 카드 DOM에서 시전자·대상 위치를 찾으므로, 사망 즉시 카드를 지우면 치명타 기술 연출이 통째로 사라진다.
+   "이 화면에서 살아 있던 유닛이 죽었을 때"만 연출 대상이고(접속·복원 때 이미 죽어 있던 유닛은 바로 숨김),
+   기준 시각은 사망이 처음 그려진 시점이라 다시 그려도 같은 시점부터 이어진다. 전투가 바뀌면 초기화. */
+const DEATH_FADE_MS = 2400;
+export const DeathPresentationOwner = (() => {
+  let battleKey = null;
+  const seenAlive = new Set(), firstDead = new Map();
+  return Object.freeze({
+    /* 사망 연출이 진행 중이면 경과 ms, 아니면 null. 모든 유닛을 그릴 때 호출한다. */
+    observe(g, u) {
+      const now = performance.now(), key = g?.battleId || g?.matchId || "battle";
+      if (key !== battleKey) {
+        battleKey = key;
+        seenAlive.clear();
+        firstDead.clear();
+      }
+      if (!u.dead) {
+        seenAlive.add(u.uid);
+        firstDead.delete(u.uid);
+        return null;
+      }
+      if (!firstDead.has(u.uid)) firstDead.set(u.uid, seenAlive.has(u.uid) ? now : -Infinity);
+      const t = firstDead.get(u.uid);
+      return t === -Infinity || now - t >= DEATH_FADE_MS ? null : now - t;
+    }
+  });
+})();
 export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
-  if (u?.dead) return bench ? "" : `<div class="card muted" data-dead-slot="${u.uid}"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
+  const dying = u ? DeathPresentationOwner.observe(state_ui_battle_state.game, u) : null;
+  if (u?.dead && dying == null) return bench ? "" : `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
   if (!u) return `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
   const bossRedRole = !!(u.bossRed || state_ui_battle_state.game?.bossRaid && team === "A" && cardHasCapability(u, "fateClock"));
   if (bossRedRole) u.bossRed = true;
@@ -428,7 +457,7 @@ export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
     });
   const redClass = bossRedRole ? "red-timeora-card boss-red-live-card" : "";
   const stageClass = bossRedRole ? "unit-stage boss-red-live-stage" : "unit-stage";
-  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${gradeTierClass(c, effectiveCard)} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead" : ""}" data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div>${duelSkillListHTML(effectiveCard, bench)}</div>`;
+  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${u.dead ? "" : gradeTierClass(c, effectiveCard)} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead death-fade" : ""}"${dying != null ? ` style="animation-delay:-${Math.round(dying)}ms"` : ""} data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div>${duelSkillListHTML(effectiveCard, bench)}</div>`;
 }
 export function safeCssValue(value) {
   const raw = String(value ?? "");

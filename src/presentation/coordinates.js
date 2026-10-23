@@ -8,7 +8,7 @@ export const state_presentation_coordinates = {
   DamagePresentationAnchorOwner: undefined
 };
 import { findUnit } from "../engine/combat.js";
-import { dmCleanDisplayText, dmDebug, dmEscapeSelector, dmFieldEntity, state_features_dragon_memory } from "../features/dragon-memory.js";
+import { dmCleanDisplayText, dmDebug, dmEscapeSelector, state_features_dragon_memory } from "../features/dragon-memory.js";
 import { normalizeGameNumberText } from "./audio.js";
 import { systems } from "../runtime/systems.js";
 import { combatInt, state_ui_battle_state } from "../ui/battle-state.js";
@@ -301,8 +301,10 @@ export function visualNode(parent, cls, text = "", life = 900) {
   TimerManager.setTimeout(() => n.remove(), life);
   return n;
 }
+/* 화면에 그려진 전장 카드를 uid로 찾는다. 엔진 상태(생사)로 거르지 않는다: 사망한 유닛의 카드도 연출이 끝날 때까지 남아 있고,
+   그 위치를 쓰는 기술·피해 연출이 대상이 죽었다는 이유로 사라지면 안 된다. 전장 칸 소속은 data-zone="field" 선택자가 보장한다. */
 export function battlefieldCardForUid(g, uid) {
-  if (!g || !uid || !dmFieldEntity(g, uid)) return null;
+  if (!g || !uid) return null;
   const sel = `.arena .battle-unit-card[data-zone="field"][data-entity-id="${dmEscapeSelector(uid)}"]`;
   const el = document.querySelector(sel);
   return el?.dataset?.entityId === String(uid) ? el : null;
