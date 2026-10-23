@@ -21,8 +21,8 @@
 /* fire: eleven tongues that keep growing for the whole scene, never shrinking back */
 .intro-flames{position:absolute;left:-12%;right:-12%;bottom:calc(var(--gl) - 30px);filter:url(#intro-wave) drop-shadow(0 0 22px #a24dff);-webkit-mask:linear-gradient(0deg,#000 45%,#0009 75%,transparent);mask:linear-gradient(0deg,#000 45%,#0009 75%,transparent);transform-origin:50% 100%;animation:intro-flare var(--T) ease-out forwards}
 .intro-flames.back{height:calc(100% - var(--gl) + 30px)}
-.intro-flames i{position:absolute;bottom:-6%;width:22%;height:100%;border-radius:50%;background:radial-gradient(ellipse 42% 62% at 50% 100%,#fff 0,#ead0ff 9%,#b866ff 28%,#6a22c7bb 52%,transparent 76%);filter:blur(7px);transform-origin:50% 100%;opacity:0;animation:intro-ignite .9s ease-out forwards,intro-flicker .5s ease-in-out infinite alternate}
-.intro-flames i:nth-child(even){background:radial-gradient(ellipse 42% 62% at 50% 100%,#fff 0,#e1ffd2 9%,#7dee5e 28%,#2f9a2abb 52%,transparent 76%);animation-duration:.9s,.4s}
+.intro-flames i{position:absolute;bottom:-6%;width:22%;height:100%;border-radius:50%;background:radial-gradient(ellipse 42% 62% at 50% 100%,#fff 0,#ead0ff 9%,#b866ff 28%,#6a22c7bb 52%,transparent 76%);filter:blur(7px);transform-origin:50% 100%;opacity:0;animation:intro-ignite .9s ease-out forwards,intro-lick 1.3s ease-out infinite}
+.intro-flames i:nth-child(even){background:radial-gradient(ellipse 42% 62% at 50% 100%,#fff 0,#e1ffd2 9%,#7dee5e 28%,#2f9a2abb 52%,transparent 76%);animation-duration:.9s,.95s}
 .intro-flames i:nth-child(1){left:-2%;animation-delay:.2s,0s}
 .intro-flames i:nth-child(2){left:8%;width:19%;animation-delay:.4s,.1s}
 .intro-flames i:nth-child(3){left:17%;animation-delay:.28s,.2s}
@@ -88,6 +88,7 @@
 @keyframes intro-fade-in{to{opacity:1}}
 @keyframes intro-ignite{from{opacity:0;translate:0 45%}to{opacity:1;translate:0 0}}
 @keyframes intro-flicker{from{scale:.92 .88}to{scale:1.06 1.08}}
+@keyframes intro-lick{0%{translate:0 6%;scale:.95 .65;opacity:0}12%{opacity:1}68%{opacity:1}100%{translate:0 -9%;scale:.9 1.3;opacity:0}}
 @keyframes intro-flare{0%{transform:scaleY(.8)}60%{transform:scaleY(1.05)}69%{transform:scaleY(1.45)}100%{transform:scaleY(1.6)}}
 @keyframes intro-ember{0%{opacity:0;transform:translate(0,0)}12%{opacity:1}100%{opacity:0;transform:translate(18px,-62vh)}}
 @keyframes intro-mound{0%{opacity:0}10%,19%{opacity:1;transform:none}21%{transform:scale(1.04,.95)}24%,52%{transform:none}54%{transform:scale(1.03,.96)}58%{transform:scale(.98,1.03)}62%{transform:scale(1.04,.95)}66%,100%{opacity:1;transform:none}}

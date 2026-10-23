@@ -19,7 +19,7 @@
 .undead-ember{position:absolute;left:var(--ember-x);bottom:12%;width:7px;height:10px;border-radius:50% 50% 60% 60%;background:radial-gradient(circle at 50% 70%,#fff,#c8ff9c 40%,#6fe55a 75%);box-shadow:0 0 8px #7dff62;opacity:0;animation:undead-ember 3.4s ease-out infinite;animation-delay:var(--ember-delay)}
 .bench-card .undead-wisp{height:44px}
 .undead-aura.fading{animation:undead-gutter 1.1s steps(1,end) infinite}
-@keyframes undead-lick{0%{transform:scale(.9,.55);opacity:.3}45%{transform:scale(1.05,1);opacity:.95}100%{transform:scale(.85,.6);opacity:.3}}
+@keyframes undead-lick{0%{transform:translateY(10%) scale(.85,.45);opacity:0}22%{opacity:.95}100%{transform:translateY(-16%) scale(.8,1.2);opacity:0}}
 @keyframes undead-rise{0%{opacity:0;transform:translate3d(0,0,0) scale(.6,.5)}20%{opacity:.8}70%{opacity:.4}100%{opacity:0;transform:translate3d(var(--wisp-drift),-64px,0) scale(.35,1.3)}}
 @keyframes undead-breathe{50%{opacity:.5;transform:scale(1.1,1.08)}}
 @keyframes undead-fog{50%{opacity:.55;transform:scaleX(1.12) translateY(-3px)}}
