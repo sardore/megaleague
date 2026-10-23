@@ -2,14 +2,15 @@
    Scene: moonlit graveyard, fire behind dead trees and a fence, a tombstone on a dirt mound.
    Beat sheet (share of --T):
      0-12%   fire ignites, tombstone stands
-     22-48%  a hand creeps up from BEHIND the stone, palm toward us, fingers trembling
-     48-50%  dead stillness
-     50-53%  SNAP: hand lunges over the top, fingers clamp the stone, claws dig in
-     53-56%  clench, stone shudders
-     56-66%  YANK: hand drags the stone down into the earth, dirt sprays
+     14-27%  hand claws upward through the earth, hidden behind the stone
+     27-49%  palm appears over the stone's top edge and creeps higher, trembling
+     49-50%  rears back
+     50-51%  SNAP: hand slams down, fingers hook over the stone's top edge
+     51-56%  clench, stone shudders
+     56-66%  YANK: stone and hand are dragged into the earth, dirt sprays
      64%+    grave-green flare over the empty mound
    Waves come from the #intro-wave turbulence filter declared inline in the shell. */
-.startup-intro{--T:4.8s;--tw:min(24vw,128px);--mound-h:min(27vw,160px);position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:hidden;background:#06030c;pointer-events:auto;opacity:1;transition:opacity .55s ease}
+.startup-intro{--T:4.8s;--tw:min(30vw,160px);--th:calc(var(--tw) / .64);--gl:min(22vh,190px);--mound-h:min(31vw,175px);position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:hidden;background:#06030c;pointer-events:auto;opacity:1;transition:opacity .55s ease}
 .startup-intro.ending{opacity:0}
 .startup-intro[aria-hidden="true"]{pointer-events:none!important}
 .startup-defs{position:absolute;width:0;height:0}
@@ -17,31 +18,37 @@
 .intro-sky{position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at 50% 35%,#2b1250 0,#14082a 45%,#06030c 80%);opacity:0;animation:intro-fade-in .8s ease-out forwards}
 .intro-moon{position:absolute;left:50%;top:12%;width:min(44vw,300px);aspect-ratio:1;border-radius:50%;translate:-50% 0;background:radial-gradient(circle,#efe4ff66 0,#a46cff33 36%,transparent 70%);filter:blur(5px);opacity:0;animation:intro-fade-in 1.4s ease-out .2s forwards}
 
-/* fire */
-.intro-flames{position:absolute;left:-12%;right:-12%;bottom:0;filter:url(#intro-wave) drop-shadow(0 0 22px #a24dff);-webkit-mask:linear-gradient(0deg,#000 40%,#0009 72%,transparent);mask:linear-gradient(0deg,#000 40%,#0009 72%,transparent);transform-origin:50% 100%;animation:intro-flare var(--T) ease-out forwards}
-.intro-flames.back{height:92%}
-.intro-flames i{position:absolute;bottom:-8%;width:26%;height:100%;border-radius:50%;background:radial-gradient(ellipse 45% 60% at 50% 100%,#fff 0,#ead0ff 10%,#b866ff 30%,#6a22c7aa 54%,transparent 76%);filter:blur(8px);transform-origin:50% 100%;opacity:0;animation:intro-ignite .9s ease-out forwards,intro-flicker .55s ease-in-out infinite alternate}
-.intro-flames i:nth-child(even){background:radial-gradient(ellipse 45% 60% at 50% 100%,#fff 0,#e1ffd2 10%,#7dee5e 30%,#2f9a2aaa 54%,transparent 76%);animation-duration:.9s,.42s}
-.intro-flames i:nth-child(1){left:0;animation-delay:.2s,0s}
-.intro-flames i:nth-child(2){left:13%;width:22%;animation-delay:.38s,.1s}
-.intro-flames i:nth-child(3){left:26%;animation-delay:.28s,.2s}
-.intro-flames i:nth-child(4){left:40%;width:20%;animation-delay:.5s,.05s}
-.intro-flames i:nth-child(5){left:53%;animation-delay:.3s,.15s}
-.intro-flames i:nth-child(6){left:66%;width:22%;animation-delay:.42s,.25s}
-.intro-flames i:nth-child(7){left:78%;animation-delay:.24s,.12s}
+/* fire: eleven tongues that keep growing for the whole scene, never shrinking back */
+.intro-flames{position:absolute;left:-12%;right:-12%;bottom:calc(var(--gl) - 30px);filter:url(#intro-wave) drop-shadow(0 0 22px #a24dff);-webkit-mask:linear-gradient(0deg,#000 45%,#0009 75%,transparent);mask:linear-gradient(0deg,#000 45%,#0009 75%,transparent);transform-origin:50% 100%;animation:intro-flare var(--T) ease-out forwards}
+.intro-flames.back{height:calc(100% - var(--gl) + 30px)}
+.intro-flames i{position:absolute;bottom:-6%;width:22%;height:100%;border-radius:50%;background:radial-gradient(ellipse 42% 62% at 50% 100%,#fff 0,#ead0ff 9%,#b866ff 28%,#6a22c7bb 52%,transparent 76%);filter:blur(7px);transform-origin:50% 100%;opacity:0;animation:intro-ignite .9s ease-out forwards,intro-flicker .5s ease-in-out infinite alternate}
+.intro-flames i:nth-child(even){background:radial-gradient(ellipse 42% 62% at 50% 100%,#fff 0,#e1ffd2 9%,#7dee5e 28%,#2f9a2abb 52%,transparent 76%);animation-duration:.9s,.4s}
+.intro-flames i:nth-child(1){left:-2%;animation-delay:.2s,0s}
+.intro-flames i:nth-child(2){left:8%;width:19%;animation-delay:.4s,.1s}
+.intro-flames i:nth-child(3){left:17%;animation-delay:.28s,.2s}
+.intro-flames i:nth-child(4){left:27%;width:20%;animation-delay:.5s,.05s}
+.intro-flames i:nth-child(5){left:37%;animation-delay:.34s,.15s}
+.intro-flames i:nth-child(6){left:46%;width:24%;animation-delay:.22s,.25s}
+.intro-flames i:nth-child(7){left:56%;animation-delay:.44s,.12s}
+.intro-flames i:nth-child(8){left:65%;width:19%;animation-delay:.3s,.3s}
+.intro-flames i:nth-child(9){left:74%;animation-delay:.52s,.08s}
+.intro-flames i:nth-child(10){left:83%;width:20%;animation-delay:.36s,.22s}
+.intro-flames i:nth-child(11){left:92%;animation-delay:.26s,.18s}
 .intro-embers{position:absolute;inset:0;z-index:7}
-.intro-embers i{position:absolute;left:var(--ex);bottom:8%;width:4px;height:4px;border-radius:50%;background:#f1ffe8;box-shadow:0 0 8px #7dff62,0 0 16px #b05bff;opacity:0;animation:intro-ember var(--edur) linear var(--ed) infinite}
+.intro-embers i{position:absolute;left:var(--ex);bottom:calc(var(--gl) - 10px);width:4px;height:4px;border-radius:50%;background:#f1ffe8;box-shadow:0 0 8px #7dff62,0 0 16px #b05bff;opacity:0;animation:intro-ember var(--edur) linear var(--ed) infinite}
 .intro-embers i:nth-child(odd){box-shadow:0 0 8px #d29bff,0 0 16px #8d34e8}
 
 /* silhouettes: dead trees, iron fence, small stones, backlit by the fire */
-.intro-deco{position:absolute;left:50%;bottom:calc(9% - 4px);width:calc(min(54vh,520px) * 4 / 3);height:min(54vh,520px);translate:-50% 0;overflow:visible;z-index:0;opacity:0;animation:intro-fade-in 1s ease-out .3s forwards}
+.intro-deco{position:absolute;left:50%;bottom:calc(var(--gl) - 4px);width:calc(min(60vh,560px) * 4 / 3);height:min(60vh,560px);translate:-50% 0;overflow:visible;z-index:0;opacity:0;animation:intro-fade-in 1s ease-out .3s forwards}
 .intro-deco .far rect,.intro-deco .far path{fill:#150a24}
 .intro-deco .near rect:not(.pickets),.intro-deco .near path{fill:#07030d}
 .intro-deco #intro-pickets path{fill:#07030d}
 .intro-deco .near .tree path{fill:none;stroke:#07030d;stroke-linecap:round;stroke-linejoin:round}
 
-/* grave: the container's bottom edge is the earth line, so things sink out of sight into the mound */
-.intro-grave{position:absolute;left:50%;bottom:calc(9% + var(--mound-h) * .6);width:min(92vw,520px);height:84vh;translate:-50% 0;overflow:hidden;z-index:1}
+/* grave: the container's bottom edge is the earth line, so things sink out of sight into the mound.
+   .intro-pair carries stone + hand together so the hand stays glued to the stone while it is hauled down */
+.intro-grave{position:absolute;left:50%;bottom:calc(var(--gl) + var(--mound-h) * .55);width:min(96vw,560px);height:calc(100vh - var(--gl) - var(--mound-h) * .55);translate:-50% 0;overflow:hidden;z-index:1}
+.intro-pair{position:absolute;inset:0;transform-origin:50% 100%;animation:intro-yank var(--T) linear forwards}
 
 /* tombstone, lit from the upper left: bevelled face, side thickness, base slab, recessed cross */
 .intro-tomb{position:absolute;left:50%;bottom:0;width:var(--tw);aspect-ratio:.64;margin-left:calc(var(--tw) / -2);z-index:1;border-radius:46% 46% 4% 4%/30% 30% 3% 3%;background:
@@ -53,47 +60,47 @@
   box-shadow:inset 3px 3px 5px #d3b9f277,inset -5px -8px 12px #07030d99,inset 0 0 0 1px #0b061466,
     var(--tomb-side,9px) 4px 0 -1px #170d26,calc(var(--tomb-side,9px) + 4px) 8px 14px #000a,0 0 38px #7a2fd055;
   opacity:0;animation:intro-tomb var(--T) linear forwards}
-.intro-tomb::before,.intro-tomb::after{content:"";position:absolute;left:50%;translate:-50% 0;border-radius:2px;background:#1a0f29;box-shadow:inset 1px 1px 2px #000b,1px 1px 0 #b99bdc77,0 2px 3px #00000055}
+.intro-tomb::before,.intro-tomb::after{content:"";position:absolute;left:50%;z-index:2;translate:-50% 0;border-radius:2px;background:#150b24;box-shadow:inset 1px 1px 2px #000c,1px 1px 0 #b99bdc88,0 2px 3px #00000066}
 .intro-tomb::before{top:17%;width:11%;height:46%}.intro-tomb::after{top:29%;width:42%;height:8%}
-.intro-tomb .rip{position:absolute;left:-14%;right:-14%;bottom:-3%;height:9%;border-radius:3px 3px 2px 2px;background:linear-gradient(180deg,#6a4f88,#3a2652 40%,#1b102c);box-shadow:inset 0 2px 2px #c7aef066,inset 0 -3px 4px #000a,var(--tomb-side,9px) 3px 0 -1px #170d26,0 6px 12px #000c}
-.intro-tomb .rip::before{content:"";position:absolute;left:8%;top:-210%;width:2px;height:190%;background:linear-gradient(#0b0614,transparent);transform:rotate(14deg);opacity:.7}
-.intro-tomb-glow{position:absolute;inset:-2px;border-radius:inherit;background:radial-gradient(ellipse at 50% 20%,#e7ffd9,#6fe55aaa 40%,transparent 72%);mix-blend-mode:screen;opacity:0;animation:intro-tomb-glow var(--T) ease-out forwards}
+.intro-tomb .rip{position:absolute;z-index:1;left:-14%;right:-14%;bottom:-3%;height:9%;border-radius:3px 3px 2px 2px;background:linear-gradient(180deg,#6a4f88,#3a2652 40%,#1b102c);box-shadow:inset 0 2px 2px #c7aef066,inset 0 -3px 4px #000a,var(--tomb-side,9px) 3px 0 -1px #170d26,0 6px 12px #000c}
+.intro-tomb-glow{position:absolute;z-index:1;inset:-2px;border-radius:inherit;background:radial-gradient(ellipse at 50% 20%,#e7ffd9,#6fe55aaa 40%,transparent 72%);mix-blend-mode:screen;opacity:0;animation:intro-tomb-glow var(--T) ease-out forwards}
 
-/* hand: one flat fill so it reads as a single silhouette, with flat darker/lighter shapes for form */
-.intro-hand{position:absolute;left:50%;bottom:0;width:calc(var(--tw) * 1.5);aspect-ratio:140/330;margin-left:calc(var(--tw) * -.75);overflow:visible;z-index:0;fill:#07030b;filter:drop-shadow(0 0 1.5px #c8ffb0) drop-shadow(0 0 9px #59e03c99);transform:translateY(104%);transform-origin:50% 100%;animation:intro-hand var(--T) linear forwards}
-.intro-hand.front{z-index:2;opacity:0;animation:intro-hand var(--T) linear forwards,intro-front var(--T) step-end forwards}
-.intro-hand .fw{transform-box:view-box;transform-origin:var(--fx) 118px;transform:rotate(var(--fa));animation:intro-wiggle .34s ease-in-out infinite alternate;animation-delay:var(--wd)}
-.intro-hand .thumbw{transform-origin:40px 172px}
-.intro-hand .fg{transform-box:view-box;transform-origin:var(--fx) 118px;animation:intro-fold var(--T) linear forwards}
-.intro-hand .thumb{transform-origin:40px 172px;animation-name:intro-fold-thumb}
+/* hand: ONE path, ONE flat colour. Open palm while it rises behind the stone, swapped for a clenched fist at the snap;
+   the four claws that hook over the stone's top edge live inside the stone so they travel with it */
+.intro-hand{position:absolute;left:50%;bottom:0;width:calc(var(--tw) * 1.512);aspect-ratio:1/2;margin-left:calc(var(--tw) * -.756);overflow:visible;z-index:0;fill:#06030a;filter:drop-shadow(0 0 5px #59e03c66) drop-shadow(0 0 16px #59e03c33);transform:translateY(calc(var(--tw) * 2.9));animation:intro-hand var(--T) linear forwards}
+.intro-hand .trem{transform-box:view-box;transform-origin:100px 330px;animation:intro-trem .1s linear infinite alternate}
+.intro-hand .h-open{transform-box:view-box;transform-origin:100px 330px;animation:intro-open var(--T) linear forwards}
+.intro-hand .h-fist{opacity:0;animation:intro-fistv var(--T) linear forwards}
+.intro-claws{position:absolute;left:0;top:calc(var(--tw) * -.14);width:100%;aspect-ratio:100/66;overflow:visible;z-index:4;fill:#06030a;filter:drop-shadow(0 0 5px #59e03c77) drop-shadow(0 2px 2px #000d);opacity:0;transform-origin:50% 20%;animation:intro-claw var(--T) linear forwards}
 
 /* earth */
-.intro-mound{position:absolute;left:50%;bottom:calc(9% - 6px);width:min(94vw,580px);height:var(--mound-h);translate:-50% 0;z-index:2;overflow:visible;filter:drop-shadow(0 -4px 14px #6a22c766) drop-shadow(0 6px 8px #000c);opacity:0;animation:intro-mound var(--T) linear forwards}
-.intro-ground{position:absolute;left:0;right:0;bottom:0;width:100%;height:calc(9% + 22px);z-index:1;opacity:0;animation:intro-fade-in .8s ease-out .1s forwards}
-.intro-candles{position:absolute;left:0;right:0;bottom:calc(9% + var(--mound-h) * .18);height:0;z-index:3}
-.intro-candle{position:absolute;left:var(--cx);bottom:0;width:7px;height:16px;border-radius:2px 2px 1px 1px;background:linear-gradient(90deg,#cfc6b6,#8c8576);opacity:0;animation:intro-fade-in .6s ease-out calc(.5s + var(--cd)) forwards}
-.intro-candle::before{content:"";position:absolute;left:50%;bottom:100%;width:8px;height:15px;margin-left:-4px;border-radius:50% 50% 50% 50%/65% 65% 35% 35%;background:radial-gradient(ellipse at 50% 75%,#fff,#d6ffc0 25%,#6fe55a 60%,transparent 80%);filter:drop-shadow(0 0 7px #7dff62);animation:intro-flicker .38s ease-in-out infinite alternate;animation-delay:var(--cd)}
-.intro-dirt{position:absolute;left:50%;bottom:calc(9% + var(--mound-h) * .62);width:0;height:0;z-index:3}
+.intro-mound{position:absolute;left:50%;bottom:calc(var(--gl) - 16px);width:min(98vw,600px);height:var(--mound-h);translate:-50% 0;z-index:2;overflow:visible;-webkit-mask:linear-gradient(#000 70%,transparent);mask:linear-gradient(#000 70%,transparent);filter:drop-shadow(0 -4px 14px #6a22c755);opacity:0;animation:intro-mound var(--T) linear forwards}
+.intro-ground{position:absolute;left:0;right:0;bottom:0;width:100%;height:calc(var(--gl) + 6px);z-index:1;opacity:0;animation:intro-fade-in .8s ease-out .1s forwards}
+.intro-candles{position:absolute;left:0;right:0;bottom:calc(var(--gl) - 30px);height:0;z-index:3}
+.intro-candle{position:absolute;left:var(--cx);bottom:0;width:8px;height:19px;border-radius:2px 2px 1px 1px;background:linear-gradient(90deg,#d8cfbf,#8c8576);opacity:0;animation:intro-fade-in .6s ease-out calc(.5s + var(--cd)) forwards}
+.intro-candle::before{content:"";position:absolute;left:50%;bottom:100%;width:9px;height:17px;margin-left:-4.5px;border-radius:50% 50% 50% 50%/65% 65% 35% 35%;background:radial-gradient(ellipse at 50% 75%,#fff,#d6ffc0 25%,#6fe55a 60%,transparent 80%);filter:drop-shadow(0 0 7px #7dff62);animation:intro-flicker .38s ease-in-out infinite alternate;animation-delay:var(--cd)}
+.intro-dirt{position:absolute;left:50%;bottom:calc(var(--gl) + var(--mound-h) * .5);width:0;height:0;z-index:3}
 .intro-dirt i{position:absolute;width:var(--ds);height:calc(var(--ds) * .8);border-radius:42% 58% 50% 46%;background:#3d2b26;box-shadow:inset -1px -1px 2px #000a;opacity:0;animation:intro-dirt .95s cubic-bezier(.2,.6,.4,1) both}
 .intro-dirt.first i{animation-delay:calc(var(--T) * .2 + var(--dd))}
 .intro-dirt.second i{animation-delay:calc(var(--T) * .56 + var(--dd));animation-duration:1.1s}
-.intro-burst{position:absolute;left:50%;bottom:24%;width:min(120vw,880px);aspect-ratio:1.5;translate:-50% 50%;border-radius:50%;background:radial-gradient(ellipse,#e2ffd4cc 0,#59e03c66 20%,#8d34e844 44%,transparent 70%);filter:url(#intro-wave);opacity:0;animation:intro-burst var(--T) ease-out forwards}
+.intro-burst{position:absolute;left:50%;bottom:calc(var(--gl) + 40px);width:min(120vw,880px);aspect-ratio:1.5;translate:-50% 50%;border-radius:50%;background:radial-gradient(ellipse,#e2ffd4cc 0,#59e03c66 20%,#8d34e844 44%,transparent 70%);filter:url(#intro-wave);opacity:0;animation:intro-burst var(--T) ease-out forwards}
 
 @keyframes intro-fade-in{to{opacity:1}}
 @keyframes intro-ignite{from{opacity:0;translate:0 45%}to{opacity:1;translate:0 0}}
 @keyframes intro-flicker{from{scale:.92 .88}to{scale:1.06 1.08}}
-@keyframes intro-flare{0%,62%{transform:scaleY(1)}69%{transform:scaleY(1.6)}100%{transform:scaleY(1.3)}}
+@keyframes intro-flare{0%{transform:scaleY(.8)}60%{transform:scaleY(1.05)}69%{transform:scaleY(1.45)}100%{transform:scaleY(1.6)}}
 @keyframes intro-ember{0%{opacity:0;transform:translate(0,0)}12%{opacity:1}100%{opacity:0;transform:translate(18px,-62vh)}}
-@keyframes intro-wiggle{from{rotate:-2.4deg}to{rotate:2.4deg}}
 @keyframes intro-mound{0%{opacity:0}10%,19%{opacity:1;transform:none}21%{transform:scale(1.04,.95)}24%,52%{transform:none}54%{transform:scale(1.03,.96)}58%{transform:scale(.98,1.03)}62%{transform:scale(1.04,.95)}66%,100%{opacity:1;transform:none}}
 /* stone: stands, jolts when grabbed, shudders, then is hauled under */
-@keyframes intro-tomb{0%,4%{opacity:0;transform:none}13%,50%{opacity:1;transform:none}51.5%{transform:translate(0,3%) rotate(-1.5deg)}53%{transform:translate(-3px,5%) rotate(1.5deg)}54.5%{transform:translate(3px,5%) rotate(-1.8deg)}56%{opacity:1;transform:translate(0,5%) rotate(0)}59%{transform:translate(2px,36%) rotate(2deg)}66%,100%{opacity:1;transform:translate(0,128%) rotate(-1deg)}}
+@keyframes intro-tomb{0%,4%{opacity:0}13%,100%{opacity:1}}
 @keyframes intro-tomb-glow{0%,40%{opacity:0}52%{opacity:.5}56%{opacity:.3}66%,100%{opacity:1}}
 /* hand: slow creep behind the stone, a stall, then a lunge forward and a hard pull */
-@keyframes intro-hand{0%,20%{transform:translateY(104%)}27%{transform:translateY(80%)}31%{transform:translateY(74%)}40%{transform:translateY(34%)}45%{transform:translateY(8%)}49.5%,50%{transform:translateY(-9%)}51.6%{transform:translateY(19%)}56%{transform:translateY(21%)}59%{transform:translateY(34.7%)}66%{transform:translateY(75.3%)}74%,100%{transform:translateY(110%)}}
-@keyframes intro-front{0%,49.8%{opacity:0}49.9%,100%{opacity:1}}
-@keyframes intro-fold{0%,49.5%{transform:rotate(0) scaleY(1)}50.7%{transform:rotate(0) scaleY(.55)}52.2%,100%{transform:rotate(0) scaleY(.3)}}
-@keyframes intro-fold-thumb{0%,49.5%{transform:rotate(0) scale(1)}50.7%{transform:rotate(0) scale(.6)}52.2%,100%{transform:rotate(0) scale(.45)}}
+@keyframes intro-hand{0%,14%{transform:translateY(calc(var(--tw) * 2.9))}27%{transform:translateY(calc(var(--tw) * 1.25))}31%{transform:translateY(calc(var(--tw) * 1.02))}34%{transform:translateY(calc(var(--tw) * .96))}39%{transform:translateY(calc(var(--tw) * .52))}41%{transform:translateY(calc(var(--tw) * .5))}46%{transform:translateY(calc(var(--tw) * -.25))}49%{transform:translateY(calc(var(--tw) * -.55))}49.8%{transform:translateY(calc(var(--tw) * -.62))}50.5%{transform:translateY(calc(var(--tw) * .06))}51.3%,100%{transform:translateY(calc(var(--tw) * -.12))}}
+@keyframes intro-yank{0%,50%{transform:none}50.6%{transform:translateY(calc(var(--th) * .03))}52%{transform:translateY(calc(var(--th) * .05)) rotate(-1.4deg)}53.5%{transform:translateY(calc(var(--th) * .05)) rotate(1.4deg)}55%{transform:translateY(calc(var(--th) * .04)) rotate(-1.6deg)}56%{transform:translateY(calc(var(--th) * .01)) rotate(0)}59%{transform:translateY(calc(var(--th) * .36)) rotate(2deg)}66%,100%{transform:translateY(calc(var(--th) * 1.3)) rotate(-1deg)}}
+@keyframes intro-trem{from{transform:translate(-.9px,0) rotate(-.6deg)}to{transform:translate(.9px,.4px) rotate(.6deg)}}
+@keyframes intro-open{0%,27%{transform:scaleX(.9);opacity:1}49%{transform:scaleX(1.06);opacity:1}50.3%{transform:scaleX(1.06);opacity:1}50.4%,100%{transform:scaleX(1.06);opacity:0}}
+@keyframes intro-fistv{0%,50.3%{opacity:0}50.4%,100%{opacity:1}}
+@keyframes intro-claw{0%,50.2%{opacity:0;transform:translateY(-16%) scale(1.18)}50.5%{opacity:1;transform:translateY(-6%) scale(1.1)}51.4%,100%{opacity:1;transform:none}}
 @keyframes intro-dirt{0%{opacity:0;transform:translate(0,0) rotate(0)}8%{opacity:1}55%{opacity:1;transform:translate(var(--dx),var(--dy)) rotate(160deg)}100%{opacity:0;transform:translate(calc(var(--dx) * 1.35),calc(var(--dy) * -.15)) rotate(320deg)}}
 @keyframes intro-burst{0%,62%{opacity:0;scale:.3}69%{opacity:1;scale:1}100%{opacity:.45;scale:1.15}}
-@media(prefers-reduced-motion:reduce){.intro-flames,.intro-burst{filter:none}.intro-flames i{animation:none;opacity:.8}.intro-embers{display:none}.intro-hand .fw,.intro-candle::before{animation:none}}
+@media(prefers-reduced-motion:reduce){.intro-flames,.intro-burst{filter:none}.intro-flames i{animation:none;opacity:.8}.intro-embers{display:none}.intro-hand .trem,.intro-candle::before{animation:none}}
