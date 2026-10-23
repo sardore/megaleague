@@ -1,4 +1,6 @@
 import { raidActionBonus } from "../features/boss-raid.js";
+import { totalAttackDecrease } from '../engine/effects.js';
+import { undeadPreventsDeath } from '../engine/status-rules.js';
 import { actionHeuristicCore, chooseAICore } from "./search.js";
 import { activeAbigate, isNonAttackSkill } from "../app/controls.js";
 import { legalActions, other, unitAt, state_engine_actions } from "../engine/actions.js";
@@ -35,6 +37,8 @@ export function actionHeuristic(g, t, s, a) {
       u = unitAt(g, t, s),
       target = a?.target ? unitAt(g, a.target.team, a.target.slot) : null;
     if (!u || a?.type !== "skill") return score + raidActionBonus(g, t, s, a);
+    if (actionSkillHasEffect(a, 'suppressedCurse') && target) score += 90 + totalAttackDecrease(target) * 2 + (u.hp < u.maxHp*.5 ? 40 : 0);
+    if (actionSkillHasEffect(a, 'graveDown') && target) score += target.hp < u.hp && !undeadPreventsDeath(target) ? 450 + target.hp : -600;
     if (actionSkillHasEffect(a, "suctionPad") && target) {
       const allied = teamOf(g, target) === t,
         setup = cardHasCapability(u, "switchLockTrait") && canPayAction(g, t, u, "R*") ? 45 : 22;

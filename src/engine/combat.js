@@ -1,4 +1,6 @@
 import { onRaidUnitDefeated } from "../features/boss-raid.js";
+import { triggerGraveUp } from "../features/weller.js";
+import { healingBecomesDamage, isZombie, undeadPreventsDeath } from './status-rules.js';
 
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_engine_combat = {
@@ -61,6 +63,8 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null) 
     return false;
   }
   u.statuses[s] = Math.max(status(u, s), d);
+  u.statusAppliedTurnSerial ||= {};
+  u.statusAppliedTurnSerial[s] = g.turnSerial;
   log(g, `${u.name}에게 ${state_engine_entities.STATUS[s]} ${d}턴.`);
   queueCombatNotice(g, u, `${state_engine_entities.STATUS[s]} ${d}턴`, "status", presentationMeta);
   if (source) source.statusScore += d;
@@ -68,6 +72,7 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null) 
     ir = t && activeIruma(g, t);
   if (ir && traitsActive(ir)) {
     delete u.statuses[s];
+    delete u.statusAppliedTurnSerial[s];
     log(g, `${ir.name} 특성 · 즉시 상태이상 치료: ${u.name}의 ${state_engine_entities.STATUS[s]} 제거.`);
     queueCombatNotice(g, u, `${state_engine_entities.STATUS[s]} 치료`, "cure");
     heal(g, u, 20, ir, {
@@ -78,6 +83,7 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null) 
   }
   actionFaultHit("status-after");
   if (s === "traitSeal" && typeof reactiveEnergyRule === "function" && reactiveEnergyRule(u)) syncReactiveEnergyMaxHp(g, u, "특성봉인", true);
+  if (s === 'undead' && status(u, s) && isZombie(u)) queueVisual(g, { type: 'wellerFx', phase: 'undeadApply', uid: u.uid, targetUid: u.uid });
   return true;
 }
 export function triggerForcedCleansePenalty(g, target, targetTeam, source = null) {
@@ -305,6 +311,9 @@ export function checkDeath(g, u, killer) {
     fieldSlot = team ? g.teams[team].field.findIndex(x => x?.uid === u.uid) : -1;
   actionFaultHit("death-before");
   if (u.hp <= 0 && !u.dead) {
+    triggerGraveUp(g, u);
+    if (u.hp > 0) return;
+    if (undeadPreventsDeath(u)) { u.hp = 0; return; }
     u.hp = 0;
     u.dead = true;
     clearOwnedField(g, u, "사망");
@@ -392,7 +401,7 @@ export function queueSkillVisual(g, actor, target, skill, effects = []) {
     return;
   }
   if (typeof state_ui_battle_state.game === "undefined" || g !== state_ui_battle_state.game || !actor || !skill) return;
-  if (["lifeRain", "horizonStrike", "lunaShard", "leafBlade", "startSequence"].some(type => skillDefHasEffect(skill, type))) return;
+  if (["lifeRain", "horizonStrike", "lunaShard", "leafBlade", "startSequence", 'suppressedCurse', 'graveDown'].some(type => skillDefHasEffect(skill, type))) return;
   if (skill.vfxTheme) {
     state_ui_battle_state.visualEvents.push({
       type: "marineSkillFx",
@@ -440,7 +449,11 @@ export function reduceAllDamage(u, n, g = state_engine_actions.timeTraitGame || 
   let out = traitsActive(u, g) ? Math.max(0, n - Number(cardCapability(u, "damageReduction", 0))) : Math.max(0, n);
   const fullHpMultiplier = traitsActive(u, g) ? Number(card(u).fullHpDamageMultiplier || 1) : 1;
   if (fullHpMultiplier < 1 && Number(u.hp || 0) >= Number(u.maxHp || 0) - 1e-6) out = Math.ceil(out * fullHpMultiplier);
+  if (hpBarrierStanceActive(g, u)) out = Math.ceil(out * Number(card(u).hpBarrierStance.receivedDamageMultiplier ?? 1));
   return out;
+}
+export function hpBarrierStanceActive(g, unit) {
+  return !!unit && !unit.dead && !!card(unit).hpBarrierStance && traitsActive(unit, g) && (unit.hpProtectionBarriers || []).some(layer => Number(layer.amount) > 0);
 }
 export function absorbHpProtectionBarrier(g, u, n) {
   n = Math.max(0, combatInt(n));
@@ -582,8 +595,20 @@ export function applyHpPortion(g, actor, target, n) {
   let ex = absorbHpProtectionBarrier(g, target, n),
     old = target.hp;
   target.hp -= ex.remainder;
+  if (undeadPreventsDeath(target)) target.hp = Math.max(0, target.hp);
   afterBodyHpChange(g, target, old);
   return ex.absorbed + ex.remainder;
+}
+export function applyHpZeroEffect(g, actor, target, skill, sim = false) {
+  if (!target || target.dead) return 0;
+  const before = { hp: Math.max(0, Number(target.hp)), shield: Number(target.shield || 0) };
+  target.hp = 0;
+  afterBodyHpChange(g, target, before.hp);
+  const event = emitDamageAppliedEvent(g, actor, target, { before, after: { hp: 0, shield: before.shield }, damageType: 'hpZero', skillId: skill.id, skillName: skill.name, sim });
+  publishDamageVisual(g, target, before.hp, { damageEventId: event?.eventId || null, sourceEntityId: actor?.uid || null, skillId: skill.id });
+  if (before.hp > 0) g.noDamageTurns = 0;
+  checkDeath(g, target, actor);
+  return before.hp;
 }
 export function shiftDamage(g, iruma, target, limit = 150) {
   let moved = Math.max(0, Math.min(limit, target.maxHp - target.hp));
@@ -766,6 +791,7 @@ export function dealProportionalDamage(g, actor, target, basis, ratio, skill, si
   return total;
 }
 export function attackPacketWouldDefeatTarget(g, target, finalDamage, effect = {}) {
+  if (undeadPreventsDeath(target) || cardHasCapability(target, 'graveUp') && !target.graveUpConsumed && traitsActive(target, g)) return false;
   let toTarget = Math.max(0, Number(finalDamage || 0));
   if (activeShieldProtector(g, target) && toTarget > 0) toTarget -= Math.floor(toTarget / 2);
   const shield = Math.max(0, Number(target?.shield || 0));
@@ -984,6 +1010,7 @@ export function dealDamageSequence(g, actor, target, amounts, skill, sim = false
 }
 export function heal(g, u, n, source = null, meta = {}) {
   actionFaultHit("healing-before");
+  if (!u || u.dead) return 0;
   if (status(u, "healSeal")) {
     log(g, `${u.name}: 회복봉인으로 회복 실패.`);
     actionFaultHit("healing-after");
@@ -994,6 +1021,11 @@ export function heal(g, u, n, source = null, meta = {}) {
     old = u.hp,
     missingBefore = Math.max(0, u.maxHp - u.hp),
     got = Math.max(0, Math.min(adjusted, missingBefore));
+  if (healingBecomesDamage(u)) {
+    nonAttackDamage(g, u, adjusted, '언데드 · 회복 반전');
+    actionFaultHit('healing-after');
+    return 0;
+  }
   u.hp += got;
   afterBodyHpChange(g, u, old);
   const bonus = adjusted - base;
@@ -1152,11 +1184,13 @@ export function clearStatuses(g, target, source = null) {
     queueCombatNotice(g, target, `${skillName} 기술봉인 치료`, "cure");
   });
   target.statuses = {};
+  target.statusAppliedTurnSerial = {};
   target.skillSeals = {};
   log(g, `${target.name}의 상태이상(기술봉인 포함)이 강제로 해제됨.`);
   let tt = teamOf(g, target);
   if (tt) triggerForcedCleansePenalty(g, target, tt, source);
   if (typeof reactiveEnergyRule === "function" && reactiveEnergyRule(target)) syncReactiveEnergyMaxHp(g, target, "특성 복귀", true);
+  if (target.hp <= 0) checkDeath(g, target, source);
   return true;
 }
 export function clearFieldEnergy(g, actor) {

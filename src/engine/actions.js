@@ -1,4 +1,5 @@
 import { eternaLocksTeam } from "../app/controls.js";
+import { processWellerTurnStart } from '../features/weller.js';
 import { listRaidSkillActions } from "../features/boss-raid.js";
 import { listClockSkillActions, listMemoryActions, timeCurrentSuppressionDomain, timeFieldTimeoras, timeFieldUnits, timeRecordTurnStart } from "../features/timeora.js";
 import { listReactiveEnergyActions, reactiveEnergyRule, reconcileAllReactiveEnergyUnits } from "../features/genocider.js";
@@ -13,12 +14,12 @@ export const state_engine_actions = {
 };
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { heal, queueVisual, traitsActive } from "./combat.js";
-import { collectTargetEnergyEntries, ensureScheduledActionIdentity, halveHpProtectionBarriers, processQueuedHeal, scheduledExecutionId } from "./effects.js";
+import { collectTargetEnergyEntries, ensureScheduledActionIdentity, decayHpProtectionBarriers, processQueuedHeal, scheduledExecutionId } from "./effects.js";
 import { allEnergy, allPaymentPlans, canPay, canPayAction, canPayFrom, canSwitch, energyStore, status, switchCost, switchCostText, totalEnergy, transformedSkillReq, state_engine_energy } from "./energy.js";
-import { card, cardHasCapability, firstSkillByEffect, resolveSkillTargets, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "./entities.js";
+import { battleActionConstraintsMet, card, cardHasCapability, firstSkillByEffect, resolveSkillTargets, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "./entities.js";
 import { log } from "../presentation/audio.js";
 import { timeSyncContinuousTraitStates } from "../presentation/introductions.js";
-import { combatInt, energyAmountText } from "../ui/battle-state.js";
+import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
 export function initializeEngineActions() {
   state_engine_actions.timeTraitGame = null;
   state_engine_actions.timeFeatureReady = false;
@@ -49,7 +50,8 @@ export function prepareCurrentTurn(g) {
         u.queuedSkillCostReduction = 0;
         if (u.turnSkillCostReduction) log(g, `${u.name}: 이번 자기 차례 기술 코스트 ${u.turnSkillCostReduction} 감소.`);
         u.barrierTurnEpoch = (u.barrierTurnEpoch || 0) + 1;
-        halveHpProtectionBarriers(g, u);
+        decayHpProtectionBarriers(g, u);
+        processWellerTurnStart(g, u, g !== state_ui_battle_state.game);
         processQueuedHeal(g, u);
         if (u.fireWingUntil != null && u.turns >= u.fireWingUntil) {
           u.fireWingUntil = null;
@@ -327,6 +329,7 @@ export function legalActions(g, t, s) {
       actions.push(...listCostVariantActions(g, t, s), ...listEnergyInteractionActions(g, t, s), ...listDeepSeaActions(g, t, s), ...listSummonSkillActions(g, t, s), ...listStrikeActions(g, t, s), ...listResonanceActions(g, t, s), ...listReactiveEnergyActions(g, t, s), ...listClockSkillActions(g, t, s), ...listMemoryActions(g, t, s), ...listRaidSkillActions(g, t, s));
     }
     return actions.filter(a => {
+      if (!battleActionConstraintsMet(g, t, s, a)) return false;
       if (!rosterActionAllowed(g, t, s, actor, a)) return false;
       if (status(actor, "freeze") && (a.type === "skill" || a.type === "switch")) return false;
       if (status(actor, "paralyze") && a.type === "gather") return false;
@@ -380,20 +383,12 @@ export function listCostVariantActions(g, t, s) {
     }
     if (skillDefHasEffect(sk, "grandField") && sk.target === "lowestEnergyEnemy") {
       if (canPayAction(g, t, u, sk.cost)) {
-        let enemies = g.teams[other(t)].field.filter(x => x && !x.dead),
-          min = Math.min(...enemies.map(allEnergy));
-        g.teams[other(t)].field.forEach((x, i) => {
-          if (x && !x.dead && Math.abs(allEnergy(x) - min) < 0.001) a.push({
+        for (const target of resolveSkillTargets(g, t, s, u, sk)) a.push({
             type: "skill",
             skill: sk.id,
-            target: {
-              team: other(t),
-              slot: i,
-              uid: x.uid
-            },
+            target,
             label: sk.name
           });
-        });
       }
       continue;
     }

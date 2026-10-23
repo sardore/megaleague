@@ -22,6 +22,7 @@ import { initializeFeaturesSummons } from './features/summons.js';
 import { initializeOnlineEmotes } from './online/emotes.js';
 import { initializeFeaturesFoxious } from './features/foxious.js';
 import { initializeFeaturesElixian } from './features/elixian.js';
+import { initializeFeaturesWeller } from './features/weller.js';
 import { initializeFeaturesDragonMemory } from './features/dragon-memory.js';
 import { initializeFeaturesGenocider } from './features/genocider.js';
 import { initializeOnlineTransport } from './online/transport.js';
@@ -76,6 +77,7 @@ export function initializeApplication() {
   initializeOnlineEmotes();
   initializeFeaturesFoxious();
   initializeFeaturesElixian();
+  initializeFeaturesWeller();
   initializeFeaturesDragonMemory();
   initializeFeaturesGenocider();
   initializeOnlineTransport();

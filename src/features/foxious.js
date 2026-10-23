@@ -7,7 +7,7 @@ export const state_features_foxious = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { enemyTargets, unitAt } from "../engine/actions.js";
 import { dealDamage, queueVisual, traitsActive } from "../engine/combat.js";
-import { canPayAction, costTokens, status, transformedSkillReq } from "../engine/energy.js";
+import { canPayAction, costTokens, parseCost, status, transformedSkillReq } from "../engine/energy.js";
 import { cardHasCapability, clone, firstSkillByEffect, firstSkillByTag, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect } from "../engine/entities.js";
 import { pointForUid } from "./summons.js";
 import { registerOnlineConnectionRoute } from "../online/connection.js";
@@ -45,16 +45,7 @@ export function initializeFeaturesFoxious() {
 }
 export function rawReqFromCost(cost) {
   const tokens = costTokens(cost),
-    req = {
-      R: 0,
-      W: 0,
-      B: 0,
-      any: 0,
-      wb: 0
-    };
-  for (const x of tokens) {
-    if (x === "*") req.any++;else if (x === "WorB") req.wb++;else req[x]++;
-  }
+    req = parseCost(cost);
   return {
     req,
     tokens,

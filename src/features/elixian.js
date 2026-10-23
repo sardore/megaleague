@@ -7,6 +7,7 @@ import { skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { enemyTargets, other, unitAt } from "../engine/actions.js";
 import { afterBodyHpChange, applyStatus, checkDeath, dealDamage, heal, queueVisual, teamOf, traitsActive } from "../engine/combat.js";
 import { addHpProtectionBarrier, memoryOptions } from "../engine/effects.js";
+import { healingBecomesDamage } from '../engine/status-rules.js';
 import { allEnergy, canPayAction, gainEnergy, status } from "../engine/energy.js";
 import { card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillDefHasEffect, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
 import { dmChooseMemoryOption, dmCostLabel, dmLocalTurn } from "./dragon-memory.js";
@@ -289,12 +290,13 @@ export function applyResonanceEffect(g, actor, target, e, skill, ctx) {
     for (const ally of g.teams[t].field || []) {
       if (!ally || ally.dead) continue;
       const adjusted = status(ally, "healSeal") ? 0 : elixianHealAmount(g, ally, 20);
+      const inverted = healingBecomesDamage(ally);
       const got = heal(g, ally, 20, actor, {
           reason: "shining-wind",
           effectId: skill?.id || "shiningWind",
           sim: ctx?.sim
         }),
-        overflow = Math.max(0, adjusted - got);
+        overflow = inverted ? 0 : Math.max(0, adjusted - got);
       healing += got;
       if (overflow > 0) barriers += addHpProtectionBarrier(g, ally, overflow, actor.uid, "elixian");
     }
@@ -312,6 +314,7 @@ export function applyResonanceEffect(g, actor, target, e, skill, ctx) {
       if (!ally || ally.dead) continue;
       const decreaseImmune = traitsActive(ally) && card(ally).statDecreaseImmune;
       ally.attackMod = decreaseImmune ? Math.max(0, Number(ally.attackMod || 0)) : 0;
+      ally.attackDecrease = 0;
       ally.defenseMod = decreaseImmune ? Math.max(0, Number(ally.defenseMod || 0)) : 0;
       ally.defense = ally.baseDefense + ally.defenseMod;
     }

@@ -1,10 +1,12 @@
 import { state_runtime_transactions } from "../runtime/transactions.js";
+import { battleActionConstraintsMet } from './entities.js';
+import { statusTicksThisTurn } from './status-rules.js';
 import { state_runtime_entities } from "../runtime/entities.js";
 import { state_runtime_state } from "../runtime/state.js";
 import { isNonAttackSkill } from "../app/controls.js";
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { effectApply, legalActions, other, prepareCurrentTurn, unitAt, state_engine_actions } from "./actions.js";
-import { applyStatus, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, traitsActive, state_engine_combat } from "./combat.js";
+import { applyStatus, checkDeath, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, traitsActive, state_engine_combat } from "./combat.js";
 import { beginScheduledActionExecution, completeScheduledActionExecution, consumeNaturalGatherProposal, executeScheduled, naturalColors } from "./effects.js";
 import { aliveUnits, bestEnergyReplacementPlan, canPayAction, canPayReq, canSwitch, energyStore, energyValue, findPaymentPlan, gainEnergy, initializeDeployment, parseCost, reqAcceptsCounts, requestTraitEnergy, spendAction, spendFrom, spendPaymentPlan, spendReq, status, switchCost, totalEnergy, state_engine_energy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillsOf, state_engine_entities } from "./entities.js";
@@ -372,6 +374,8 @@ export function execute(g, t, s, action, options = {}) {
 
 // One fixed action path. No per-action closure composition or fallback executor.
 export function runCanonicalBattleAction(g, t, s, action, options = {}) {
+  prepareCurrentTurn(g);
+  if (!battleActionConstraintsMet(g, t, s, action)) return false;
   const energy = systems.EnergyCanonicalizationEngine;
   const before = energy.begin(g, t, s, action, options);
   const overflow = systems.__megaEnergyOverflowChoice;
@@ -404,19 +408,21 @@ export function endTurn(g, t, s, usedSkill) {
     const hadSeal = u ? !!status(u, "traitSeal") : false;
     const summonOwner = !!u && skillsOf(u).some(sk => skillDefHasTag(sk, "summon"));
     const regen = !!u && cardHasCapability(u, "regenerationTrait") && traitsActive(u) && !status(u, "traitSeal");
-    if (regen) for (const st of Object.keys(u.statuses || {})) if (st !== "traitSeal" && u.statuses[st] > 1) u.statuses[st]--;
+    if (regen) for (const st of Object.keys(u.statuses || {})) if (st !== "traitSeal" && u.statuses[st] > 1 && statusTicksThisTurn(g, u, st)) u.statuses[st]--;
     if (u && !u.dead) {
       if (status(u, "burn") && !usedSkill) nonAttackDamage(g, u, 30, "화상");
       for (const st of Object.keys(u.statuses)) {
-        if (u.statuses[st] > 0) {
+        if (u.statuses[st] > 0 && statusTicksThisTurn(g, u, st)) {
           u.statuses[st]--;
           log(g, `${u.name}: ${state_engine_entities.STATUS[st]} ${u.statuses[st]}턴 남음.`);
           if (!u.statuses[st]) {
             delete u.statuses[st];
+            if (u.statusAppliedTurnSerial) delete u.statusAppliedTurnSerial[st];
             queueCombatNotice(g, u, `${state_engine_entities.STATUS[st]} 종료`, "cure");
           }
         }
       }
+      if (u.hp <= 0) checkDeath(g, u);
       for (const sid of Object.keys(u.skillSeals || {})) {
         u.skillSeals[sid]--;
         if (u.skillSeals[sid] <= 0) {
