@@ -2,7 +2,7 @@
    Battle and setup UIs rebuild card markup on every update, which restarts a CSS animation from zero and made the gold
    sweep visibly cut off and jump. Whenever a plus-star banner appears we hand it a negative delay equal to the current
    phase, so a rebuilt card resumes exactly where the old one was. */
-const PERIOD_MS = 2800;
+const PERIOD_MS = 780;
 
 function align(root) {
   const list = [];
