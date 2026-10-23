@@ -484,7 +484,7 @@ export function openSummonGatherChoice(base) {
   const need = totalEnergy(u) + amt - max,
     chosen = new Set(),
     root = state_ui_battle_state.$('#modalContent');
-  root.innerHTML = `<h2>${u.name} · 에너지 모으기</h2><p>이번 수급은 <b>${col}${amt === .5 ? '½' : ''}</b>입니다. 합계 ${energyAmountText(need)} 이상 버릴 에너지를 선택하세요.</p><div id="summonDiscardList" class="choice-list"></div><p id="summonDiscardTotal" class="tiny"></p><div class="choice-list"><button id="summonDiscardNew">새 에너지 버리기</button><button id="summonKeepNew" class="primary" disabled>선택한 에너지 버리고 획득</button><button id="summonGatherCancel">취소</button></div>`;
+  root.innerHTML = `<h2>${u.name} · 에너지 모으기</h2><p>이번 수급은 <b>${col}${amt === .5 ? '½' : ''}</b>입니다. 합계 ${energyAmountText(need)} 이상 버릴 에너지를 선택하세요.</p><div id="summonDiscardList" class="energy summon-discard-energy"></div><p id="summonDiscardTotal" class="tiny"></p><div class="choice-list"><button id="summonDiscardNew">새 에너지 버리기</button><button id="summonKeepNew" class="primary" disabled>선택한 에너지 버리고 획득</button><button id="summonGatherCancel">취소</button></div>`;
   const list = state_ui_battle_state.$('#summonDiscardList'),
     label = state_ui_battle_state.$('#summonDiscardTotal'),
     keep = state_ui_battle_state.$('#summonKeepNew');

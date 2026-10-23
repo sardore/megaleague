@@ -477,8 +477,6 @@ export function playJcVisual(v) {
       blade?.style.setProperty('--beam-length', `${Math.hypot(dx, dy)}px`);
       blade?.style.setProperty('--beam-angle', `${Math.atan2(dy, dx) + (k ? -.04 : .04)}rad`);
     }
-    const pop = visualNode(arena, 'jc-fx fragment-pop', `방어 +${v.defense}`, 1100);
-    positionFx(pop, from);
     return;
   }
   if (v.type === "voltagePrepareFx") {
@@ -490,7 +488,7 @@ export function playJcVisual(v) {
     return;
   }
   if (v.type === "voltageFailFx") {
-    const ring = visualNode(arena, 'jc-fx circuit-ring', '실패', 900);
+    const ring = visualNode(arena, 'jc-fx circuit-ring', '', 900);
     positionFx(ring, from);
     return;
   }

@@ -10,7 +10,7 @@ export const state_presentation_animations = {
 };
 import { other } from "../engine/actions.js";
 import { findUnit, teamOf } from "../engine/combat.js";
-import { actionSkillHasEffect, state_engine_entities } from "../engine/entities.js";
+import { actionSkillHasEffect } from "../engine/entities.js";
 import { playFoxStrikeVisual } from "../features/foxious.js";
 import { playGenociderVisual } from "../features/genocider.js";
 import { playJcVisual } from "../features/summons.js";
@@ -22,7 +22,6 @@ import { combatInt, state_ui_battle_state } from "../ui/battle-state.js";
 import { render } from "../ui/payment.js";
 export function initializePresentationAnimations() {
   state_presentation_animations.HorizonStrikeSequenceOwner = (() => {
-    const remember = entry => entry;
     const phase = (record, name, extra = null) => {
       const item = {
         phase: name,
@@ -84,12 +83,6 @@ export function initializePresentationAnimations() {
         revision: Number(state_ui_battle_state.game?.networkRevision || 0),
         ...failure
       });
-      remember({
-        ...failure,
-        phases: [],
-        failed: true,
-        at: performance.now()
-      });
       return false;
     };
     const place = (node, point) => {
@@ -111,7 +104,7 @@ export function initializePresentationAnimations() {
         palette = moon ? "moon" : "sun",
         source = anchors.source,
         target = anchors.target;
-      const record = remember({
+      const record = ({
         sequenceId: event.vfxSequenceId || null,
         skillId: event.skillId || null,
         sourceInstanceId: event.sourceInstanceId || event.uid || null,
@@ -401,7 +394,6 @@ export function initializePresentationAnimations() {
     });
   })();
   state_presentation_animations.DynamicSkillVfxPresentationOwner = (() => {
-    const remember = entry => entry;
     const fail = (event, reason, code = "VFX_ANCHOR_RESOLUTION_FAILED") => {
       const failure = {
         code,
@@ -418,11 +410,6 @@ export function initializePresentationAnimations() {
         battleId: state_ui_battle_state.game?.battleId || state_ui_battle_state.game?.matchId || null,
         revision: Number(state_ui_battle_state.game?.networkRevision || 0),
         ...failure
-      });
-      remember({
-        ...failure,
-        failed: true,
-        at: performance.now()
       });
       return false;
     };
@@ -492,33 +479,6 @@ export function initializePresentationAnimations() {
         layer.appendChild(impact);
         impactCount++;
       }
-      remember({
-        type: event.type,
-        sequenceId: event.vfxSequenceId || null,
-        sourceProjectileCount: 0,
-        targetTeam,
-        targetFieldElementId: field.elementId,
-        fieldBounds: {
-          left: bounds.left,
-          top: bounds.top,
-          width,
-          height
-        },
-        gradientBounds: {
-          left: bounds.left,
-          top: bounds.top,
-          width,
-          height
-        },
-        targetCount: targetIds.length,
-        impactCount,
-        shardCount,
-        layoutEpoch: field.layoutEpoch,
-        canonicalRngDelta: 0,
-        stages: ["target-field-resolve", "gradient-fade-in", "atmosphere-hold", "shard-materialize", "shard-fall", "target-impact", "damage-popup", "attack-reduction-presentation", "residual-sparkle", "gradient-fade-out", "cleanup"],
-        at: performance.now(),
-        failed: false
-      });
       return impactCount === targetIds.length && shardCount > 0;
     };
     const playSugarSwamp = (event, overlay, snapshot) => {
@@ -541,19 +501,6 @@ export function initializePresentationAnimations() {
         }
         nodeCount++;
       }
-      remember({
-        type: event.type,
-        sequenceId: event.vfxSequenceId || null,
-        targetCount: (event.targetUids || []).length,
-        nodeCount,
-        layoutEpoch: snapshot.layoutEpoch,
-        source: snapshot.source,
-        targets: snapshot.targets,
-        scheduled: !!event.scheduled,
-        stageIndex: Number(event.stageIndex || 0),
-        at: performance.now(),
-        failed: false
-      });
       return nodeCount > 0;
     };
     const playLeafBlade = (event, overlay, snapshot) => {
@@ -587,20 +534,6 @@ export function initializePresentationAnimations() {
           impact.dataset.hitIndex = String(k + 1);
         }
       }
-      remember({
-        type: event.type,
-        sequenceId: event.vfxSequenceId || null,
-        targetCount: 1,
-        projectileCount: hitCount,
-        canonicalHitCount: hitCount,
-        projectileSize: cardScale,
-        layoutEpoch: snapshot.layoutEpoch,
-        source: snapshot.source,
-        targets: snapshot.targets,
-        canonicalRngDelta: 0,
-        at: performance.now(),
-        failed: false
-      });
       return true;
     };
     const play = event => {
@@ -625,6 +558,13 @@ export function initializePresentationAnimations() {
     });
   })();
 }
+// How long the battle flow waits for the long, screen-wide effects (ms).
+const VISUAL_HOLD_MS = {
+  mutualEnergyTrade: 2300,
+  eruptionFx: 2200,
+  huveEarthquake: 2100,
+  mysticBurst: 1900
+};
 export function playVisualsCoreBase() {
   if (typeof systems.ActionFaultInjector === "object") {
     try {
@@ -644,15 +584,8 @@ export function playVisualsCoreBase() {
       throw error;
     }
   }
-  let events = state_ui_battle_state.visualEvents.splice(0),
-    notices = events.filter(v => v.type === "combatNotice");
-  if (false) {
-    notices.forEach((v, i) => TimerManager.setTimeout(() => showCombatNotice(v), i * 90));
-    events.forEach((v, i) => playInstantUnitPopup(v, i * 90));
-    state_ui_battle_state.visualHoldMs = 0;
-    return;
-  }
-  state_ui_battle_state.visualHoldMs = events.some(v => v.type === "mutualEnergyTrade") ? 2300 : events.some(v => v.type === "eruptionFx") ? 2200 : events.some(v => v.type === "huveEarthquake") ? 2100 : events.some(v => v.type === "mysticBurst") ? 1900 : 0;
+  const events = state_ui_battle_state.visualEvents.splice(0);
+  state_ui_battle_state.visualHoldMs = events.reduce((hold, v) => Math.max(hold, VISUAL_HOLD_MS[v.type] || 0), 0);
   events.forEach((v, i) => TimerManager.setTimeout(() => {
     let arena = document.querySelector(".arena");
     if (v.type === "combatNotice") {
@@ -723,7 +656,6 @@ export function playVisualsCoreBase() {
         TimerManager.setTimeout(() => {
           let surge = visualNode(arena, "eruption-surge", "", 1050);
           positionFx(surge, to);
-          visualNode(targetEl, "float-num eruption-boost-text", "강화 분화!", 1050);
         }, 500);
       }
       return;
@@ -871,7 +803,6 @@ export function playVisualsCoreBase() {
           pulse = visualNode(arena, "liferain-pulse", "", 1250);
         positionFx(pulse, pt);
         pulse?.style.setProperty("--rain-color", "#65efbd");
-        visualNode(el, "float-num heal", "생명비", 950);
       }
       for (const uid of v.enemyUids || []) {
         const el = state_presentation_coordinates.battleEntityElement(uid);
@@ -900,47 +831,8 @@ export function playVisualsCoreBase() {
         return;
       }
       if (v.type === "vortexSwapFx") {
-        let sw = visualNode(arena, "abigate-vortex-fx", `색 교환 ${v.swaps || 0}`, 1200);
+        let sw = visualNode(arena, "abigate-vortex-fx", "", 1200);
         positionFx(sw, from);
-        return;
-      }
-      if (actionSkillHasEffect(v, "groundZero")) {
-        arena.classList.remove("groundzero-shake");
-        void arena.offsetWidth;
-        arena.classList.add("groundzero-shake");
-        TimerManager.setTimeout(() => arena.classList.remove("groundzero-shake"), 760);
-        const core = visualNode(arena, "tox-gz-core", "", 1200);
-        positionFx(core, to);
-        for (let r = 0; r < 3; r++) {
-          const ring = visualNode(arena, "tox-gz-ring", "", 1400);
-          positionFx(ring, to);
-          ring?.style.setProperty("--delay", `${r * 105}ms`);
-        }
-        for (let k = 0; k < 12; k++) {
-          const d = visualNode(arena, "tox-gz-dust", "", 1450);
-          positionFx(d, to);
-          d?.style.setProperty("--dust-size", `${7 + k % 4 * 3}px`);
-          d?.style.setProperty("--dust-x", `${Math.cos(k * Math.PI / 6) * (55 + k % 3 * 17)}px`);
-          d?.style.setProperty("--dust-y", `${Math.sin(k * Math.PI / 6) * (42 + k % 4 * 12)}px`);
-          d?.style.setProperty("--delay", `${80 + k * 24}ms`);
-        }
-        visualNode(targetEl, "float-num status-pop", "폭심", 900);
-        if (v.secondaryUid) {
-          const secondEl = state_presentation_coordinates.battleEntityElement(v.secondaryUid);
-          if (secondEl) {
-            const second = state_presentation_coordinates.VfxCoordinateOwner.point(arena, secondEl),
-              dx = second.x - to.x,
-              dy = second.y - to.y;
-            const link = visualNode(arena, "tox-gz-link", "", 900);
-            link?.style.setProperty("--from-x", `${to.x}px`);
-            link?.style.setProperty("--from-y", `${to.y}px`);
-            link?.style.setProperty("--beam-length", `${Math.hypot(dx, dy)}px`);
-            link?.style.setProperty("--beam-angle", `${Math.atan2(dy, dx)}rad`);
-            const burn = visualNode(arena, "tox-gz-burn", "", 1750);
-            positionFx(burn, second);
-            TimerManager.setTimeout(() => visualNode(secondEl, "float-num status-pop", "화상 4", 1000), 320);
-          }
-        }
         return;
       }
       if (actionSkillHasEffect(v, "eternaHeal")) {
@@ -1031,7 +923,6 @@ export function playVisualsCoreBase() {
           TimerManager.setTimeout(() => {
             const ring = visualNode(arena, "abigate-poison-ring", "", 1250);
             positionFx(ring, to);
-            visualNode(targetEl, "float-num status-pop", "독", 900);
           }, 520);
         }
         return;
@@ -1072,7 +963,7 @@ export function playVisualsCoreBase() {
         let el = document.querySelector(`.card[data-uid="${x.uid}"]`);
         let collapse = visualNode(arena, "hube-energy-collapse", "", 1600);
         positionFx(collapse, state_presentation_coordinates.VfxCoordinateOwner.point(arena, el));
-        visualNode(el, "float-num energy-break", `E -${x.amount}`, 900);
+        if (x.amount > 0) visualNode(el, "float-num energy-break", `E -${x.amount}`, 900);
       }
       return;
     }
@@ -1101,8 +992,7 @@ export function playVisualsCoreBase() {
         if (cloud) cloud.style.animationDelay = `${k * 95}ms`;
       });
       if (v.extraR) visualNode(target, "float-num damage", `+${30 * v.extraR}D`, 900);
-      if (v.extraW) visualNode(el, `float-num ${v.healBlocked ? "direct-hp" : "heal"}`, v.healBlocked ? "회복 봉인" : `HP +${v.healed}`, 900);
-      (v.rolls || []).forEach((r, j) => TimerManager.setTimeout(() => visualNode(target, "float-num status-pop", r.ok ? `${state_engine_entities.STATUS[r.status]} 2` : "무효", 900), j * 110));
+      if (v.extraW && !v.healBlocked) visualNode(el, "float-num heal", `HP +${v.healed}`, 900);
       return;
     }
     if (v.type === "mutualEnergyTrade") {
@@ -1120,7 +1010,7 @@ export function playVisualsCoreBase() {
         };
       dropRocks(targetPoint, targetRocks);
       dropRocks(actorPoint, selfRocks, 17);
-      visualNode(target, "float-num energy-break", `에너지 ${v.amount} 제거`, 1000);
+      if (v.amount > 0) visualNode(target, "float-num energy-break", `E -${v.amount}`, 1000);
       TimerManager.setTimeout(() => {
         let crackAt = point => {
           let crack = visualNode(arena, "hube-smack-hp-crack", "", 900);

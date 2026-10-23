@@ -167,13 +167,6 @@ export function playFoxStrikeVisual(v) {
       pop.style.left = `${to.x}px`;
       pop.style.top = `${to.y - 30}px`;
     }
-    if (v.next) {
-      const cyc = visualNode(arena, "fox-strike-cycle", `다음 ${v.next}`, 1150);
-      positionFx(cyc, {
-        x: from.x,
-        y: from.y - 28
-      });
-    }
   }, 190);
 }
 

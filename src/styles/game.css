@@ -2316,11 +2316,6 @@
         border-color: #ff6a24 !important;
         background: linear-gradient(90deg, #2b0909e8, #66170de8) !important;
       }
-      .eruption-boost-text {
-        color: #fff273 !important;
-        font-size: 20px !important;
-        text-shadow: 0 0 6px #ff351b, 0 0 14px #ff9c24, 0 2px 4px #000 !important;
-      }
       .arena.eruption-shake {
         animation: eruptionArenaShake 1.12s linear;
       }
@@ -3498,7 +3493,7 @@
       #testBtn, [data-action="tests"], .judgement-test-ui { display:none !important; }
 
       .vortex-slot-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:10px 0}.vortex-slot-grid button{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:58px}.vortex-slot-grid button span{font-size:11px;opacity:.8}.deeptrio-fx,.eterna-heal-orb,.eterna-r-rise,.abigate-energy-chip,.abigate-vortex-fx{position:absolute;left:var(--fx-x);top:var(--fx-y);pointer-events:none;z-index:80;transform:translate(-50%,-50%)}
-      .deeptrio-fx.suctionPad{width:86px;height:24px;border-radius:50%;background:radial-gradient(ellipse,#7b001fcc 0 25%,#31000ca8 55%,transparent 72%);box-shadow:0 0 24px #d31245;animation:eternaPadClamp 1s ease-out forwards}.eterna-r-rise{font-weight:1000;color:#ff3e63;text-shadow:0 0 10px #ff003c;animation:eternaRRise 1s ease-out forwards}.eterna-heal-orb{width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,#fff 0 8%,#ff254f 22%,#85001f 58%,transparent 72%);filter:drop-shadow(0 0 18px #ff174f);transform:translate(-50%,-50%) scale(var(--orb-scale,1));animation:eternaOrb 1.2s ease-in forwards}.deeptrio-fx.unseal{width:90px;height:90px;border-radius:50%;border:5px solid #7b0b25;box-shadow:inset 0 0 28px #000,0 0 25px #d51a42;animation:toxiousCrack 1.1s ease-in forwards}.deeptrio-fx.groundZero{width:30px;height:30px;border-radius:50%;background:#fff;box-shadow:0 0 15px 8px #ff263f,0 0 48px 28px #8e0018;animation:groundZeroBlast 1.1s ease-out forwards}.deeptrio-fx.dustWave{width:140px;height:32px;border-radius:50%;background:linear-gradient(90deg,transparent,#441018aa,#ad253aaa,transparent);filter:blur(3px);animation:dustWaveFx 1s ease-out forwards}.deeptrio-fx.abyssCannon{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle,#92e9ff,#173b67 45%,#070f22 70%,transparent);box-shadow:0 0 25px #123d72;animation:abyssCannonFx 1s ease-out forwards}.abigate-energy-chip{font-weight:1000;color:#69d9ff;text-shadow:0 0 12px #04152c;animation:deepMindChipFx .9s ease-in forwards}.abigate-vortex-fx{padding:8px 13px;border-radius:999px;background:#061a34dd;color:#83e7ff;border:1px solid #2c6f99;box-shadow:0 0 30px #0e5377;animation:vortexPulse 1.2s ease-out forwards}.deepmind-heal{color:#71f5d0!important}
+      .deeptrio-fx.suctionPad{width:86px;height:24px;border-radius:50%;background:radial-gradient(ellipse,#7b001fcc 0 25%,#31000ca8 55%,transparent 72%);box-shadow:0 0 24px #d31245;animation:eternaPadClamp 1s ease-out forwards}.eterna-r-rise{font-weight:1000;color:#ff3e63;text-shadow:0 0 10px #ff003c;animation:eternaRRise 1s ease-out forwards}.eterna-heal-orb{width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,#fff 0 8%,#ff254f 22%,#85001f 58%,transparent 72%);filter:drop-shadow(0 0 18px #ff174f);transform:translate(-50%,-50%) scale(var(--orb-scale,1));animation:eternaOrb 1.2s ease-in forwards}.deeptrio-fx.unseal{width:90px;height:90px;border-radius:50%;border:5px solid #7b0b25;box-shadow:inset 0 0 28px #000,0 0 25px #d51a42;animation:toxiousCrack 1.1s ease-in forwards}.deeptrio-fx.groundZero{width:30px;height:30px;border-radius:50%;background:#fff;box-shadow:0 0 15px 8px #ff263f,0 0 48px 28px #8e0018;animation:groundZeroBlast 1.1s ease-out forwards}.deeptrio-fx.dustWave{width:140px;height:32px;border-radius:50%;background:linear-gradient(90deg,transparent,#441018aa,#ad253aaa,transparent);filter:blur(3px);animation:dustWaveFx 1s ease-out forwards}.deeptrio-fx.abyssCannon{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle,#92e9ff,#173b67 45%,#070f22 70%,transparent);box-shadow:0 0 25px #123d72;animation:abyssCannonFx 1s ease-out forwards}.abigate-energy-chip{font-weight:1000;color:#69d9ff;text-shadow:0 0 12px #04152c;animation:deepMindChipFx .9s ease-in forwards}.abigate-vortex-fx{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle,transparent 38%,#0e5377aa 60%,transparent 72%);border:3px solid #83e7ff;box-shadow:0 0 30px #0e5377,inset 0 0 18px #2c6f99;animation:vortexPulse 1.2s ease-out forwards}.deepmind-heal{color:#71f5d0!important}
       @keyframes eternaPadClamp{0%{opacity:0;transform:translate(-50%,-50%) scale(1.6,.5)}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-80%) scale(.35,1.2)}}@keyframes eternaRRise{0%{opacity:0;transform:translate(-50%,25px) scale(.5)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-55px) scale(1.3)}}@keyframes eternaOrb{0%{opacity:0}35%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.15)}}@keyframes toxiousCrack{0%{opacity:0;transform:translate(-50%,-50%) scale(1.2)}70%{opacity:1;filter:contrast(2)}100%{opacity:0;transform:translate(-50%,-50%) scale(.05) rotate(40deg)}}@keyframes groundZeroBlast{0%{opacity:1;transform:translate(-50%,-50%) scale(.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(6)}}@keyframes dustWaveFx{0%{opacity:0;transform:translate(-120%,-50%) scaleX(.4)}30%{opacity:1}100%{opacity:0;transform:translate(-10%,-50%) scaleX(1.8)}}@keyframes abyssCannonFx{0%{opacity:0;transform:translate(-50%,-50%) scale(.15)}45%{opacity:1;transform:translate(-50%,-50%) scale(2)}100%{opacity:0;transform:translate(-50%,-50%) scale(4)}}@keyframes deepMindChipFx{0%{opacity:1}100%{opacity:0;transform:translate(-50%,40px) rotate(35deg)}}@keyframes vortexPulse{0%{opacity:0;transform:translate(-50%,-50%) scale(.5) rotate(-20deg)}45%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5) rotate(20deg)}}
 
       /* 2026-07-22 online replay paint-safe, mobile log close, dedicated skill effects */
@@ -3522,49 +3517,12 @@
       }
 
       .arena.groundzero-shake { animation: groundZeroArenaShake .72s steps(2,end); }
-      .tox-gz-core,.tox-gz-ring,.tox-gz-link,.tox-gz-burn,.tox-gz-dust,
-      .liferain-curtain,.liferain-drop,.liferain-pulse,.liferain-mist,
+            .liferain-curtain,.liferain-drop,.liferain-pulse,.liferain-mist,
       .eterna-gather-mote,.eterna-burst-core,.eterna-burst-ring,.eterna-heal-stream,.eterna-heal-arrival,
       .abigate-wave-path,.abigate-low-core,.abigate-poison-ring,.abigate-rwb-mote {
         position:absolute; pointer-events:none; z-index:86;
       }
-      .tox-gz-core {
-        left:var(--fx-x); top:var(--fx-y); width:34px; height:34px; border-radius:50%;
-        background:radial-gradient(circle,#fff 0 10%,#ff5a52 18%,#b8001b 42%,#280006 70%,transparent 74%);
-        box-shadow:0 0 15px 8px #ff3349,0 0 54px 26px #920019;
-        animation:toxGzCore .95s ease-out forwards;
-      }
-      .tox-gz-ring {
-        left:var(--fx-x); top:var(--fx-y); width:44px; height:44px; border-radius:50%;
-        border:5px solid rgba(255,76,82,.9); box-shadow:0 0 18px #ff1f3f,inset 0 0 18px #5e0011;
-        animation:toxGzRing 1.05s cubic-bezier(.1,.65,.2,1) forwards;
-        animation-delay:var(--delay,0ms);
-      }
-      .tox-gz-link {
-        left:var(--from-x); top:var(--from-y); width:var(--beam-length); height:18px;
-        transform-origin:0 50%; transform:rotate(var(--beam-angle)) scaleX(.02);
-        border-radius:999px;
-        background:linear-gradient(90deg,rgba(255,255,255,.9),rgba(255,45,64,.75),rgba(105,0,16,.08));
-        box-shadow:0 0 16px #ff2641; filter:blur(.4px);
-        animation:toxGzLink .62s ease-out forwards;
-      }
-      .tox-gz-burn {
-        left:var(--fx-x); top:var(--fx-y); width:80px; height:80px; border-radius:50%;
-        background:radial-gradient(circle,transparent 28%,rgba(255,60,30,.28) 42%,transparent 68%);
-        border:3px dashed rgba(255,84,30,.78); box-shadow:0 0 22px rgba(255,35,25,.72);
-        animation:toxGzBurn 1.65s ease-out forwards;
-      }
-      .tox-gz-dust {
-        left:var(--fx-x); top:var(--fx-y); width:var(--dust-size,10px); height:var(--dust-size,10px); border-radius:50%;
-        background:#8f1b25; box-shadow:0 0 8px #e93c3c;
-        animation:toxGzDust 1.2s ease-out forwards; animation-delay:var(--delay,0ms);
-      }
       @keyframes groundZeroArenaShake {0%,100%{transform:translate(0)}12%{transform:translate(-5px,2px)}24%{transform:translate(5px,-2px)}38%{transform:translate(-4px,-1px)}52%{transform:translate(4px,2px)}70%{transform:translate(-2px,1px)}}
-      @keyframes toxGzCore {0%{opacity:0;transform:translate(-50%,-50%) scale(.05)}18%{opacity:1;transform:translate(-50%,-50%) scale(.45)}45%{transform:translate(-50%,-50%) scale(2.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(5)}}
-      @keyframes toxGzRing {0%{opacity:0;transform:translate(-50%,-50%) scale(.1)}24%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(6.2);border-width:1px}}
-      @keyframes toxGzLink {0%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(.02)}25%{opacity:1}100%{opacity:0;transform:rotate(var(--beam-angle)) scaleX(1)}}
-      @keyframes toxGzBurn {0%{opacity:0;transform:translate(-50%,-50%) scale(.2) rotate(0)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8) rotate(65deg)}}
-      @keyframes toxGzDust {0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}22%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dust-x)),calc(-50% + var(--dust-y))) scale(2.2)}}
 
       .liferain-curtain {
         inset:0; overflow:hidden; z-index:83;
@@ -3707,11 +3665,6 @@
       /* 모바일/가로·세로 공통: arena의 일반 자식 position:relative 규칙이
          전투 이펙트의 absolute 좌표를 덮어쓰지 못하게 고정한다. */
       .arena > .jc-fx,
-      .arena > .tox-gz-core,
-      .arena > .tox-gz-ring,
-      .arena > .tox-gz-link,
-      .arena > .tox-gz-burn,
-      .arena > .tox-gz-dust,
       .arena > .liferain-curtain,
       .arena > .liferain-pulse,
       .arena > .eterna-gather-mote,
@@ -5813,14 +5766,6 @@
   }
 
   /* Viewport-isolated battle effects and portrait overflow rules. */
-/* 폭시어스 스트라이크의 '다음 색' 알림: positionFx 좌표를 실제 left/top에 연결. */
-  #game.screen.active .arena > .fox-strike-cycle {
-    left: var(--fx-x, 50%) !important;
-    top: var(--fx-y, 50%) !important;
-    max-width: min(180px, calc(100vw - 20px)) !important;
-    white-space: nowrap !important;
-  }
-
   /* 대형 시계가 arena의 문서 overflow를 늘려 빈 스크롤 공간을 만들지 않게 격리. */
   .time-fx-viewport-layer {
     position: fixed !important;
