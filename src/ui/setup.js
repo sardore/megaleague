@@ -483,8 +483,8 @@ export function renderBattleBoard() {
       displayTeam = isLocal ? "P" : "A";
     state_ui_battle_state.$(`#${pre}Slots`).innerHTML = tm.field.map((u, i) => `<div class="slot" data-slotteam="${t}" data-slotindex="${i}">${tm.traps[i] ? '<span class="trap">⚡ 전기태클</span>' : ""}${unitHTML(u, t, i, false, displayTeam)}</div>`).join("");
     if (t !== localSide) {
-      let known = tm.bench.filter(u => u && state_ui_battle_state.game.revealed[t].includes(u.uid)),
-        hidden = tm.bench.filter(u => u && !state_ui_battle_state.game.revealed[t].includes(u.uid)).length,
+      let known = tm.bench.filter(u => u && !u.dead && state_ui_battle_state.game.revealed[t].includes(u.uid)),
+        hidden = tm.bench.filter(u => u && !u.dead && !state_ui_battle_state.game.revealed[t].includes(u.uid)).length,
         parts = known.map((u, i) => unitHTML(u, t, i, true, "A"));
       if (hidden) parts.push(`<div class="unknown-bench"><b>정체불명 후열</b><span>남은 카드 ${hidden}장</span></div>`);
       state_ui_battle_state.$(`#${pre}Bench`).innerHTML = parts.join("") || '<span class="muted">후열 없음</span>';
