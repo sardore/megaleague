@@ -9,7 +9,7 @@
      56-66%  YANK: hand drags the stone down into the earth, dirt sprays
      64%+    grave-green flare over the empty mound
    Waves come from the #intro-wave turbulence filter declared inline in the shell. */
-.startup-intro{--T:4.8s;--tw:min(24vw,128px);--mound-h:min(22vw,130px);position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:hidden;background:#06030c;pointer-events:auto;opacity:1;transition:opacity .55s ease}
+.startup-intro{--T:4.8s;--tw:min(24vw,128px);--mound-h:min(27vw,160px);position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:hidden;background:#06030c;pointer-events:auto;opacity:1;transition:opacity .55s ease}
 .startup-intro.ending{opacity:0}
 .startup-intro[aria-hidden="true"]{pointer-events:none!important}
 .startup-defs{position:absolute;width:0;height:0}
@@ -20,7 +20,6 @@
 /* fire */
 .intro-flames{position:absolute;left:-12%;right:-12%;bottom:0;filter:url(#intro-wave) drop-shadow(0 0 22px #a24dff);-webkit-mask:linear-gradient(0deg,#000 40%,#0009 72%,transparent);mask:linear-gradient(0deg,#000 40%,#0009 72%,transparent);transform-origin:50% 100%;animation:intro-flare var(--T) ease-out forwards}
 .intro-flames.back{height:92%}
-.intro-flames.front{height:32%;z-index:6;-webkit-mask:linear-gradient(0deg,#000 50%,transparent);mask:linear-gradient(0deg,#000 50%,transparent)}
 .intro-flames i{position:absolute;bottom:-8%;width:26%;height:100%;border-radius:50%;background:radial-gradient(ellipse 45% 60% at 50% 100%,#fff 0,#ead0ff 10%,#b866ff 30%,#6a22c7aa 54%,transparent 76%);filter:blur(8px);transform-origin:50% 100%;opacity:0;animation:intro-ignite .9s ease-out forwards,intro-flicker .55s ease-in-out infinite alternate}
 .intro-flames i:nth-child(even){background:radial-gradient(ellipse 45% 60% at 50% 100%,#fff 0,#e1ffd2 10%,#7dee5e 30%,#2f9a2aaa 54%,transparent 76%);animation-duration:.9s,.42s}
 .intro-flames i:nth-child(1){left:0;animation-delay:.2s,0s}
@@ -30,8 +29,6 @@
 .intro-flames i:nth-child(5){left:53%;animation-delay:.3s,.15s}
 .intro-flames i:nth-child(6){left:66%;width:22%;animation-delay:.42s,.25s}
 .intro-flames i:nth-child(7){left:78%;animation-delay:.24s,.12s}
-.intro-flames.front i{width:22%;filter:blur(6px)}
-.intro-flames.front i:nth-child(1){left:4%}.intro-flames.front i:nth-child(2){left:24%}.intro-flames.front i:nth-child(3){left:44%}.intro-flames.front i:nth-child(4){left:62%}.intro-flames.front i:nth-child(5){left:80%}
 .intro-embers{position:absolute;inset:0;z-index:7}
 .intro-embers i{position:absolute;left:var(--ex);bottom:8%;width:4px;height:4px;border-radius:50%;background:#f1ffe8;box-shadow:0 0 8px #7dff62,0 0 16px #b05bff;opacity:0;animation:intro-ember var(--edur) linear var(--ed) infinite}
 .intro-embers i:nth-child(odd){box-shadow:0 0 8px #d29bff,0 0 16px #8d34e8}
@@ -63,18 +60,16 @@
 .intro-tomb-glow{position:absolute;inset:-2px;border-radius:inherit;background:radial-gradient(ellipse at 50% 20%,#e7ffd9,#6fe55aaa 40%,transparent 72%);mix-blend-mode:screen;opacity:0;animation:intro-tomb-glow var(--T) ease-out forwards}
 
 /* hand: one flat fill so it reads as a single silhouette, with flat darker/lighter shapes for form */
-.intro-hand{--hand:#86967e;--hand-dark:#566650;--hand-light:#aebda3;position:absolute;left:50%;bottom:0;width:calc(var(--tw) * 1.5);aspect-ratio:140/330;margin-left:calc(var(--tw) * -.75);overflow:visible;z-index:0;filter:drop-shadow(0 0 7px #59e03c88) drop-shadow(0 5px 6px #000c);transform:translateY(104%);transform-origin:50% 100%;animation:intro-hand var(--T) linear forwards,intro-hand-z var(--T) step-end forwards}
-.intro-hand .hf{fill:var(--hand)}
-.intro-hand .hd{fill:var(--hand-dark);stroke:var(--hand-dark);stroke-width:1.6;stroke-linecap:round}
-.intro-hand .hl{fill:var(--hand-light);opacity:.55}
-.intro-hand .hc{fill:#efe8d2}
+.intro-hand{position:absolute;left:50%;bottom:0;width:calc(var(--tw) * 1.5);aspect-ratio:140/330;margin-left:calc(var(--tw) * -.75);overflow:visible;z-index:0;fill:#07030b;filter:drop-shadow(0 0 1.5px #c8ffb0) drop-shadow(0 0 9px #59e03c99);transform:translateY(104%);transform-origin:50% 100%;animation:intro-hand var(--T) linear forwards}
+.intro-hand.front{z-index:2;opacity:0;animation:intro-hand var(--T) linear forwards,intro-front var(--T) step-end forwards}
 .intro-hand .fw{transform-box:view-box;transform-origin:var(--fx) 118px;transform:rotate(var(--fa));animation:intro-wiggle .34s ease-in-out infinite alternate;animation-delay:var(--wd)}
 .intro-hand .thumbw{transform-origin:40px 172px}
 .intro-hand .fg{transform-box:view-box;transform-origin:var(--fx) 118px;animation:intro-fold var(--T) linear forwards}
 .intro-hand .thumb{transform-origin:40px 172px;animation-name:intro-fold-thumb}
 
 /* earth */
-.intro-mound{position:absolute;left:50%;bottom:9%;width:min(94vw,580px);height:var(--mound-h);translate:-50% 0;z-index:2;border-radius:50% 50% 14% 14%/72% 72% 14% 14%;background:radial-gradient(circle at 22% 38%,#4a3631 0 5%,transparent 6%),radial-gradient(circle at 63% 30%,#3e2c2a 0 4%,transparent 5%),radial-gradient(circle at 78% 55%,#4d3832 0 6%,transparent 7%),radial-gradient(circle at 40% 62%,#2c1f1f 0 7%,transparent 8%),radial-gradient(ellipse at 50% 18%,#3a2a2a,#1d1214 58%,#0d080b);box-shadow:0 -6px 26px #6a22c755,inset 0 8px 18px #7a5a5044;opacity:0;animation:intro-mound var(--T) linear forwards}
+.intro-mound{position:absolute;left:50%;bottom:calc(9% - 6px);width:min(94vw,580px);height:var(--mound-h);translate:-50% 0;z-index:2;overflow:visible;filter:drop-shadow(0 -4px 14px #6a22c766) drop-shadow(0 6px 8px #000c);opacity:0;animation:intro-mound var(--T) linear forwards}
+.intro-ground{position:absolute;left:0;right:0;bottom:0;width:100%;height:calc(9% + 22px);z-index:1;opacity:0;animation:intro-fade-in .8s ease-out .1s forwards}
 .intro-candles{position:absolute;left:0;right:0;bottom:calc(9% + var(--mound-h) * .18);height:0;z-index:3}
 .intro-candle{position:absolute;left:var(--cx);bottom:0;width:7px;height:16px;border-radius:2px 2px 1px 1px;background:linear-gradient(90deg,#cfc6b6,#8c8576);opacity:0;animation:intro-fade-in .6s ease-out calc(.5s + var(--cd)) forwards}
 .intro-candle::before{content:"";position:absolute;left:50%;bottom:100%;width:8px;height:15px;margin-left:-4px;border-radius:50% 50% 50% 50%/65% 65% 35% 35%;background:radial-gradient(ellipse at 50% 75%,#fff,#d6ffc0 25%,#6fe55a 60%,transparent 80%);filter:drop-shadow(0 0 7px #7dff62);animation:intro-flicker .38s ease-in-out infinite alternate;animation-delay:var(--cd)}
@@ -95,10 +90,10 @@
 @keyframes intro-tomb{0%,4%{opacity:0;transform:none}13%,50%{opacity:1;transform:none}51.5%{transform:translate(0,3%) rotate(-1.5deg)}53%{transform:translate(-3px,5%) rotate(1.5deg)}54.5%{transform:translate(3px,5%) rotate(-1.8deg)}56%{opacity:1;transform:translate(0,5%) rotate(0)}59%{transform:translate(2px,36%) rotate(2deg)}66%,100%{opacity:1;transform:translate(0,128%) rotate(-1deg)}}
 @keyframes intro-tomb-glow{0%,40%{opacity:0}52%{opacity:.5}56%{opacity:.3}66%,100%{opacity:1}}
 /* hand: slow creep behind the stone, a stall, then a lunge forward and a hard pull */
-@keyframes intro-hand{0%,20%{transform:translateY(104%) scale(1)}27%{transform:translateY(80%)}31%{transform:translateY(74%)}40%{transform:translateY(34%)}45%{transform:translateY(8%)}49.5%{transform:translateY(-9%) scale(1)}50%{transform:translateY(-9%) scale(1)}51.8%{transform:translateY(24%) scale(1.13) rotate(-3deg)}55.5%{transform:translateY(26%) scale(1.11) rotate(-2deg)}59%{transform:translateY(46%) scale(1.1) rotate(3deg)}66%{transform:translateY(80%) scale(1.08) rotate(0)}74%,100%{transform:translateY(110%) scale(1.08)}}
-@keyframes intro-hand-z{0%{z-index:0}50%,100%{z-index:2}}
-@keyframes intro-fold{0%,49.5%{transform:rotate(0) scaleY(1)}51.8%{transform:rotate(calc(var(--fa) * -.6)) scaleY(.3)}100%{transform:rotate(calc(var(--fa) * -.6)) scaleY(.3)}}
-@keyframes intro-fold-thumb{0%,49.5%{transform:rotate(0) scale(1)}51.8%,100%{transform:rotate(38deg) scale(.7)}}
+@keyframes intro-hand{0%,20%{transform:translateY(104%)}27%{transform:translateY(80%)}31%{transform:translateY(74%)}40%{transform:translateY(34%)}45%{transform:translateY(8%)}49.5%,50%{transform:translateY(-9%)}51.6%{transform:translateY(19%)}56%{transform:translateY(21%)}59%{transform:translateY(34.7%)}66%{transform:translateY(75.3%)}74%,100%{transform:translateY(110%)}}
+@keyframes intro-front{0%,49.8%{opacity:0}49.9%,100%{opacity:1}}
+@keyframes intro-fold{0%,49.5%{transform:rotate(0) scaleY(1)}50.7%{transform:rotate(0) scaleY(.55)}52.2%,100%{transform:rotate(0) scaleY(.3)}}
+@keyframes intro-fold-thumb{0%,49.5%{transform:rotate(0) scale(1)}50.7%{transform:rotate(0) scale(.6)}52.2%,100%{transform:rotate(0) scale(.45)}}
 @keyframes intro-dirt{0%{opacity:0;transform:translate(0,0) rotate(0)}8%{opacity:1}55%{opacity:1;transform:translate(var(--dx),var(--dy)) rotate(160deg)}100%{opacity:0;transform:translate(calc(var(--dx) * 1.35),calc(var(--dy) * -.15)) rotate(320deg)}}
 @keyframes intro-burst{0%,62%{opacity:0;scale:.3}69%{opacity:1;scale:1}100%{opacity:.45;scale:1.15}}
 @media(prefers-reduced-motion:reduce){.intro-flames,.intro-burst{filter:none}.intro-flames i{animation:none;opacity:.8}.intro-embers{display:none}.intro-hand .fw,.intro-candle::before{animation:none}}
