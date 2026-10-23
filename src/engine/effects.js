@@ -728,10 +728,6 @@ export function executeScheduled(g, t, s, u, sim = false) {
       resolveVoltageBurst(g, t, u, target, skill, sim);
       return true;
     }
-    if (sch.kind === "suppressedCurse") {
-      resolveSuppressedCurse(g, u, sch, sim);
-      return true;
-    }
     const scheduledKind = sch.kind;
     if (sch.kind === "bloom") executeBloom(g, t, u, sim);else if (sch.kind === "zigzag") executeZigzag(g, t, u, sim);else {
       let targetTeam = sch.targetTeam || other(t),
@@ -759,6 +755,8 @@ export function executeScheduled(g, t, s, u, sim = false) {
             amount: Number(sch.damage || 0)
           }, sk, sim);
         }
+      } else if (sch.kind === "suppressedCurse") {
+        resolveSuppressedCurse(g, u, sch, target, sim);
       } else if (sch.kind === "hurricane") {
         if (sch.remaining > 1) {
           sch.remaining--;
