@@ -9,14 +9,14 @@ import { registerCardDefinition } from '../ui/deck.js';
 export function initializeFeaturesWeller() {
   const { C, S } = state_catalog_cards;
   registerCardDefinition(C('weller', '웰러', 160, '불사·저주 탱커', '메가리그',
-    '점액막: HP 보호막이 있으면 받는 피해 50% 감소, 상대 단일 대상 기술을 자신에게 집중, 기술 사용·후퇴 불가. 그레이브업: HP 0이 되면 사망 대신 언데드 4턴과 HP 보호막 160을 얻고, 자기 차례 시작마다 보호막 40 감소·HP 40 회복(4회). 1회만 발동.', [
-      S('suppressedCurse', '억누른저주', 'RorB*', '대상 공격력 -10, 자신에게 HP 보호막 60(자기 차례 시작마다 20 감소). 이후 자기 차례 2번 동안 같은 대상 공격력 -10씩, 3번째 자기 차례에 대상의 공격력 감소량 합×4 피해를 주고 감소를 전부 제거.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
+    '점액막: HP 보호막 중 피해 50% 감소, 상대 단일 기술 집중, 기술·후퇴 불가. 그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40·HP +40(4회). 1회만.', [
+      S('suppressedCurse', '억누른저주', 'RorB*', '공격력 -10, 자신 HP 보호막 60(턴마다 -20). 2번 더 -10 후 3번째에 감소 합×4 피해·해제.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
       S('graveDown', '그레이브다운', '****', '대상의 HP가 자신의 HP보다 낮으면 대상 HP를 0으로 만든다. 아니면 실패.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
     ], { grade: '4☆', tags: ['zombie'], releaseOrder: 55,
       hpBarrierStance: { receivedDamageMultiplier: 0.5, tauntSingleTarget: true, blockSkill: true, blockRetreat: true }, graveUp: true,
       traitRules: [
         { description: '점액막: HP 보호막 보유 중 받는 피해 50% 감소·상대 단일 대상 기술 유도·기술 사용 및 후퇴 불가.' },
-        { consumedField: 'graveUpConsumed', description: '그레이브업: HP 0에서 언데드 4턴과 HP 보호막 160. 다음 자기 차례 시작마다 보호막 40 감소·HP 40 회복, 총 4회. 발동 후 제거.' }
+        { consumedField: 'graveUpConsumed', description: '그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40·HP +40(4회). 1회만.' }
       ] }));
   state_ui_cards.CARD_EMOJI_MAP.weller = ['🧟', '🪦'];
 }

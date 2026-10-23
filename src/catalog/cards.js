@@ -74,7 +74,7 @@ export function initializeCatalogCards() {
   }], ["shield"])], {
     shield: 60,
     reflect: 30
-  }), state_catalog_cards.C("stareel", "별장어", 140, "슬롯 통제", "사용자 제작", "마비 면역. 공격 시 33% 크리티컬(150%). 공격·방어 수치 반영이 공격자에게 불리해지면 그 불리한 영향을 무시한다.", [state_catalog_cards.S("tackle", "전기태클", "W", "적 필드 슬롯에 1회용 함정 설치. 다음 출전자는 마비 4턴.", "enemySlot", [{
+  }), state_catalog_cards.C("stareel", "별장어", 140, "슬롯 통제", "사용자 제작", "마비 면역. 공격 시 33% 크리티컬(150%). 공격·방어 수치가 공격자에게 불리하게 반영되면 무시.", [state_catalog_cards.S("tackle", "전기태클", "W", "적 필드 슬롯에 1회용 함정 설치. 다음 출전자는 마비 4턴.", "enemySlot", [{
     type: "slotTrap",
     status: "paralyze",
     duration: 4
@@ -236,7 +236,7 @@ export function initializeCatalogCards() {
     amount: 160
   }, {
     type: "clearFieldEnergy"
-  }], ["damage", "energy", "fieldClear"]), state_catalog_cards.S("smackdown", "스맥다운", "***", "80D 후 선택한 대상의 에너지를 제거하고, 제거량×30 피해를 양쪽에 준다(실드 우선 소모, 초과 피해 이월 없음).", "enemy", [{
+  }], ["damage", "energy", "fieldClear"]), state_catalog_cards.S("smackdown", "스맥다운", "***", "80D 후 대상 에너지 제거, 제거량×30 피해를 양쪽에 줌(실드 우선, 초과 이월 없음).", "enemy", [{
     type: "mutualEnergyTrade",
     baseDamage: 80,
     perEnergyDamage: 30,
@@ -280,7 +280,7 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("sweetna", "스위트나", 170, "독 연속 딜러", "메가리그", "독 비례 공격 +10a. 독에 걸린 적이 스위트나 진영을 공격하면 타격마다 -10a. 적이 상태이상을 강제 해제하면 에너지를 전부 잃는다.", [state_catalog_cards.S("sugarswamp", "슈가스웜프", "R**", "즉시 30D+독3. 이후 자기 차례 두 번을 소비해 지정한 적 슬롯을 자동 반복 공격한다.", "enemy", [{
+  }), state_catalog_cards.C("sweetna", "스위트나", 170, "독 연속 딜러", "메가리그", "독 비례 공격 +10a. 독 걸린 적이 스위트나 진영을 칠 때마다 -10a. 적이 상태이상 강제 해제 시 에너지 전부 상실.", [state_catalog_cards.S("sugarswamp", "슈가스웜프", "R**", "즉시 30D+독3. 이후 자기 차례 두 번을 소비해 지정한 적 슬롯을 자동 반복 공격한다.", "enemy", [{
     type: "damage",
     amount: 30,
     sweetPoisonBonus: true
@@ -303,10 +303,10 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 모든 개별 피해 -40. 즉시 상태이상 치료: 필드 아군에게 새 상태이상이 걸리면 제거하고 개당 HP 20 회복. 회복 확산: 아군을 회복하면 그 대상이 직전에 잃은 HP의 1/3만큼 필드 아군 전체를 추가 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
+  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 개별 피해 -40. 즉시 치료: 필드 아군의 새 상태이상 제거, 개당 HP 20 회복. 회복 확산: 아군 회복 시 그 대상이 직전 잃은 HP의 1/3만큼 필드 아군 전체 추가 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
     type: "shift",
     amount: 150
-  }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 필드 전체 0D, 방어 -10, 감속2. 사용 직전 이루마 HP의 1/3을 회복량으로 삼아 필드 아군에게 원하는 비율로 분배.", "field", [{
+  }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 전체 0D·방어 -10·감속2. 사용 직전 이루마 HP의 1/3을 필드 아군에 원하는 비율로 분배 회복.", "field", [{
     type: "lifeRain"
   }], ["damage", "heal", "status"])], {
     grade: "4☆",
@@ -353,7 +353,7 @@ export function initializeCatalogCards() {
     slowImmune: true,
     nullifyTrait: true,
     baseDefenseTraitBound: true
-  }), state_catalog_cards.C("silvrae", "실브래", 220, "실드 보호 드래곤", "메가리그", "부분 상태이상 면역: 냉동·마비 외 상태이상 면역. 실드 대신피해: 실드 보유 중 아군 공격 피해 절반을 실드로 받음. 기술 사용 시 HP10 회복.", [state_catalog_cards.S("firstGuard", "퍼스트가드", "", "전투 1회. 40D 후 실드120.", "enemy", [{
+  }), state_catalog_cards.C("silvrae", "실브래", 220, "실드 보호 드래곤", "메가리그", "냉동·마비 외 상태이상 면역. 실드 대신피해: 실드 보유 중 아군 공격 피해 절반을 대신 받음. 기술 사용 시 HP10 회복.", [state_catalog_cards.S("firstGuard", "퍼스트가드", "", "전투 1회. 40D 후 실드120.", "enemy", [{
     type: "damage",
     amount: 40
   }, {
@@ -380,7 +380,7 @@ export function initializeCatalogCards() {
     shieldProtector: true,
     skillHeal: 10,
     nullifyTrait: true
-  }), state_catalog_cards.C("flameflower", "화락나리", 190, "에너지 보정 지원", "메가리그", "검정 에너지 차단: 필드에 있는 동안 자기 진영의 2색 이상 무작위 에너지 수급에서 B를 제외한다. 색이 고정된 수급은 영향 없음.", [state_catalog_cards.S("holyFlame", "성은의불꽃", "RW*", "100-대상 에너지×20D(최소0). 감소량만큼 자신 또는 필드 아군 회복.", "enemyHealAlly", [{
+  }), state_catalog_cards.C("flameflower", "화락나리", 190, "에너지 보정 지원", "메가리그", "검정 에너지 차단: 필드 중 자기 진영의 2색 이상 무작위 수급에서 B 제외. 고정 수급은 무관.", [state_catalog_cards.S("holyFlame", "성은의불꽃", "RW*", "100-대상 에너지×20D(최소0). 감소량만큼 자신 또는 필드 아군 회복.", "enemyHealAlly", [{
     type: "holyFlame"
   }], ["damage", "heal"])], {
     grade: "3.5☆",
@@ -388,7 +388,7 @@ export function initializeCatalogCards() {
     formGroup: "horizon",
     baseFormId: "flameflower",
     formFamilyOrder: ["flameflower", "lunari", "horizintal"]
-  }), state_catalog_cards.C("lunari", "루나리", 190, "무작위 에너지·광역 약화", "메가리그", "붉은 에너지 차단: 필드에 있는 동안 자기 진영의 2색 이상 무작위 에너지 수급에서 R을 한 번만 제외한다. 고정 수급은 영향 없음.", [state_catalog_cards.S("lunaShard", "루나샤드", "***", "적 필드 전체. 배치 시작 시 각 대상 에너지 수를 고정해 80-에너지×20D(최소0), 이후 적 진영 공격력 -10.", "field", [{
+  }), state_catalog_cards.C("lunari", "루나리", 190, "무작위 에너지·광역 약화", "메가리그", "붉은 에너지 차단: 필드 중 자기 진영의 2색 이상 무작위 수급에서 R을 한 번 제외. 고정 수급은 무관.", [state_catalog_cards.S("lunaShard", "루나샤드", "***", "적 전체. 시작 시 대상별 에너지 수를 고정해 80-에너지×20D(최소 0), 이후 적 진영 공격력 -10.", "field", [{
     type: "lunaShard"
   }], ["damage", "debuff", "field"])], {
     grade: "3.5☆",
@@ -396,7 +396,7 @@ export function initializeCatalogCards() {
     formGroup: "horizon",
     baseFormId: "flameflower",
     formFamilyOrder: ["flameflower", "lunari", "horizintal"]
-  }), state_catalog_cards.C("horizintal", "호리진탈", 250, "수평선 보호·형태 순환", "메가리그", "끝없는 수평선: HP가 최대 HP 이상이면 같은 진영이 받는 최종 피해 50% 감소(같은 피해 묶음은 시작 시점 기준, 중첩 없음). 시간의 흐름: 자기 차례 종료 시 HP가 절반 이하이고 W·B 수가 다르면 W 우세는 화락나리, B 우세는 루나리로 퇴화.", [state_catalog_cards.S("horizonSun", "호리진썬", "WR*", "40D 후 100D. 두 타격 뒤 화상 2턴.", "enemy", [{
+  }), state_catalog_cards.C("horizintal", "호리진탈", 250, "수평선 보호·형태 순환", "메가리그", "끝없는 수평선: HP가 최대 이상이면 같은 진영 최종 피해 50% 감소(같은 피해 묶음은 시작 시점 기준, 중첩 없음). 시간의 흐름: 차례 종료 시 HP 절반 이하+W·B 수 다르면 W 우세는 화락나리, B 우세는 루나리로 퇴화.", [state_catalog_cards.S("horizonSun", "호리진썬", "WR*", "40D 후 100D. 두 타격 뒤 화상 2턴.", "enemy", [{
     type: "horizonStrike",
     element: "sun",
     status: "burn"
@@ -445,7 +445,7 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("yggdrasil", "이그드라실", 210, "비례 피해·에너지 지원", "메가리그", "생명의 문턱: HP가 140 초과에서 140 이하가 되면 필드 전원의 에너지 1개를 제거하고 WWWW를 얻는다(전투당 2회). 치유의 빛: 에너지를 정확히 1개 또는 3개 얻으면 아군 30 회복, 대상이 없으면 적에게 30 피해.", [state_catalog_cards.S("lifeBurst", "라이프버스트", "***", "대상 현재 HP의 33% 피해. 방어와 피해 난수를 적용하지 않는다.", "enemy", [{
+  }), state_catalog_cards.C("yggdrasil", "이그드라실", 210, "비례 피해·에너지 지원", "메가리그", "생명의 문턱: HP 140 초과→이하 시 필드 전원 에너지 1개 제거, WWWW 획득(전투당 2회). 치유의 빛: 에너지를 정확히 1·3개 얻으면 아군 30 회복(대상 없으면 적 30 피해).", [state_catalog_cards.S("lifeBurst", "라이프버스트", "***", "대상 현재 HP의 33% 피해. 방어와 피해 난수를 적용하지 않는다.", "enemy", [{
     type: "proportionalDamage",
     basis: "current",
     ratio: 0.33
@@ -455,18 +455,18 @@ export function initializeCatalogCards() {
     grade: "4☆",
     thresholdEnergy: true,
     healingLight: true
-  }), state_catalog_cards.C("angel", "천사", 180, "봉인·지속 회복", "메가리그", "이클립스: 첫 출전 상태에서 보유 에너지 수와 보낸 자기 차례 수가 같으면 상대 공격기술 피해를 무효화한다.", [state_catalog_cards.S("lightCandelabra", "빛의촛대", "***", "적: 100D 후 실제 W 지불 수에 따라 특성/회복/기술 봉인 5턴. 아군: W 수에 따라 총 120 지속 회복.", "anyCharacter", [{
+  }), state_catalog_cards.C("angel", "천사", 180, "봉인·지속 회복", "메가리그", "이클립스: 첫 출전 상태에서 보유 에너지 수와 보낸 자기 차례 수가 같으면 상대 공격기술 피해를 무효화한다.", [state_catalog_cards.S("lightCandelabra", "빛의촛대", "***", "적: 100D, W 지불 수에 따라 특성/회복/기술 봉인 5턴. 아군: W 수에 따라 총 120 지속 회복.", "anyCharacter", [{
     type: "lightCandelabra"
   }], ["damage", "heal", "status"])], {
     grade: "3.5☆",
     eclipse: true
   }), state_catalog_cards.C("grange", "그랜지", 240, "필드·예약 딜러", "메가리그", "없음.", [state_catalog_cards.S("grandField", "그랜드필드", "WorB WorB", "에너지가 가장 적은 적에게 40D 후 코스트 변환 필드 전개. 자신과 필드 아군에게 HP 보호막 120.", "lowestEnergyEnemy", [{
     type: "grandField"
-  }], ["damage", "field", "hpProtectionBarrier"]), state_catalog_cards.S("zigzagExcavate", "지그재그굴착", "WBWB", "무적 대기 후 다음 자기 차례에 에너지가 적은 적을 가중치로 5회 선택, 대상별 선택 횟수×40D 단일 공격.", "self", [{
+  }], ["damage", "field", "hpProtectionBarrier"]), state_catalog_cards.S("zigzagExcavate", "지그재그굴착", "WBWB", "무적 대기 후 다음 차례에 에너지 적은 적을 가중치로 5회 선택, 대상별 횟수×40D 단일 공격.", "self", [{
     type: "zigzagExcavate"
   }], ["damage", "scheduled"])], {
     grade: "4☆"
-  }), state_catalog_cards.C("flappis", "플래피스", 270, "선택형 에너지·예약 딜러", "메가리그", "에너지 직조: 자신 피격 시 W1, 아군 피격 시 W½, 기술 사용 시 R1 획득 여부를 매 사건 선택한다. 유연한 몸: 감속을 무효화한다.", [state_catalog_cards.S("hurricaneDive", "허리케인 다이브", "W*+", "기본 W* 후 W를 추가 지불. 추가 0: 즉시30D, 1: 1턴 후100D, 2: 2턴 후170D. 예약은 적 슬롯을 추적한다.", "enemy", [{
+  }), state_catalog_cards.C("flappis", "플래피스", 270, "선택형 에너지·예약 딜러", "메가리그", "에너지 직조: 자신 피격 시 W1, 아군 피격 시 W½, 기술 사용 시 R1 획득 여부를 매번 선택. 유연한 몸: 감속 무효.", [state_catalog_cards.S("hurricaneDive", "허리케인 다이브", "W*+", "기본 W* 후 W 추가 지불: 0개 즉시 30D, 1개 1턴 후 100D, 2개 2턴 후 170D. 예약은 적 슬롯 추적.", "enemy", [{
     type: "hurricaneDive"
   }], ["damage", "scheduled", "variableCost"]), state_catalog_cards.S("cottonHeal", "코튼힐", "R*", "적에게 감속2, 자신 HP30 회복.", "enemy", [{
     type: "status",
@@ -497,11 +497,11 @@ export function initializeCatalogCards() {
         amount: 0.5
       }
     }
-  }), state_catalog_cards.C("eterna", "이터너", 230, "교체 봉쇄·R 연계", "메가리그", "상대 교체 불가: 필드에 살아 있고 특성이 활성화된 동안 상대의 자발적 교체 행동을 막는다. 사망 슬롯 출전은 막지 않는다.", [state_catalog_cards.S("suctionPad", "흡착 발판", "", "자신·아군·적 필드 캐릭터 하나에게 R 1을 부여. 자신 또는 아군 대상이면 비공격 피해 20D.", "anyCharacter", [{
+  }), state_catalog_cards.C("eterna", "이터너", 230, "교체 봉쇄·R 연계", "메가리그", "상대 교체 불가: 생존·특성 활성 중 상대의 자발적 교체를 막음. 사망 슬롯 출전은 허용.", [state_catalog_cards.S("suctionPad", "흡착 발판", "", "자신·아군·적 필드 캐릭터 하나에게 R 1을 부여. 자신 또는 아군 대상이면 비공격 피해 20D.", "anyCharacter", [{
     type: "suctionPad"
   }], ["energy", "support"], {
     nonAttack: true
-  }), state_catalog_cards.S("eternaHeal", "이터너힐", "R*", "대상의 R 수×60D. 피해 후 대상의 R을 전부 제거하고, 실질 피해 절반을 필드 아군에게 나눠 회복. 자신 또는 필드 아군에게 R 1 부여.", "enemy", [{
+  }), state_catalog_cards.S("eternaHeal", "이터너힐", "R*", "대상 R 수×60D 후 R 전부 제거, 실질 피해 절반을 필드 아군에 나눠 회복. 자신·필드 아군에 R 1 부여.", "enemy", [{
     type: "eternaHeal"
   }], ["damage", "heal", "energy"])], {
     grade: "4☆",
@@ -525,9 +525,9 @@ export function initializeCatalogCards() {
     traits: [],
     releaseOrder: 11,
     tags: ["legendary-dragon", "dragon"]
-  }), state_catalog_cards.C("abigate", "아비게이트", 260, "가변 저주·에너지 교환", "메가리그", "다운 프레셔: 상대 독 추가 코스트 *를 명시적 B로 바꾼다. 딥마인드: 자신 또는 아군의 비공격기 사용 후 그 기술 대상을 HP10 회복시키고 상대 필드 에너지 0.5를 제거한다.", [state_catalog_cards.S("abyssCannon", "초저주포", "****-", "0~4개의 에너지를 선택 지불. 4/3/2/1/0개 지불 시 100/60/20/0/0D. 실제 지불 색에 R·W·B가 모두 있으면 독.", "enemy", [{
+  }), state_catalog_cards.C("abigate", "아비게이트", 260, "가변 저주·에너지 교환", "메가리그", "다운 프레셔: 상대 독 추가 코스트 *를 B로 고정. 딥마인드: 자신·아군 비공격기 사용 후 대상 HP 10 회복, 상대 필드 에너지 0.5 제거.", [state_catalog_cards.S("abyssCannon", "초저주포", "****-", "에너지 0~4개 선택 지불: 4/3/2/1/0개에 100/60/20/0/0D. R·W·B가 모두 지불되면 독.", "enemy", [{
     type: "abyssCannon"
-  }], ["damage", "status", "variableCost"]), state_catalog_cards.S("abyssVortex", "심해의소용돌이", "B", "서로 다른 필드 캐릭터 둘을 지정하고, 그 두 대상 사이의 에너지 슬롯 색만 원하는 만큼 교환. 에너지 양과 소유자는 유지.", "self", [{
+  }], ["damage", "status", "variableCost"]), state_catalog_cards.S("abyssVortex", "심해의소용돌이", "B", "서로 다른 필드 캐릭터 둘의 에너지 슬롯 색만 원하는 만큼 교환. 에너지 양·소유자 유지.", "self", [{
     type: "abyssVortex"
   }], ["energy", "support"], {
     nonAttack: true
@@ -537,7 +537,7 @@ export function initializeCatalogCards() {
     tags: ["deepsea-family"],
     downPressure: true,
     deepMind: true
-  }), state_catalog_cards.C("jungles", "정글즈", 270, "소환·에너지 강탈", "메가리그", "재생력: 특성봉인이 아닐 때 자기 차례 종료 시 상태이상 지속시간을 2 감소. 정글진흙: 직접 에너지 모으기는 B만 획득.", [state_catalog_cards.S("vineWhip", "덩굴휩", "*", "20D. 이후 W½ 획득. 전투 첫 사용 또는 상태이상 중이면 대상의 최근 에너지를 강탈.", "enemy", [{
+  }), state_catalog_cards.C("jungles", "정글즈", 270, "소환·에너지 강탈", "메가리그", "재생력: 특성봉인이 아니면 차례 종료 시 상태이상 지속 -2. 정글진흙: 직접 에너지 모으기는 B만 획득.", [state_catalog_cards.S("vineWhip", "덩굴휩", "*", "20D. 이후 W½ 획득. 전투 첫 사용 또는 상태이상 중이면 대상의 최근 에너지를 강탈.", "enemy", [{
     type: "junglesVineWhip"
   }], ["damage", "energy"]), state_catalog_cards.S("summonToucan", "왕부리새", "W*", "왕부리새 소환. HP60, 힐링윙(*)과 쪼아먹기(B*) 사용.", "self", [{
     type: "summonToucan"
@@ -817,7 +817,7 @@ export function initializeCatalogCards() {
     grade: "2☆",
     speed: 3,
     shield: 60
-  }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어 및 외부 에너지 조작 차단. 전류가속: 기본 차례 시작의 완성 W 수만큼 추가 차례. 교류충전과 마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
+  }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{
     type: "circuitArmsBlade"

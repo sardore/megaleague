@@ -391,14 +391,21 @@ export function deckConflictPenalty(ids) {
   if (ids.includes("dragonfish")) penalty -= 35;
   return penalty;
 }
-export function deckScore(ids) {
+/* Mega league has no grade rule, so strength has to come from the score: without it the AI treated a 2☆ like a 4.5☆
+   and brought about two 2☆ cards to every deck. Each star above 2☆ is worth 7 points, with wider noise so mega decks stay varied. */
+export function gradeStrength(c) {
+  const stars = parseFloat(c?.grade);
+  return Number.isFinite(stars) ? Math.max(0, stars - 2) * 7 : 0;
+}
+export function deckScore(ids, league = "mega") {
   let cs = ids.map(id => state_catalog_cards.CARDS.find(c => c.id === id)),
     roles = new Set(cs.map(c => c.role.split(" ")[0])).size,
     expensive = cs.flatMap(c => c.skills).filter(s => parseCost(s.cost).any + parseCost(s.cost).R + parseCost(s.cost).W + parseCost(s.cost).B >= 3).length,
     support = cs.filter(c => c.skills.some(s => s.tags.some(t => ["heal", "shield", "support"].includes(t)))).length,
     tanks = cs.filter(c => c.role.includes("탱커")).length,
     cheap = cs.filter(c => c.skills.some(s => s.tags.includes("damage") && costGap(makeUnit(c.id, "score"), s.cost) <= 1)).length;
-  return roles * 10 + Math.min(1, support) * 12 + Math.min(1, tanks) * 12 + Math.min(2, cheap) * 5 + (expensive ? support * 6 : 0) + deckConflictPenalty(ids);
+  const grade = league === "mega" ? cs.reduce((sum, c) => sum + gradeStrength(c), 0) : 0;
+  return grade + roles * 10 + Math.min(1, support) * 12 + Math.min(1, tanks) * 12 + Math.min(2, cheap) * 5 + (expensive ? support * 6 : 0) + deckConflictPenalty(ids);
 }
 export function arrangeAIDeck(ids) {
   let d = [...ids],
@@ -424,7 +431,7 @@ export function buildAIDeck(seed, league = "mega", composition = state_ui_deck.c
   while (deck.length < 4) {
     const ranked = pool.filter(id => state_ui_deck.LeagueFormatOwner.partialValid([...deck, id], league, composition)).map(id => ({
       id,
-      score: deckScore([...deck, id]) + rng.next() * 4
+      score: deckScore([...deck, id], league) + rng.next() * (league === "mega" ? 12 : 4)
     })).sort((a, b) => b.score - a.score);
     if (!ranked.length) throw new Error(`AI deck composition exhausted: ${league}/${composition}/${deck.join(",")}`);
     const pick = ranked[0].id;
