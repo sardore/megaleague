@@ -4,8 +4,7 @@ export const state_ui_targeting = {
 };
 import { state_runtime_input } from "../runtime/input.js";
 import { unitAt } from "../engine/actions.js";
-import { actionSkillHasTag, actionTargetMagnets } from "../engine/entities.js";
-import { playTargetMagnetVisual } from "../presentation/target-magnet.js";
+import { actionSkillHasTag } from "../engine/entities.js";
 import { state_features_dragon_memory } from "../features/dragon-memory.js";
 import { manualSummonSurfaceContext } from "../online/emotes.js";
 import { systems } from "../runtime/systems.js";
@@ -21,19 +20,6 @@ export function initializeUiTargeting() {
       dragonMemory: !!state_ui_battle_state.pendingSkill?.actions?.some?.(action => actionSkillHasTag(action, "copy")),
       phase: state_ui_battle_state.game?.phase || null
     });
-    /* 대상이 유도 유닛에 몰려 선택 화면이 열리지 않거나 후보가 줄어도, 왜 그런지 바로 보이게 같은 연출을 즉시 재생한다. */
-    const announceTargetMagnets = action => {
-      const g = state_ui_battle_state.game,
-        pair = g?.order?.[g.turn];
-      const actor = pair ? unitAt(g, pair[0], pair[1]) : null;
-      if (!actor || action?.type !== "skill") return;
-      for (const uid of actionTargetMagnets(g, pair[0], actor, action)) playTargetMagnetVisual({
-        uid,
-        sourceUid: actor.uid,
-        targetUid: uid,
-        turnSerial: g.turnSerial || 0
-      });
-    };
     const begin = ({
       actions,
       targets,
@@ -41,7 +27,6 @@ export function initializeUiTargeting() {
       reason = "target-selection"
     }) => {
       if (!Array.isArray(actions) || !actions.length) return false;
-      announceTargetMagnets(actions[0]);
       /* 고를 대상이 하나(또는 없음)면 선택 화면을 열지 않고 바로 진행한다. 대상 선택은 이 한 곳에서만 판단한다. */
       const seen = new Set(),
         unique = (Array.isArray(targets) ? targets : []).filter(target => {

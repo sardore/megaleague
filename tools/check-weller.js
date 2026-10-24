@@ -60,13 +60,9 @@ await check('curse consumes all attack decreases and preserves positive attack b
   const r=await page.evaluate(()=>{const{g,w,prepareOwn}=wellerFixture();probe.combat.nonAttackDamage(g,w,999,'lethal');probe.combat.nonAttackDamage(g,w,260,'chip');const left=w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0);prepareOwn();const hp1=w.hp,b1=w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0);probe.execution.endTurn(g,'P',0,false);prepareOwn();return{left,hp1,b1,hp2:w.hp,b2:w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0)};});
   assert.deepEqual(r,{left:30,hp1:30,b1:0,hp2:30,b2:0});
  });
- await check('a unit forcing single targets announces itself to every acting side: persistent card marker and a text-free one-shot effect',async page=>{
-  const r=await page.evaluate(()=>{const{g,w,target}=wellerFixture();probe.effects.addHpProtectionBarrier(g,w,60,w.uid,'suppressedCurse',{decayPerTurn:20});probe.battle.game=g;probe.battle.visualEvents=[];
-   const magnets=probe.entities.actionTargetMagnets(g,'A',target,{type:'skill',skill:probe.card(target).skills[0].id});
-   const idx=g.order.findIndex(p=>p[0]==='A'&&p[1]===0);g.turn=idx;target.energy=[{c:'R',a:1},{c:'W',a:1},{c:'B',a:1},{c:'R',a:1}];const acts=Megaleague.legalActions(g,'A',0).filter(a=>a.type==='skill'&&a.target?.team==='P');
-   const ok=acts.length?Megaleague.execute(g,'A',0,acts[0],{sim:true}):null;
-   const ev=probe.battle.visualEvents.filter(v=>v.type==='targetMagnetFx');return{magnets:magnets.length,ev:ev.length,evUid:ev[0]?.uid===w.uid,src:ev[0]?.sourceUid===target.uid,text:!!ev[0]?.text,ok};});
-  assert.equal(r.magnets,1);assert.equal(r.ev>=1,true);assert.equal(r.evUid,true);assert.equal(r.src,true);assert.equal(r.text,false);
+ await check('a unit forcing single targets is marked persistently on its card (no one-shot popup)',async page=>{
+  const r=await page.evaluate(()=>{const{g,w}=wellerFixture();probe.battle.game=g;const before=probe.entities.isTargetMagnet(g,w);probe.effects.addHpProtectionBarrier(g,w,60,w.uid,'suppressedCurse',{decayPerTurn:20});const during=probe.entities.isTargetMagnet(g,w);probe.render();const el=document.querySelector(`.battle-unit-card.target-magnet[data-entity-id="${w.uid}"]`);return{before,during,marked:!!el};});
+  assert.deepEqual(r,{before:false,during:true,marked:true});
  });
  await check('undead applied in own action retains four full turns; cleansing at HP zero kills',async page=>{
   const r=await page.evaluate(()=>{const{g,w}=wellerFixture();probe.combat.nonAttackDamage(g,w,999,'lethal');probe.execution.endTurn(g,'P',0,false);const duration=w.statuses.undead;probe.combat.clearStatuses(g,w);return{duration,dead:w.dead,kills:g.teams.P.deathSerial};});
