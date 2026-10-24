@@ -669,11 +669,7 @@ export function initializeOnlineLobby() {
       const title = state_ui_deck.p2p.sessionMode === "matchmaking" ? "자동 매칭 대기실" : `온라인 대전 룸 · ${state_ui_deck.p2p.roomCode}`;
       const currentInvader = currentSelectedInvader(),
         portalAllowed = state_ui_deck.LeagueFormatOwner.invaderAllowed(league, composition);
-      root.innerHTML = `<h2>${title}</h2><p class="tiny muted">${state_ui_deck.LeagueFormatOwner.definition(league).label} · ${state_ui_deck.LeagueFormatOwner.rulesText(league, composition)}</p><p id="roomReadyState">${onlineRoomReadyText()}</p><div id="onlineRoomDeck" class="online-room-grid"></div>${portalAllowed ? state_ui_battle_state.InvaderPortalView.buttonHTML({
-        buttonId: "onlineInvaderPortalButton",
-        selectedId: currentInvader,
-        areaClass: "online-invader-portal-area"
-      }) : ""}<div class="emote-bar"><b>감정 표현</b>${["👍", "🔥", "😮", "😂", "💢", "GG"].map(e => `<button data-emote="${e}">${e}</button>`).join("")}</div><div class="choice-list"><button id="onlineRoomStart" class="primary">${state_ui_deck.p2p.role === "host" ? "전투 시작" : "상대 준비 대기"}</button><button id="onlineRoomLeave">연결 끊기</button></div><p class="tiny muted">시작 화면과 동일한 리그 구성 규칙을 사용합니다. 폼 캐릭터는 이 리그에서 합법인 폼만 전환됩니다.${portalAllowed ? " 침략자는 초차원 포탈에서 최대 한 명 선택할 수 있습니다." : ""}</p>`;
+      root.innerHTML = `<h2>${title}</h2><p class="tiny muted">${state_ui_deck.LeagueFormatOwner.definition(league).label} · ${state_ui_deck.LeagueFormatOwner.rulesText(league, composition)}</p><p id="roomReadyState">${onlineRoomReadyText()}</p><div id="onlineRoomDeck" class="online-room-grid"></div><div class="emote-bar"><b>감정 표현</b>${["👍", "🔥", "😮", "😂", "💢", "GG"].map(e => `<button data-emote="${e}">${e}</button>`).join("")}</div><div class="choice-list"><button id="onlineRoomStart" class="primary">${state_ui_deck.p2p.role === "host" ? "전투 시작" : "상대 준비 대기"}</button><button id="onlineRoomLeave">연결 끊기</button></div><p class="tiny muted">시작 화면과 동일한 리그 구성 규칙을 사용합니다. 폼 캐릭터는 이 리그에서 합법인 폼만 전환됩니다.${portalAllowed ? " 침략자는 초차원 포탈에서 최대 한 명 선택할 수 있습니다." : ""}</p>`;
       const box = document.getElementById("onlineRoomDeck");
       const draw = () => {
         const tiles = [];
@@ -730,6 +726,11 @@ export function initializeOnlineLobby() {
           tiles.push(element);
         }
         syncTileGrid(box, tiles);
+        if (portalAllowed) state_ui_battle_state.InvaderPortalView.ensureTile(box, {
+          buttonId: "onlineInvaderPortalButton",
+          selectedId: currentSelectedInvader(),
+          onOpen: openOnlineInvaderPortal
+        });
         box.querySelectorAll("[data-online-form]").forEach(button => button.onclick = event => {
           event.stopPropagation();
           const group = button.dataset.onlineForm;
@@ -778,8 +779,6 @@ export function initializeOnlineLobby() {
       };
       draw();
       root.querySelectorAll("[data-emote]").forEach(button => button.onclick = () => sendOnlineEmote(button.dataset.emote));
-      const portal = document.getElementById("onlineInvaderPortalButton");
-      if (portal) portal.onclick = openOnlineInvaderPortal;
       document.getElementById("onlineRoomLeave").onclick = () => {
         systems.NetworkEngine.closeOnline({
           reason: "online-room-leave",

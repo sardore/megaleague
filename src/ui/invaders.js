@@ -9,7 +9,7 @@ import { state_ui_battle_state } from "./battle-state.js";
 import { pictogramHTML, state_ui_cards } from "./cards.js";
 import { state_ui_deck } from "./deck.js";
 import { renderSetup, updateDeckSetup, state_ui_setup } from "./setup.js";
-import { tileStarsHTML } from "./tiles.js";
+import { characterTileClass, characterTileInner, morphTile, syncTileGrid, tileStarsHTML } from "./tiles.js";
 export function initializeUiInvaders() {
   /* 제노사이더 시즌 인트로 · 초차원 포탈 · 전용 연출 보강 */
   state_ui_cards.CARD_EMOJI_MAP.genocider = ["💣", "☠️"];
@@ -26,37 +26,58 @@ export function initializeUiInvaders() {
       if (!selectedId) return "없음";
       return state_catalog_cards.CARDS.find(card => card.id === selectedId)?.name || selectedId;
     }
-    static buttonHTML({
+    /* 포탈은 다른 선택 타일과 같은 정사각형 타일이다. 비어 있으면 포탈 문양, 침략자를 고르면 그 캐릭터가 같은 칸에 나타난다. */
+    static tileElement({
       buttonId,
       selectedId = null,
-      areaClass = "invader-portal-area",
-      areaId = ""
+      onOpen
     }) {
-      const safeId = String(selectedId || "");
-      const idAttr = areaId ? ` id="${areaId}"` : "";
-      return `<div${idAttr} class="${areaClass}" data-invader="${safeId}"><button id="${buttonId}" type="button" class="invader-portal-button${this.activeClass(safeId)}" data-invader="${safeId}"><span class="invader-portal-title">초차원 포탈</span><span class="invader-portal-state">현재 침략자: ${this.cardName(safeId)}</span></button></div>`;
+      const card = selectedId ? state_catalog_cards.CARDS.find(c => c.id === selectedId) : null;
+      const tile = document.createElement("div");
+      tile.id = buttonId;
+      tile.setAttribute("role", "button");
+      tile.tabIndex = 0;
+      tile.dataset.portalTile = "1";
+      tile.dataset.tileKey = "__portal";
+      tile.dataset.invader = card ? card.id : "";
+      tile.dataset.cardId = card ? card.id : "";
+      tile.title = card ? `초차원 포탈 · ${card.name}` : "초차원 포탈";
+      tile.className = card ? characterTileClass(card, null, "portal-tile") : "char-tile portal-tile portal-empty";
+      tile.innerHTML = card ? characterTileInner(card, null) : `<i class="tile-gold" aria-hidden="true"></i><div class="tile-art"><i class="portal-glyph"></i></div><span class="tile-stars"></span><i class="tile-order"></i><div class="tile-corner"></div><b class="tile-name">초차원 포탈</b>`;
+      tile.onclick = onOpen || null;
+      tile.onkeydown = event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          tile.onclick?.(event);
+        }
+      };
+      return tile;
     }
-    static mountAfter(anchorElement, options) {
-      if (!anchorElement) return null;
-      const oldArea = options.areaId ? document.getElementById(options.areaId) : null;
-      const holder = document.createElement("div");
-      holder.innerHTML = this.buttonHTML(options);
-      const area = holder.firstElementChild;
-      if (oldArea) oldArea.replaceWith(area);else anchorElement.insertAdjacentElement("afterend", area);
-      const button = area.querySelector(`#${options.buttonId}`);
-      if (button && typeof options.onOpen === "function") button.onclick = options.onOpen;
-      return area;
+    static ensureTile(grid, options) {
+      if (!grid) return null;
+      const old = grid.querySelector(":scope > [data-portal-tile]");
+      const neu = this.tileElement(options);
+      if (!old) {
+        grid.prepend(neu);
+        return neu;
+      }
+      morphTile(old, neu);
+      if (grid.firstElementChild !== old) grid.prepend(old);
+      return old;
+    }
+    static removeTile(grid) {
+      grid?.querySelector(":scope > [data-portal-tile]")?.remove();
     }
     static sync(buttonId, selectedId = null) {
-      const button = document.getElementById(buttonId);
-      if (!button) return;
-      const safeId = String(selectedId || "");
-      button.dataset.invader = safeId;
-      button.parentElement?.setAttribute("data-invader", safeId);
-      button.classList.toggle("portal-active-selection", !!safeId);
-      const state = button.querySelector(".invader-portal-state");
-      if (state) state.textContent = `현재 침략자: ${this.cardName(safeId)}`;
+      const tile = document.getElementById(buttonId);
+      if (!tile?.dataset.portalTile) return;
+      morphTile(tile, this.tileElement({
+        buttonId,
+        selectedId,
+        onOpen: tile.onclick
+      }));
     }
+    /* 선택창: 침략자도 같은 정사각형 타일. 타일을 누르면 아래 상세가 바뀌고, 적용하면 포탈 타일에 그 캐릭터가 나타난다. */
     static renderSelector({
       prefix,
       index = 0,
@@ -78,12 +99,39 @@ export function initializeUiInvaders() {
       const normalized = (Number(index) % list.length + list.length) % list.length;
       const card = list[normalized];
       const chosen = String(selectedId || "") === card.id;
-      const previewClass = `invader-preview${chosen ? " portal-invader-selected" : ""}`;
-      root.innerHTML = `<div class="invader-selector"><div class="invader-selector-head"><h2>초차원 포탈</h2><span class="invader-tag">침략자 ${normalized + 1}/${list.length}</span></div><div class="invader-carousel"><div class="${previewClass}" data-card-id="${card.id}"><div class="invader-stage"><i class="portal-ring r1"></i><i class="portal-ring r2"></i><i class="portal-ring r3"></i><i class="portal-core"></i><div class="invader-art">${pictogramHTML("default", card.id)}</div>${list.length > 1 ? `<button id="${prefix}Prev" class="invader-arrow invader-prev" type="button" aria-label="이전 침략자">&#8249;</button><button id="${prefix}Next" class="invader-arrow invader-next" type="button" aria-label="다음 침략자">&#8250;</button>` : ""}</div><div class="invader-name"><h3>${card.name}</h3>${tileStarsHTML(card.grade)}<div class="invader-tag">${card.faction || "초차원의 침략자"}</div></div><div class="invader-preview-grid"><span><i>HP</i><b>${card.maxHp}</b></span><span><i>최대E</i><b>${card.maxEnergy}</b></span></div><section class="invader-sec"><h4>특성</h4><p>${card.trait || "없음"}</p></section><section class="invader-sec"><h4>기술</h4>${invaderSkillSummary(card)}</section></div></div><div class="invader-dots" aria-hidden="true" ${list.length > 1 ? "" : "hidden"}>${list.map((_, k) => `<i class="${k === normalized ? "on" : ""}"></i>`).join("")}</div><div class="invader-selector-actions"><button id="${prefix}Apply" class="primary" type="button">${chosen ? "선택 유지" : "적용"}</button><button id="${prefix}Clear" type="button" ${selectedId ? "" : "disabled"}>선택 해제</button><button id="${prefix}Cancel" type="button">취소</button></div></div>`;
-      const prevButton = document.getElementById(`${prefix}Prev`),
-        nextButton = document.getElementById(`${prefix}Next`);
-      if (prevButton) prevButton.onclick = () => onIndex(normalized - 1);
-      if (nextButton) nextButton.onclick = () => onIndex(normalized + 1);
+      const detailHTML = `<div class="invader-preview${chosen ? " portal-invader-selected" : ""}" data-card-id="${card.id}"><div class="invader-stage"><i class="portal-ring r1"></i><i class="portal-ring r2"></i><i class="portal-ring r3"></i><i class="portal-core"></i><div class="invader-art">${pictogramHTML("default", card.id)}</div></div><div class="invader-name"><h3>${card.name}</h3>${tileStarsHTML(card.grade)}<div class="invader-tag">${card.faction || "초차원의 침략자"}</div></div><div class="invader-preview-grid"><span><i>HP</i><b>${card.maxHp}</b></span><span><i>최대E</i><b>${card.maxEnergy}</b></span></div><section class="invader-sec"><h4>특성</h4><p>${card.trait || "없음"}</p></section><section class="invader-sec"><h4>기술</h4>${invaderSkillSummary(card)}</section></div>`;
+      const actionsHTML = `<button id="${prefix}Apply" class="primary" type="button">${chosen ? "선택 유지" : "적용"}</button><button id="${prefix}Clear" type="button" ${selectedId ? "" : "disabled"}>선택 해제</button><button id="${prefix}Cancel" type="button">취소</button>`;
+      const tiles = list.map((c, k) => {
+        const tile = document.createElement("div");
+        const applied = String(selectedId || "") === c.id;
+        tile.className = characterTileClass(c, null, "invader-pick", applied ? "selected" : "", k === normalized ? "focused" : "");
+        tile.dataset.tileKey = c.id;
+        tile.dataset.cardId = c.id;
+        tile.setAttribute("role", "button");
+        tile.tabIndex = 0;
+        tile.innerHTML = characterTileInner(c, null, {
+          slotIndex: applied ? 0 : -1
+        });
+        tile.onclick = () => onIndex(k);
+        tile.onkeydown = event => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onIndex(k);
+          }
+        };
+        return tile;
+      });
+      let shell = root.querySelector(`.invader-selector[data-prefix="${prefix}"]`);
+      if (shell) {
+        /* 같은 선택창이 열려 있으면 타일은 그대로 두고 상세·강조만 바꾼다. */
+        syncTileGrid(shell.querySelector(".invader-tile-grid"), tiles);
+        shell.querySelector(".invader-detail").innerHTML = detailHTML;
+        shell.querySelector(".invader-selector-actions").innerHTML = actionsHTML;
+      } else {
+        root.innerHTML = `<div class="invader-selector" data-prefix="${prefix}"><div class="invader-selector-head"><h2>초차원 포탈</h2><span class="invader-tag">침략자 ${list.length}명</span></div><div class="invader-tile-grid cards-grid"></div><div class="invader-detail">${detailHTML}</div><div class="invader-selector-actions">${actionsHTML}</div></div>`;
+        shell = root.querySelector(".invader-selector");
+        shell.querySelector(".invader-tile-grid").replaceChildren(...tiles);
+      }
       document.getElementById(`${prefix}Apply`).onclick = () => onApply(card.id, normalized);
       document.getElementById(`${prefix}Clear`).onclick = onClear;
       document.getElementById(`${prefix}Cancel`).onclick = onCancel;
@@ -138,17 +186,14 @@ export function syncInvaderPortalState() {
 }
 export function mountInvaderPortal() {
   if (!state_ui_battle_state.InvaderPortalView) return;
-  document.querySelectorAll('#deckCards [data-card-id="genocider"]').forEach(x => x.remove());
-  const area = document.getElementById("invaderPortalArea");
-  if (!state_ui_deck.LeagueFormatOwner.invaderAllowed(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)) {
-    area?.remove();
-    return;
-  }
+  document.querySelectorAll('#deckCards [data-card-id="genocider"]:not([data-portal-tile])').forEach(x => x.remove());
   const deckCards = document.getElementById("deckCards");
   if (!deckCards) return;
-  state_ui_battle_state.InvaderPortalView.mountAfter(deckCards, {
-    areaId: "invaderPortalArea",
-    areaClass: "invader-portal-area",
+  if (!state_ui_deck.LeagueFormatOwner.invaderAllowed(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)) {
+    state_ui_battle_state.InvaderPortalView.removeTile(deckCards);
+    return;
+  }
+  state_ui_battle_state.InvaderPortalView.ensureTile(deckCards, {
     buttonId: "invaderPortalButton",
     selectedId: currentSelectedInvader(),
     onOpen: openInvaderPortal

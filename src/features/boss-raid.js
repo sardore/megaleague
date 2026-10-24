@@ -1389,11 +1389,7 @@ function showBossDeckPicker(count = 4, online = false) {
   if (!root) return;
   delete root.dataset.bossLobbySubview;
   const currentInvader = bossCurrentInvader();
-  root.innerHTML = `<div class="boss-lobby"><h2>${online ? "붉은 레이드 온라인 대기실" : "솔로 레이드 덱 편성"}</h2><div id="bossDeckStatus" class="boss-lobby-status"></div><div id="bossDeckGrid" class="boss-deck-grid"></div>${state_ui_battle_state.InvaderPortalView.buttonHTML({
-    buttonId: "bossInvaderPortalButton",
-    selectedId: currentInvader,
-    areaClass: "online-invader-portal-area"
-  })}<div class="choice-list"><button id="bossDeckConfirm" class="primary">${online ? "준비 완료" : "보스전 시작"}</button><button id="bossDeckBack">뒤로</button></div><p class="tiny muted">타임오러는 편성할 수 없습니다. 침략자는 초차원 포탈에서 최대 한 명만 선택합니다. ${online ? "각 플레이어가 2명을 선택하며 자기 슬롯·폼·PlusStar만 조작합니다." : "4명을 선택하며 PlusStar는 덱에서 최대 한 명입니다."}</p></div>`;
+  root.innerHTML = `<div class="boss-lobby"><h2>${online ? "붉은 레이드 온라인 대기실" : "솔로 레이드 덱 편성"}</h2><div id="bossDeckStatus" class="boss-lobby-status"></div><div id="bossDeckGrid" class="boss-deck-grid"></div><div class="choice-list"><button id="bossDeckConfirm" class="primary">${online ? "준비 완료" : "보스전 시작"}</button><button id="bossDeckBack">뒤로</button></div><p class="tiny muted">타임오러는 편성할 수 없습니다. 침략자는 초차원 포탈에서 최대 한 명만 선택합니다. ${online ? "각 플레이어가 2명을 선택하며 자기 슬롯·폼·PlusStar만 조작합니다." : "4명을 선택하며 PlusStar는 덱에서 최대 한 명입니다."}</p></div>`;
   const draw = () => {
     const drawScroll = typeof captureOnlineLobbyScroll === "function" ? captureOnlineLobbyScroll("boss") : null;
     const inv = bossCurrentInvader(),
@@ -1441,12 +1437,15 @@ function showBossDeckPicker(count = 4, online = false) {
     state_engine_entities.PlusStarBannerPresentationOwner.sync(grid, bossPlusContext, bossRaidSelection, bossPlusStarSelection);
     const confirm = document.getElementById("bossDeckConfirm");
     if (confirm) confirm.disabled = !bossDeckValid(bossRaidSelection, count);
-    state_ui_battle_state.InvaderPortalView.sync("bossInvaderPortalButton", bossCurrentInvader());
+    state_ui_battle_state.InvaderPortalView.ensureTile(grid, {
+      buttonId: "bossInvaderPortalButton",
+      selectedId: bossCurrentInvader(),
+      onOpen: () => bossRenderInvaderPortal(count, online, 0)
+    });
     if (online) bossRefreshOnlineLobby();
     if (typeof restoreOnlineLobbyScroll === "function") restoreOnlineLobbyScroll("boss", drawScroll);
   };
   draw();
-  document.getElementById("bossInvaderPortalButton").onclick = () => bossRenderInvaderPortal(count, online, 0);
   document.getElementById("bossDeckBack").onclick = () => online ? bossCancelMatchmaking() : showBossRaidMenu();
   document.getElementById("bossDeckConfirm").onclick = () => {
     if (!bossDeckValid(bossRaidSelection, count)) return;

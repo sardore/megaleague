@@ -38,7 +38,7 @@ const TONE = /grade-t\d+/;
 function toneOf(el) {
   return (el.className.match(TONE) || [""])[0];
 }
-function morphTile(old, neu) {
+export function morphTile(old, neu) {
   const regrade = toneOf(old) !== toneOf(neu) || old.classList.contains("plus-star") !== neu.classList.contains("plus-star");
   const swapped = old.dataset.cardId !== neu.dataset.cardId || old.querySelector(".tile-art")?.innerHTML !== neu.querySelector(".tile-art")?.innerHTML;
   const keep = ["tile-regrade", "tile-swap"].filter(name => old.classList.contains(name));
@@ -68,10 +68,12 @@ function morphTile(old, neu) {
 export function syncTileGrid(container, items) {
   if (!container) return;
   const next = typeof items === "string" ? [...Object.assign(document.createElement("template"), { innerHTML: items }).content.children] : [...items];
-  const old = [...container.children];
+  /* 초차원 포탈 타일([data-portal-tile])은 항상 맨 앞 칸으로 유지하고 일반 타일 비교에서만 뺀다. */
+  const portal = container.querySelector(":scope > [data-portal-tile]");
+  const old = [...container.children].filter(el => el !== portal);
   const same = old.length === next.length && next.length > 0 && next.every((el, i) => el.dataset.tileKey && el.dataset.tileKey === old[i].dataset.tileKey);
   if (!same) {
-    container.replaceChildren(...next);
+    container.replaceChildren(...(portal ? [portal] : []), ...next);
     return;
   }
   next.forEach((el, i) => morphTile(old[i], el));
