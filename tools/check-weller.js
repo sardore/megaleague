@@ -56,6 +56,10 @@ await check('curse consumes all attack decreases and preserves positive attack b
   const r=await page.evaluate(()=>{const{g,w,prepareOwn}=wellerFixture();probe.combat.nonAttackDamage(g,w,999,'lethal');const initial={hp:w.hp,dead:w.dead,undead:w.statuses.undead,barrier:w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0),consumed:w.graveUpConsumed};const rows=[];for(let i=0;i<4;i++){prepareOwn();rows.push([w.hp,w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0)]);probe.execution.endTurn(g,'P',0,false);}probe.combat.nonAttackDamage(g,w,999,'second lethal');return{initial,rows,dead:w.dead,undead:w.statuses.undead||0};});
   assert.deepEqual(r.initial,{hp:0,dead:false,undead:4,barrier:160,consumed:true});assert.deepEqual(r.rows,[[40,120],[80,80],[120,40],[160,0]]);assert.equal(r.dead,true);assert.equal(r.undead,0);
  });
+ await check('Grave Up heals exactly the barrier it loses: absorbed damage is not refunded',async page=>{
+  const r=await page.evaluate(()=>{const{g,w,prepareOwn}=wellerFixture();probe.combat.nonAttackDamage(g,w,999,'lethal');probe.combat.nonAttackDamage(g,w,260,'chip');const left=w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0);prepareOwn();const hp1=w.hp,b1=w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0);probe.execution.endTurn(g,'P',0,false);prepareOwn();return{left,hp1,b1,hp2:w.hp,b2:w.hpProtectionBarriers.reduce((n,l)=>n+l.amount,0)};});
+  assert.deepEqual(r,{left:30,hp1:30,b1:0,hp2:30,b2:0});
+ });
  await check('undead applied in own action retains four full turns; cleansing at HP zero kills',async page=>{
   const r=await page.evaluate(()=>{const{g,w}=wellerFixture();probe.combat.nonAttackDamage(g,w,999,'lethal');probe.execution.endTurn(g,'P',0,false);const duration=w.statuses.undead;probe.combat.clearStatuses(g,w);return{duration,dead:w.dead,kills:g.teams.P.deathSerial};});
   assert.deepEqual(r,{duration:4,dead:true,kills:1});
@@ -69,8 +73,8 @@ await check('curse consumes all attack decreases and preserves positive attack b
   assert.deepEqual(r,{equal:160,dead:true,shield:900,held:true,undead:4,barrier:160});
  });
  await check('snapshot restore retains recovery, curse schedule, consumed trait and undead',async page=>{
-  const r=await page.evaluate(()=>{const{g,w,apply}=wellerFixture();apply('suppressedCurse');probe.combat.nonAttackDamage(g,w,999,'lethal');probe.battle.game=g;const state=probe.serializeOnlineGame();const restored=probe.state_runtime_snapshots.OnlineSnapshotEngine.restoreState(state,{source:'test'});const u=restored.teams.P.field[0];probe.combat.checkDeath(restored,u);return{undead:u.statuses.undead,remaining:u.graveUpRecovery.remaining,curses:u.scheduledAction?.kind==='suppressedCurse'?1:0,consumed:u.graveUpConsumed,dead:u.dead,kills:restored.teams.P.deathSerial||0};});
-  assert.deepEqual(r,{undead:4,remaining:4,curses:1,consumed:true,dead:false,kills:0});
+  const r=await page.evaluate(()=>{const{g,w,apply}=wellerFixture();apply('suppressedCurse');probe.combat.nonAttackDamage(g,w,999,'lethal');probe.battle.game=g;const state=probe.serializeOnlineGame();const restored=probe.state_runtime_snapshots.OnlineSnapshotEngine.restoreState(state,{source:'test'});const u=restored.teams.P.field[0];probe.combat.checkDeath(restored,u);return{undead:u.statuses.undead,barrier:u.hpProtectionBarriers.filter(x=>x.healOnDecay==='graveUp').reduce((n,x)=>n+x.amount,0),curses:u.scheduledAction?.kind==='suppressedCurse'?1:0,consumed:u.graveUpConsumed,dead:u.dead,kills:restored.teams.P.deathSerial||0};});
+  assert.deepEqual(r,{undead:4,barrier:160,curses:1,consumed:true,dead:false,kills:0});
  });
  await check('persistent purple aura survives redraw and disappears on cure; skills render at the target',async page=>{
   await page.waitForSelector('#startupIntro',{state:'detached'});
@@ -88,13 +92,13 @@ await check('curse consumes all attack decreases and preserves positive attack b
  await check('remote undead state rebuilds the aura and a retried effect renders once',async page=>{
   const r=await page.evaluate(async()=>{
     const p=probe,sent=p.setupGuest(),incoming=JSON.parse(p.serializeOnlineGame());
-    const unit=incoming.teams.P.field[0];unit.card='weller';unit.maxHp=160;unit.hp=0;unit.statuses.undead=4;unit.graveUpConsumed=true;unit.graveUpRecovery={remaining:4,amount:40};unit.hpProtectionBarriers=[{amount:160,kind:'graveUp',decayPerTurn:40,sourceUid:unit.uid}];
+    const unit=incoming.teams.P.field[0];unit.card='weller';unit.maxHp=160;unit.hp=0;unit.statuses.undead=4;unit.graveUpConsumed=true;unit.hpProtectionBarriers=[{amount:160,kind:'graveUp',decayPerTurn:40,healOnDecay:'graveUp',sourceUid:unit.uid}];
     const message={type:'authoritativeState',mode:'PVP',matchId:'visual-test',revision:7,state:JSON.stringify(incoming),turn:incoming.turn,turnSerial:incoming.turnSerial,visualPacketId:'weller-retry',visuals:[{type:'wellerFx',phase:'graveUp',uid:unit.uid,targetUid:unit.uid}]};
     let count=0;const observer=new MutationObserver(rs=>{for(const r of rs)for(const n of r.addedNodes)if(n.classList?.contains('weller-graveUp'))count++;});observer.observe(document.body,{childList:true,subtree:true});
     p.snapshots.applyAuthoritativeOnlineState(message);await new Promise(r=>setTimeout(r,100));p.snapshots.applyAuthoritativeOnlineState(message);await new Promise(r=>setTimeout(r,100));observer.disconnect();
-    return{count,aura:document.querySelectorAll('.undead-aura').length,ack:sent.some(m=>m.visualAckIds?.includes('weller-retry')),hp:p.battle.game.teams.P.field[0].hp,remaining:p.battle.game.teams.P.field[0].graveUpRecovery.remaining};
+    return{count,aura:document.querySelectorAll('.undead-aura').length,ack:sent.some(m=>m.visualAckIds?.includes('weller-retry')),hp:p.battle.game.teams.P.field[0].hp,barrier:p.battle.game.teams.P.field[0].hpProtectionBarriers[0].amount};
   });
-  assert.deepEqual(r,{count:1,aura:1,ack:true,hp:0,remaining:4});
+  assert.deepEqual(r,{count:1,aura:1,ack:true,hp:0,barrier:160});
  });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}
