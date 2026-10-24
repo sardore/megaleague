@@ -1,6 +1,6 @@
 import { bossRedUnits } from '../features/boss-raid.js';
 import { cardHasCapability } from "../engine/entities.js";
-import { timeCurrentSuppressionDomain } from "../features/timeora.js";
+import { timeCurrentSuppressionDomain, timeUnitsSuppressedByClockOwners } from "../features/timeora.js";
 const TIME_CLOCK_VISUAL_SATURATION_VERSION = "time-clock-visual-saturation-hold-r1";
 class TimeClockVisualSaturationLease {
   constructor(controller, id) {
@@ -45,12 +45,15 @@ class TimeClockVisualSaturationController {
     if (!clocks.length) return new Set();
     const alignedTeams = new Set(clocks.filter(clock => !this.isBossSharedClock(g, clock)).map(clock => clock.team).filter(Boolean));
     if (alignedTeams.has("P") && alignedTeams.has("A")) return new Set();
-    const suppressTeams = new Set();
-    for (const clock of clocks) {
-      if (this.isBossSharedClock(g, clock)) suppressTeams.add("P");else if (clock.team === "P") suppressTeams.add("A");else if (clock.team === "A") suppressTeams.add("P");
-    }
     const suppressed = new Set();
-    for (const team of suppressTeams) for (const unit of g?.teams?.[team]?.field || []) if (unit?.uid != null && !unit.dead) suppressed.add(String(unit.uid));
+    /* 붉은 공용 시계는 플레이어 진영만 멈춘다(판정 영역의 보스 규칙과 동일). */
+    if (clocks.some(clock => this.isBossSharedClock(g, clock))) {
+      for (const unit of g?.teams?.P?.field || []) if (unit?.uid != null && !unit.dead) suppressed.add(String(unit.uid));
+      return suppressed;
+    }
+    /* 일반 시계: 시계 주인을 뺀 모든 필드 유닛(아군 포함)이 대상. 판정 영역과 같은 규칙 하나만 쓴다. */
+    const ownerUids = new Set(clocks.map(clock => clock.uid).filter(uid => uid != null).map(String));
+    for (const unit of timeUnitsSuppressedByClockOwners(g, ownerUids)) suppressed.add(String(unit.uid));
     return suppressed;
   }
   acquire(g, clockEvents) {
