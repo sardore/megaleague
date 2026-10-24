@@ -113,5 +113,13 @@ await check('curse consumes all attack decreases and preserves positive attack b
     return{threw,start,rolledBack,retry,done};});
   assert.equal(r.threw,true);assert.deepEqual(r.rolledBack,r.start);assert.equal(r.retry,true);assert.equal(r.done.atk,r.start.atk-10);
  });
+ await check('운명의 시계 연출의 채도 저하는 시계 주인을 뺀 아군·적군 모두에 걸린다 (판정 영역과 같은 규칙)',async page=>{
+  const r=await page.evaluate(()=>{document.getElementById('startupIntro')?.remove();const g=Megaleague.newGame(['timeora','hermit','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'sat'});
+   g.order=[['P',0],['A',0],['P',1],['A',1]];g.turn=0;g.turnSerial=0;g.preparedKey=null;probe.battle.game=g;document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('game').classList.add('active');
+   const t=g.teams.P.field[0];t.timeHourDeg=90;t.timeMinuteDeg=0;probe.actions.prepareCurrentTurn(g);probe.render();
+   const lease=probe.sat.acquire(g,[{clocks:[{uid:t.uid,team:'P',aligned:true,blocked:false}]}]);
+   const held=[...document.querySelectorAll('.battle-unit-card[data-zone="field"]')].map(el=>[el.dataset.team+':'+el.dataset.cardId,el.classList.contains('clock-visual-saturation-held')]);lease.release();return held;});
+  assert.deepEqual(r,[['A:turtle',true],['A:mole',true],['P:timeora',false],['P:hermit',true]]);
+ });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}

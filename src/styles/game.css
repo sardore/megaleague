@@ -5887,9 +5887,10 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .side.ai-side{border-color:var(--ui-ai) !important;background:linear-gradient(180deg,rgba(52,26,34,.55),rgba(14,19,29,.96) 46%),var(--ui-glass) !important}
 .side.player-side{border-color:var(--ui-me) !important;background:linear-gradient(180deg,rgba(24,40,70,.55),rgba(14,19,29,.96) 46%),var(--ui-glass) !important}
 /* 칸: 점선 대신 얇은 실선 + 바닥 조명(캐릭터가 서 있는 느낌) */
-.side .slot{border-style:solid !important;border-color:var(--ui-edge) !important;
-  background:radial-gradient(ellipse 62% 30% at 50% 84%,rgba(255,255,255,.13),rgba(255,255,255,0) 72%),linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.2)) !important;
-  transition:border-color .25s var(--ui-ease),box-shadow .25s var(--ui-ease)}
+/* 등급색 칸(.grade-t*)의 면·테두리는 위쪽 "등급별 카드 색" 규칙이 단독으로 그린다. 여기는 등급 없는 칸만 칠해서 서로 덮어쓰지 않는다. */
+.side .slot{border-style:solid !important;transition:border-color .25s var(--ui-ease),box-shadow .25s var(--ui-ease)}
+.side .slot:not(:has(> [class*="grade-t"])){border-color:var(--ui-edge) !important;
+  background:radial-gradient(ellipse 62% 30% at 50% 84%,rgba(255,255,255,.13),rgba(255,255,255,0) 72%),linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.2)) !important}
 .side .slot:has(> .battle-unit-card.dead){background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.3)) !important}
 /* 체력·실드 바: 가늘고 매끈하게, 위쪽 하이라이트 */
 .unit-bar{height:9px !important;border-color:rgba(255,255,255,.1) !important;background:rgba(4,7,12,.72) !important;box-shadow:inset 0 1px 3px rgba(0,0,0,.7) !important}
@@ -5914,7 +5915,8 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .turnstrip .turntoken:nth-child(-n+2){display:flex !important}
 .turnstrip .turntoken{align-items:center;justify-content:center;min-height:34px;padding:4px 10px !important;line-height:1.15;text-align:center;font-weight:700}
 /* 후열: 칸 높이에 맞춘 한 줄 칩(체력바 + 작은 캐릭터 + 이름). 잘려 보이던 큰 카드를 대체 */
-.side .bench .battle-unit-card.bench-card{height:100% !important;min-height:0 !important;flex-direction:row !important;align-items:center;gap:6px;padding:2px 8px !important;border:1px solid var(--ui-edge) !important;background:rgba(255,255,255,.04) !important;border-radius:10px !important}
+.side .bench .battle-unit-card.bench-card{height:100% !important;min-height:0 !important;flex-direction:row !important;align-items:center;gap:6px;padding:2px 8px !important;border-radius:10px !important}
+.side .bench .battle-unit-card.bench-card:not([class*="grade-t"]){border:1px solid var(--ui-edge) !important;background:rgba(255,255,255,.04) !important}
 .side .bench .battle-unit-card.bench-card .unit-hud{flex:1 1 52%;min-width:0}
 .side .bench .battle-unit-card.bench-card .unit-stage{flex:1 1 48%;min-width:0;flex-direction:row !important;align-items:center;justify-content:flex-start;gap:5px;min-height:0 !important;padding:0 !important}
 .side .bench .battle-unit-card.bench-card .char-emoji,.side .bench .battle-unit-card.bench-card .char-picto{width:22px !important;height:22px !important;min-height:0 !important;font-size:18px !important;flex:0 0 22px;margin:0 !important}
@@ -6086,6 +6088,7 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .char-art .rig-ahoge{transform-origin:50% 100%;animation:artSway 2.4s ease-in-out infinite}
 .char-art .rig-staff{transform-origin:100% 100%;animation:artSway 4.2s ease-in-out infinite}
 .char-art .rig-blink{transform-origin:50% 50%;animation:artBlink 5s ease-in-out infinite}
+.char-art .rig-drip{animation:artDrip 3.4s ease-in infinite}
 .char-art .rig-drip-a{animation:artDrip 3.4s ease-in infinite}
 .char-art .rig-drip-b{animation:artDrip 3.4s ease-in 1.1s infinite}
 .char-art .rig-drip-c{animation:artDrip 3.4s ease-in 2.1s infinite}
@@ -6096,3 +6099,19 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .char-art .rig-fin-a{transform-origin:20% 100%;animation:artFin 1.3s ease-in-out infinite}
 .char-art .rig-fin-b{transform-origin:20% 100%;animation:artFin 1.3s ease-in-out .35s infinite}
 @media (prefers-reduced-motion:reduce){.char-art .rig{animation:none !important}}
+/* ===== 소환물 칸: 전투 레이아웃(필드/후열 그리드 영역)에 정식 영역으로 참여 =====
+   영역 없이 .side 끝에 붙던 때는 .side(overflow:hidden, 높이 고정)의 넘치는 행에 밀려 데스크톱·가로 화면에서 잘려 안 보였다.
+   소환물이 있는 진영만 필드 아래에 "summon" 행을 두고 필드 행이 줄어들어 같이 들어가게 한다(후열은 두 행을 이어 차지). */
+.side .summon-zone{grid-area:summon;margin:0;padding:4px 6px;min-width:0}
+.side .summon-zone-title{margin-bottom:3px;font-size:10px}
+.side .summon-list{gap:4px}
+.side .summon-card{min-height:0;padding:3px 6px}
+.side .summon-head{font-size:11px;gap:4px}
+.side .summon-emoji{font-size:16px}
+.side .summon-detail{display:flex;flex-wrap:wrap;gap:0 6px;font-size:9px;line-height:1.3}
+@media (min-width:1100px){
+  .side:has(> .summon-zone){grid-template-areas:"head head" "field bench" "summon bench";grid-template-rows:auto minmax(0,1fr) auto}
+}
+@media (max-width:900px) and (orientation:landscape){
+  .ai-side:has(> .summon-zone),.player-side:has(> .summon-zone){grid-template-areas:"head head" "bench field" "bench summon" !important;grid-template-rows:auto minmax(0,1fr) auto !important}
+}

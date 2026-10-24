@@ -1,14 +1,8 @@
 import { registerCharacterArt } from "../char-art.js";
 
-/* 스위트나: 하트 더듬이, 박쥐 날개, 긴 머리, 사탕 지팡이를 든 데포르메 소녀.
-   원본 스케치의 좌표(약 1475×1102)를 그대로 쓰고, 잔 선은 한 겹의 깔끔한 윤곽선으로 정리했다.
-   부품은 뒤→앞 순서: 웅덩이 / 날개 / 뒷머리 / 몸(다리·치마·팔·얼굴·앞머리) / 지팡이. */
-const INK = "#3b2150";
-const LINE = `stroke="${INK}" stroke-width="15" stroke-linejoin="round" stroke-linecap="round"`;
-const THIN = `stroke="${INK}" stroke-width="9" stroke-linejoin="round" stroke-linecap="round"`;
-
+/* 스위트나: 하트 더듬이, 박쥐 날개, 긴 머리, 사탕 지팡이를 든 데포르메 소녀. 원본 스케치 좌표(약 1475×1102)를 따라 한 겹의 윤곽선으로 다시 그렸다.
+   부품(rig-*)은 뒤→앞 순서로 그룹지어 CSS가 움직인다. */
 const defs = `
-<linearGradient id="{id}-hair" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd3ea"/><stop offset=".55" stop-color="#f594c9"/><stop offset="1" stop-color="#cf6bb8"/></linearGradient>
 <linearGradient id="{id}-hairTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9f4"/><stop offset=".7" stop-color="#ffbfe0"/><stop offset="1" stop-color="#f79fcf"/></linearGradient>
 <linearGradient id="{id}-hairBack" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ee86c3"/><stop offset="1" stop-color="#a64d9e"/></linearGradient>
 <linearGradient id="{id}-skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3ec"/><stop offset="1" stop-color="#ffd6cc"/></linearGradient>
@@ -16,99 +10,89 @@ const defs = `
 <linearGradient id="{id}-wing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9a68d8"/><stop offset="1" stop-color="#4a2886"/></linearGradient>
 <radialGradient id="{id}-candy" cx=".38" cy=".34" r=".8"><stop offset="0" stop-color="#ffe3f1"/><stop offset=".5" stop-color="#ff9ccb"/><stop offset="1" stop-color="#e2568f"/></radialGradient>
 <linearGradient id="{id}-syrup" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8bbd"/><stop offset="1" stop-color="#e2478a"/></linearGradient>
-<radialGradient id="{id}-puddle" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#ffd0e6" stop-opacity=".95"/><stop offset="1" stop-color="#ff7fb8" stop-opacity=".75"/></radialGradient>
-<linearGradient id="{id}-shoe" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4592"/><stop offset="1" stop-color="#4a2660"/></linearGradient>`;
+<linearGradient id="{id}-stick" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#ffb3d6"/></linearGradient>
+<radialGradient id="{id}-puddle" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#ffd0e6" stop-opacity=".95"/><stop offset="1" stop-color="#ff7fb8" stop-opacity=".78"/></radialGradient>
+<linearGradient id="{id}-shoe" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7a4592"/><stop offset="1" stop-color="#4a2660"/></linearGradient>
+<linearGradient id="{id}-heart" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb3d9"/><stop offset="1" stop-color="#ff5fa8"/></linearGradient>
+<radialGradient id="{id}-bead" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#ff9ccb"/></radialGradient>
+<linearGradient id="{id}-ribbon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c79bff"/><stop offset="1" stop-color="#7a4cc8"/></linearGradient>
+<linearGradient id="{id}-creature" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6fa"/><stop offset="1" stop-color="#ffc9e2"/></linearGradient>
+`;
 
-const puddle = `
+const body = `
 <g class="rig rig-puddle">
-  <ellipse class="rig rig-ripple" cx="370" cy="1002" rx="300" ry="42" fill="none" stroke="#ff9ccb" stroke-width="8" opacity=".6"/>
-  <ellipse cx="370" cy="1004" rx="285" ry="38" fill="url(#{id}-puddle)" ${THIN}/>
-  <ellipse cx="300" cy="996" rx="120" ry="12" fill="#fff" opacity=".35"/>
+  <ellipse class="rig rig-ripple" cx="372" cy="1006" rx="300" ry="40" fill="none" stroke="#ff9ccb" stroke-width="7" opacity=".55"/>
+  <path d="M104 1018 C100 990 190 968 300 972 C360 958 470 958 560 976 C620 986 650 1004 636 1022 C620 1046 520 1052 430 1048 C340 1056 200 1058 140 1046 C118 1040 106 1030 104 1018 Z" fill="url(#{id}-puddle)" stroke="#6a2f86" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M170 1000 C230 988 330 984 410 990" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".55"/>
   <g class="rig rig-peek">
-    <path d="M326 990 L338 934 L366 968 Q378 962 390 968 L418 934 L430 990 Q380 1008 326 990 Z" fill="#fff6fa" ${THIN}/>
-    <path d="M343 952 L350 968 M413 952 L406 968" ${THIN} fill="none" opacity=".5"/>
+    <path d="M322 1004 L330 944 L362 966 C376 960 396 960 410 966 L442 944 L450 1004 C420 1018 352 1018 322 1004 Z" fill="url(#{id}-creature)" stroke="#6a2f86" stroke-width="10" stroke-linejoin="round"/>
+    <ellipse cx="358" cy="986" rx="7" ry="9" fill="#4a2660"/><ellipse cx="414" cy="986" rx="7" ry="9" fill="#4a2660"/>
+    <path d="M378 1000 Q386 1008 394 1000" fill="none" stroke="#4a2660" stroke-width="5" stroke-linecap="round"/>
   </g>
-</g>`;
-
-const wingLeft = `
+  <circle cx="330" cy="905" r="9" fill="#ff8bbd"/><circle cx="440" cy="888" r="7" fill="#ff8bbd"/><circle cx="486" cy="916" r="6" fill="#ffb3d6"/>
+</g>
 <g class="rig rig-flap rig-flap-l">
-  <path d="M575 470 C470 400 300 330 105 292 C150 340 150 390 128 430 C190 430 210 470 190 520 C170 600 120 660 78 760 C200 700 330 640 400 600 C470 560 540 520 575 470 Z" fill="url(#{id}-wing)" ${LINE}/>
-  <path d="M575 470 C420 420 250 360 105 292 M575 470 C440 520 250 560 190 520 M575 470 C420 560 200 680 78 760" fill="none" stroke="#2c1658" stroke-width="9" stroke-linecap="round" opacity=".7"/>
-  <path d="M170 360 C240 380 330 400 440 440" fill="none" stroke="#d2b2ff" stroke-width="6" opacity=".45" stroke-linecap="round"/>
-</g>`;
-
-const wingRight = `
+  <path d="M565 482 C450 432 270 362 120 300 Q177 406 14 470 Q137 539 20 640 Q164 653 82 772 Q190 690 330 612 Q470 572 565 482 Z" fill="url(#{id}-wing)" stroke="#3b2150" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M565 482 C400 424 230 352 120 300 M565 482 C390 500 150 520 14 470 M565 482 C380 540 150 600 20 640 M565 482 C400 580 220 700 82 772" fill="none" stroke="#2c1658" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+  <path d="M520 470 C400 420 260 380 170 345" fill="none" stroke="#d9bcff" stroke-width="7" stroke-linecap="round" opacity=".5"/>
+  <path d="M470 520 C330 530 190 560 90 590" fill="none" stroke="#d9bcff" stroke-width="6" stroke-linecap="round" opacity=".28"/>
+</g>
 <g class="rig rig-flap rig-flap-r">
-  <path d="M880 470 C960 330 1100 140 1300 78 C1270 150 1290 220 1260 280 C1290 320 1290 380 1260 430 C1240 500 1260 560 1236 612 C1130 590 1020 560 940 520 C910 505 890 490 880 470 Z" fill="url(#{id}-wing)" ${LINE}/>
-  <path d="M880 470 C990 330 1130 160 1300 78 M880 470 C1030 380 1180 330 1260 280 M880 470 C1030 470 1190 450 1260 430 M880 470 C1000 520 1130 560 1236 612" fill="none" stroke="#2c1658" stroke-width="9" stroke-linecap="round" opacity=".7"/>
-  <path d="M960 430 C1040 330 1140 220 1240 150" fill="none" stroke="#d2b2ff" stroke-width="6" opacity=".45" stroke-linecap="round"/>
-</g>`;
-
-const hairBack = `
+  <path d="M905 340 C1020 220 1170 120 1332 80 Q1270 217 1415 250 Q1289 349 1380 420 Q1241 494 1292 622 Q1180 560 1090 530 Q990 500 905 440 Z" fill="url(#{id}-wing)" stroke="#3b2150" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M905 380 C1040 250 1190 130 1332 80 M905 400 C1080 330 1280 290 1415 250 M905 420 C1080 400 1270 420 1380 420 M905 440 C1060 470 1200 540 1292 622" fill="none" stroke="#2c1658" stroke-width="10" stroke-linecap="round" opacity=".8"/>
+  <path d="M960 340 C1080 240 1190 170 1290 130" fill="none" stroke="#d9bcff" stroke-width="7" stroke-linecap="round" opacity=".5"/>
+  <path d="M1000 440 C1120 380 1240 350 1340 330" fill="none" stroke="#d9bcff" stroke-width="6" stroke-linecap="round" opacity=".28"/>
+</g>
 <g class="rig rig-sway rig-hair-r">
-  <path d="M770 230 C890 235 990 380 1002 510 C1018 610 1112 650 1092 748 C1070 830 950 884 808 864 C868 826 882 786 868 742 C850 680 792 624 776 540 L760 330 Z" fill="url(#{id}-hairBack)" ${LINE}/>
-  <path d="M930 420 C990 520 1030 620 1010 710 C1000 760 940 810 880 830" fill="none" stroke="#ffd3ea" stroke-width="9" stroke-linecap="round" opacity=".5"/>
+  <path d="M860 230 C905 330 925 470 985 600 C1030 660 1090 690 1096 760 C1096 820 1030 868 940 884 C880 892 820 884 784 850 C830 846 868 820 880 780 C892 730 870 680 840 620 C810 570 790 520 792 460 Z" fill="url(#{id}-hairBack)" stroke="#3b2150" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M928 420 C968 520 1010 610 1048 690 C1062 740 1040 800 970 842" fill="none" stroke="#ffd3ea" stroke-width="9" stroke-linecap="round" opacity=".5"/>
 </g>
 <g class="rig rig-sway rig-hair-l">
-  <path d="M565 250 C500 300 488 420 520 520 C540 572 578 560 592 520 L604 300 Z" fill="url(#{id}-hairBack)" ${LINE}/>
-</g>`;
-
-const legs = `
-<path d="M622 700 L640 802 L670 802 L674 700 Z" fill="url(#{id}-skin)" ${THIN}/>
-<path d="M702 705 L714 802 L744 802 L748 705 Z" fill="url(#{id}-skin)" ${THIN}/>
-<path d="M598 800 Q600 838 640 840 Q680 838 676 806 Z" fill="url(#{id}-shoe)" ${THIN}/>
-<path d="M690 806 Q692 840 722 840 Q752 838 746 810 Z" fill="url(#{id}-shoe)" ${THIN}/>`;
-
-const dress = `
-<path d="M612 500 C616 548 600 596 584 640 C572 676 568 700 586 706 L612 692 L640 710 L670 692 L700 712 L732 694 L764 712 L796 692 L832 708 L868 692 C888 650 876 614 842 590 C806 566 794 536 784 500 Z" fill="url(#{id}-dress)" ${LINE}/>
-<path d="M606 632 C680 660 790 660 872 628" fill="none" stroke="#ff8fbf" stroke-width="12" stroke-linecap="round"/>
-<path d="M742 512 C810 506 900 514 958 546 C966 574 940 600 916 598 C870 590 820 578 790 566 Z" fill="url(#{id}-dress)" ${LINE}/>
-<path d="M800 566 C850 584 896 594 930 592" fill="none" stroke="#ff8fbf" stroke-width="11" stroke-linecap="round"/>`;
-
-const armHold = `
-<path d="M606 520 C580 540 556 560 540 578" fill="none" stroke="${INK}" stroke-width="46" stroke-linecap="round"/>
-<path d="M606 520 C580 540 556 560 540 578" fill="none" stroke="#ffe0d6" stroke-width="30" stroke-linecap="round"/>
-<circle cx="540" cy="580" r="28" fill="url(#{id}-skin)" ${THIN}/>`;
-
-const head = `
+  <path d="M520 300 C498 380 496 460 516 520 C528 556 560 570 586 540 C596 480 590 400 582 330 Z" fill="url(#{id}-hairBack)" stroke="#3b2150" stroke-width="14" stroke-linejoin="round"/>
+</g>
+<g class="rig rig-legs">
+  <path d="M626 700 L640 800 L682 800 L684 700 Z" fill="url(#{id}-skin)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M706 704 L716 800 L756 800 L760 704 Z" fill="url(#{id}-skin)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M600 798 C598 840 640 848 684 840 L686 798 Z" fill="url(#{id}-shoe)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M694 800 C694 842 730 850 760 842 L762 802 Z" fill="url(#{id}-shoe)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round"/><path d="M606 812 C630 806 660 806 680 812 M700 814 C722 808 744 808 760 814" fill="none" stroke="#d9bcff" stroke-width="6" stroke-linecap="round" opacity=".55"/>
+</g>
+<path d="M650 470 C644 520 626 570 596 640 C588 670 590 690 596 704 C610 716 626 708 640 714 C654 722 668 714 682 718 C698 724 712 714 726 718 C742 722 756 714 770 718 C788 722 804 712 818 714 C840 710 858 696 864 680 C866 652 852 620 824 590 C806 548 802 500 796 470 Z" fill="url(#{id}-dress)" stroke="#3b2150" stroke-width="13" stroke-linejoin="round"/>
+<path d="M770 520 C792 560 820 590 846 640 C862 660 862 684 840 700 C820 706 800 700 790 700 C800 640 790 580 770 520 Z" fill="#d06aa0" opacity=".16"/>
+<path d="M642 592 C700 608 762 606 812 588 L818 614 C762 632 700 634 636 616 Z" fill="url(#{id}-ribbon)" stroke="#3b2150" stroke-width="10" stroke-linejoin="round"/>
+<path d="M690 650 C694 676 692 696 686 714 M750 654 C752 678 756 698 764 714" fill="none" stroke="#e7a6cd" stroke-width="8" stroke-linecap="round" opacity=".6"/>
+<path d="M792 486 C836 496 906 516 962 544 C954 560 950 576 940 598 C930 590 920 592 910 598 C898 586 880 584 868 580 C848 574 820 566 800 556 Z" fill="url(#{id}-dress)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round"/>
 <g class="rig rig-head">
-  <path d="M565 330 C558 424 608 498 680 498 C752 498 792 424 786 330 C742 310 610 310 565 330 Z" fill="url(#{id}-skin)" ${LINE}/>
-  <path d="M548 352 C508 240 592 138 692 140 C802 140 884 242 832 384 C802 322 762 298 700 296 C640 296 592 322 548 352 Z" fill="url(#{id}-hairTop)" ${LINE}/>
-  <path d="M600 200 C640 168 700 160 760 176" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" opacity=".7"/>
-  <path d="M576 350 Q622 334 656 304 Q644 350 628 368 Q604 352 576 350 Z M656 304 Q722 332 790 338 Q762 322 744 298 Z" fill="url(#{id}-hairTop)" ${THIN}/>
+  <path d="M572 360 C568 432 640 454 712 452 C790 452 852 432 854 366 C854 322 784 302 712 306 C640 306 576 320 572 360 Z" fill="url(#{id}-skin)" stroke="#3b2150" stroke-width="13" stroke-linejoin="round"/>
   <g class="rig rig-blink">
-    <ellipse cx="618" cy="388" rx="21" ry="29" fill="${INK}"/>
-    <ellipse cx="738" cy="382" rx="20" ry="27" fill="${INK}"/>
-    <circle cx="610" cy="374" r="7" fill="#fff"/><circle cx="627" cy="400" r="3.5" fill="#fff"/>
-    <circle cx="730" cy="369" r="6.5" fill="#fff"/><circle cx="747" cy="394" r="3.5" fill="#fff"/>
+    <ellipse cx="621" cy="386" rx="15" ry="25" fill="#3b2150"/><ellipse cx="621" cy="398" rx="10" ry="12" fill="#8b5ad6" opacity=".7"/><ellipse cx="615" cy="376" rx="5" ry="8" fill="#fff"/>
+    <ellipse cx="742" cy="383" rx="14" ry="23" fill="#3b2150"/><ellipse cx="742" cy="394" rx="9" ry="11" fill="#8b5ad6" opacity=".7"/><ellipse cx="736" cy="374" rx="5" ry="7" fill="#fff"/>
   </g>
-  <path d="M584 360 Q618 344 646 362 M712 356 Q740 344 768 360" fill="none" stroke="${INK}" stroke-width="10" stroke-linecap="round"/>
-  <ellipse cx="588" cy="428" rx="15" ry="8" fill="#ff9cc4" opacity=".55"/><ellipse cx="770" cy="420" rx="15" ry="8" fill="#ff9cc4" opacity=".55"/>
-  <path d="M660 428 Q680 440 700 428" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/>
-  <path d="M686 432 L694 450 L702 430 Z" fill="#fff" ${THIN}/>
-  <g class="rig rig-sway rig-ahoge">
-    <path d="M690 152 C672 152 654 148 646 140" fill="none" ${LINE}/>
-    <path transform="translate(646 108) scale(1.35) translate(-646 -108)" d="M646 142 C598 116 596 72 628 70 C640 70 646 78 646 86 C646 78 654 70 666 70 C696 72 694 116 646 142 Z" fill="#ff8ec2" ${LINE}/>
-    <ellipse cx="618" cy="84" rx="9" ry="5.5" fill="#fff" opacity=".75" transform="rotate(-30 618 84)"/>
+  <ellipse cx="590" cy="420" rx="22" ry="10" fill="#ff9ec4" opacity=".45"/><ellipse cx="800" cy="414" rx="22" ry="10" fill="#ff9ec4" opacity=".45"/>
+  <path d="M690 412 Q701 424 712 412 Q724 424 735 410" fill="none" stroke="#3b2150" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M697 418 L706 436 L713 418 Z" fill="#fff" stroke="#3b2150" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M576 338 C596 364 624 370 652 344 C672 358 702 356 716 324 C738 354 766 356 792 334 C812 356 842 350 862 338 L862 316 L576 316 Z" fill="#a8527c" opacity=".2"/>
+  <path d="M508 330 C502 240 556 172 660 156 C764 146 862 192 880 290 C886 328 872 334 862 334 C842 348 810 346 792 322 C766 342 738 340 716 308 C702 342 672 348 652 332 C624 356 596 352 576 334 C552 338 520 344 508 330 Z" fill="url(#{id}-hairTop)" stroke="#3b2150" stroke-width="14" stroke-linejoin="round"/>
+  <path d="M600 215 C650 185 730 180 800 215 M560 270 C580 240 600 232 620 228" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".6"/>
+  <g class="rig rig-ahoge">
+    <path d="M650 176 C600 148 590 100 626 94 C642 92 652 102 652 114 C652 102 664 92 680 94 C716 100 704 150 650 176 Z" fill="url(#{id}-heart)" stroke="#3b2150" stroke-width="13" stroke-linejoin="round"/>
+    <path d="M618 108 C622 100 632 100 636 108" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".7"/>
   </g>
-  <path d="M822 176 L852 124 L884 166 L852 178 Z" fill="#7a4cc8" ${THIN}/>
-  <circle cx="806" cy="206" r="32" fill="#ffb4d8" ${LINE}/><circle cx="796" cy="196" r="9" fill="#fff" opacity=".75"/>
-</g>`;
-
-const staff = `
-<g class="rig rig-sway rig-staff">
-  <path d="M438 430 L546 584" fill="none" stroke="${INK}" stroke-width="34" stroke-linecap="round"/>
-  <path d="M438 430 L546 584" fill="none" stroke="#f3c6ef" stroke-width="20" stroke-linecap="round"/>
-  <circle cx="405" cy="338" r="98" fill="url(#{id}-candy)" ${LINE}/>
-  <path d="M405 338 c0 -12 16 -16 25 -8 c14 12 7 36 -16 41 c-34 7 -57 -22 -48 -54 c11 -39 64 -52 94 -22" fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round" opacity=".9"/>
-  <path d="M405 338 c0 -12 16 -16 25 -8 c14 12 7 36 -16 41 c-34 7 -57 -22 -48 -54 c11 -39 64 -52 94 -22" fill="none" stroke="#b64a9c" stroke-width="5" stroke-linecap="round" opacity=".6"/>
-  <g class="rig rig-drip rig-drip-a"><path d="M330 412 L330 540 Q330 566 349 566 Q368 566 368 540 L368 412 Z" fill="url(#{id}-syrup)" ${THIN}/></g>
-  <g class="rig rig-drip rig-drip-b"><path d="M400 434 L400 606 Q400 634 420 634 Q440 634 440 606 L440 434 Z" fill="url(#{id}-syrup)" ${THIN}/></g>
-  <g class="rig rig-drip rig-drip-c"><path d="M372 606 Q394 650 372 686 Q350 650 372 606 Z" fill="url(#{id}-syrup)" ${THIN}/></g>
-</g>`;
+  <circle cx="812" cy="210" r="26" fill="url(#{id}-bead)" stroke="#3b2150" stroke-width="11"/><circle cx="803" cy="201" r="7" fill="#fff" opacity=".8"/>
+  <path d="M858 170 C832 138 812 148 820 176 C828 198 848 192 858 170 Z M858 170 C886 138 906 148 898 178 C890 200 868 192 858 170 Z" fill="url(#{id}-ribbon)" stroke="#3b2150" stroke-width="10" stroke-linejoin="round"/><circle cx="858" cy="172" r="10" fill="#9b6be0" stroke="#3b2150" stroke-width="8"/></g>
+<g class="rig rig-staff">
+  <path d="M446 432 L578 640 L552 652 L424 450 Z" fill="url(#{id}-stick)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M344 410 C342 470 344 530 352 560 C356 580 372 580 376 560 C378 520 380 470 384 430 Z M408 432 C410 500 410 570 416 616 C420 630 436 630 440 614 C442 560 440 500 442 450 Z" fill="url(#{id}-syrup)" stroke="#3b2150" stroke-width="12" stroke-linejoin="round" class="rig rig-drip"/>
+  <ellipse class="rig rig-drop" cx="358" cy="664" rx="22" ry="36" fill="url(#{id}-syrup)" stroke="#3b2150" stroke-width="11"/>
+  <circle cx="405" cy="335" r="92" fill="url(#{id}-candy)" stroke="#3b2150" stroke-width="14"/>
+  <path d="M405 335 m0 0 c0 -12 14 -18 24 -12 c14 8 12 28 -4 36 c-24 12 -52 -6 -50 -34 c2 -34 38 -50 66 -34 c34 20 30 70 -6 82" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".92"/>
+  <path d="M345 300 C352 270 376 252 404 250" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".7"/>
+  <path d="M660 508 C620 530 592 548 556 572" fill="none" stroke="#3b2150" stroke-width="60" stroke-linecap="round"/><path d="M660 508 C620 530 592 548 556 572" fill="none" stroke="#fff3f8" stroke-width="36" stroke-linecap="round"/>
+  <circle cx="548" cy="575" r="24" fill="url(#{id}-skin)" stroke="#3b2150" stroke-width="12"/>
+</g>
+`;
 
 registerCharacterArt("sweetna", {
-  viewBox: "60 28 1280 1092",
+  viewBox: "0 60 1440 1040",
   defs,
-  body: `${puddle}<g class="rig rig-float">${wingLeft}${wingRight}${hairBack}${legs}${dress}${armHold}${head}${staff}</g>`
+  body: `<g class="rig rig-float">${body}</g>`
 });
