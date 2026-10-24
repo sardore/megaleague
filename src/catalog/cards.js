@@ -303,7 +303,7 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 개별 피해 -40. 즉시 치료: 필드 아군의 새 상태이상 제거, 개당 HP 20 회복. 회복 확산: 아군 회복 시 그 대상이 직전 잃은 HP의 1/3만큼 필드 아군 전체 추가 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
+  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 개별 피해 -40. 즉시 치료: 필드 아군의 새 상태이상 제거, 개당 HP 20 회복. 회복 확산: 이루마가 아군을 실제로 회복시키면 필드 아군 전체가 추가로 HP 50 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
     type: "shift",
     amount: 150
   }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 전체 0D·방어 -10·감속2. 사용 직전 이루마 HP의 1/3을 필드 아군에 원하는 비율로 분배 회복.", "field", [{
@@ -313,7 +313,7 @@ export function initializeCatalogCards() {
     formGroup: "iruma",
     damageReduction: 40,
     irumaCleanse: true,
-    healingSplashMissingRatio: 1 / 3
+    healingSplashAmount: 50
   }), state_catalog_cards.C("iceknight", "빙마기수", 230, "복합 제어 딜러", "메가리그", "냉동 흡수: 냉동 적용을 무효화하고 HP20을 얻는다. 최대 HP를 초과할 수 있다.", [state_catalog_cards.S("iceRoar", "빙천포효", "WB", "자신을 포함한 빙마기수 외 필드 전원에게 냉동2. 자신은 냉동 흡수 발동.", "field", [{
     type: "iceRoar"
   }], ["status"]), state_catalog_cards.S("rampage", "날뛰기", "*", "기본 코스트와 양쪽 저장소에서 추가 제거한 에너지 총량×10D.", "enemy", [{
