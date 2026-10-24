@@ -4160,49 +4160,6 @@
     }
     @keyframes genoIntroCurtain { to { opacity: 0; visibility: hidden; } }
 
-    /* 덱 편성의 침략자 전용 진입점 */
-    .invader-portal-area {
-      margin-top: 14px;
-      display: grid;
-      gap: 7px;
-    }
-    .invader-portal-button {
-      position: relative;
-      width: 100%;
-      min-height: 78px;
-      overflow: hidden;
-      border: 1px solid rgba(179, 55, 87, .66);
-      border-radius: 13px;
-      background:
-        radial-gradient(ellipse at 50% 52%, rgba(103, 19, 144, .58), transparent 23%),
-        radial-gradient(ellipse at 50% 52%, transparent 0 25%, rgba(173, 24, 59, .36) 27% 31%, transparent 34%),
-        linear-gradient(110deg, #08050f, #1a0718 47%, #0c0617);
-      box-shadow: inset 0 0 32px rgba(111, 22, 139, .32), 0 0 18px rgba(105, 15, 54, .18);
-      color: #fbe8f0;
-      text-align: left;
-      padding: 13px 18px;
-    }
-    .invader-portal-button::before,
-    .invader-portal-button::after {
-      content: "";
-      position: absolute;
-      inset: -60% 18%;
-      border-radius: 48%;
-      border: 2px solid rgba(174, 37, 84, .28);
-      transform: rotate(18deg);
-      animation: invaderPortalWarp 8s linear infinite;
-      pointer-events: none;
-    }
-    .invader-portal-button::after {
-      inset: -75% 30%;
-      border-color: rgba(115, 50, 191, .28);
-      animation-duration: 5.5s;
-      animation-direction: reverse;
-    }
-    .invader-portal-button:hover { border-color: rgba(231, 89, 126, .86); }
-    .invader-portal-title { display: block; position: relative; z-index: 1; font-size: 18px; font-weight: 900; letter-spacing: .02em; }
-    .invader-portal-state { display: block; position: relative; z-index: 1; margin-top: 6px; color: #d4bddc; font-size: 13px; }
-    @keyframes invaderPortalWarp { to { transform: rotate(378deg); } }
 
     .invader-selector {
       width: min(760px, 100%);
@@ -4226,30 +4183,6 @@
       margin: 14px 0;
       min-width: 0;
     }
-    .invader-arrow {
-      position: static;
-      transform: none;
-      z-index: 3;
-      width: 100%;
-      min-height: 108px;
-      font-size: 30px;
-      font-weight: 900;
-      padding: 0;
-      border: 1px solid rgba(156, 170, 205, .30);
-      background: rgba(54, 66, 90, .34);
-      color: rgba(255,255,255,.9);
-      backdrop-filter: blur(2px);
-      box-shadow: 0 10px 22px rgba(0,0,0,.20);
-      opacity: .58;
-      transition: opacity .18s ease, background .18s ease, border-color .18s ease;
-    }
-    .invader-arrow:hover, .invader-arrow:focus-visible {
-      opacity: .88;
-      background: rgba(68, 82, 111, .50);
-      border-color: rgba(188, 205, 240, .42);
-    }
-    .invader-arrow.invader-prev { grid-column: 1; }
-    .invader-arrow.invader-next { grid-column: 3; }
     .invader-preview {
       grid-column: 2;
       min-width: 0;
@@ -4399,7 +4332,6 @@
         gap: 5px;
         margin: 12px 0;
       }
-      .invader-arrow { width: 100%; min-height: 78px; font-size: 25px; opacity: .54; }
       .invader-selector { padding: 12px; }
       .invader-preview { padding: 12px; min-height: 300px; }
       .invader-preview-top { align-items: flex-start; }
@@ -4408,8 +4340,6 @@
     }
   
 
-    .online-invader-portal-area{grid-column:1/-1;margin:12px 0 4px}
-    .online-invader-portal-area .invader-portal-button{width:100%;min-height:76px}
     .matchmaking-box{display:grid;gap:12px;text-align:center;padding:18px;border:1px solid rgba(105,126,165,.38);border-radius:16px;background:rgba(12,18,30,.86)}
     .matchmaking-time{font-size:34px;font-weight:1000}
     #onlineRoomStart:disabled{opacity:.52;cursor:not-allowed}
@@ -5031,8 +4961,6 @@
     .boss-red-tooltip-name { color:#ff6576!important;text-shadow:0 0 11px rgba(255,25,52,.72); }
     body.boss-raid-active .time-clock-action-overlay .time-clock-face.red,
     body.boss-raid-active .time-hyper-clock .time-clock-face.red { opacity:.82!important;mix-blend-mode:normal!important; }
-    .boss-lobby .online-invader-portal-area { margin:12px 0 4px; }
-    .boss-lobby .online-invader-portal-area .invader-portal-button { width:100%;min-height:76px; }
     /* 붉은 타임오러의 이름·상태·기술·시계 문구는 붉게, 에너지 아이콘의 글자는 원래 속성색으로 유지한다. */
     .red-timeora-card,
     .red-timeora-card .unit-nameplate,
@@ -5683,8 +5611,6 @@
       outline-offset: 1px !important;
       animation: portalSelectedBorderPulse 1.55s ease-in-out infinite !important;
     }
-    .portal-active-selection .invader-portal-title { color:#ffd8ec !important; text-shadow:0 0 12px rgba(255,73,151,.92),0 0 24px rgba(139,62,255,.75); }
-    .portal-active-selection .invader-portal-state { color:#ffc2df !important; font-weight:900; }
     .portal-invader-selected { position:relative; }
 
   /* skillButtonInlineR22Style: consolidated visual rules */
@@ -6005,8 +5931,8 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 @property --g-main{syntax:"<color>";inherits:true;initial-value:#2a3345}
 @property --g-sub{syntax:"<color>";inherits:true;initial-value:#3a4660}
 @property --g-sub2{syntax:"<color>";inherits:true;initial-value:#3a4660}
-.cards-grid:has(> .char-tile),.boss-deck-grid:has(> .char-tile){display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));column-gap:8px;row-gap:20px;padding-bottom:10px}
-.card.char-tile,.boss-deck-card.char-tile{position:relative;aspect-ratio:1/1;min-height:0 !important;padding:0 !important;overflow:visible;cursor:pointer;isolation:isolate;
+.cards-grid:has(> .char-tile),.boss-deck-grid:has(> .char-tile),.invader-tile-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));column-gap:8px;row-gap:20px;padding-bottom:10px}
+.card.char-tile,.boss-deck-card.char-tile,.char-tile.portal-tile,.char-tile.invader-pick{position:relative;aspect-ratio:1/1;min-height:0 !important;padding:0 !important;overflow:visible;cursor:pointer;isolation:isolate;
   border-radius:14px !important;border:2px solid transparent !important;
   background:
     radial-gradient(130% 90% at 50% 105%,color-mix(in srgb,var(--g-sub) 70%,transparent),transparent 64%) padding-box,
@@ -6092,11 +6018,6 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 @keyframes portalPulse{0%,100%{opacity:.55;transform:scale(.94)}50%{opacity:1;transform:scale(1.05)}}
 .invader-art{position:relative;z-index:2}
 .invader-art .char-emoji{min-width:0 !important;font-size:66px !important;line-height:1;filter:drop-shadow(0 8px 10px rgba(0,0,0,.6))}
-.invader-arrow{position:absolute;top:50%;margin-top:-22px;width:44px !important;height:44px;min-height:0 !important;border-radius:50% !important;z-index:4;display:grid;place-items:center;font-size:28px !important;line-height:1;padding:0 0 3px !important;
-  border:1px solid rgba(255,255,255,.28) !important;background:rgba(14,10,24,.62) !important;backdrop-filter:blur(4px);opacity:.85 !important;box-shadow:0 4px 14px rgba(0,0,0,.4) !important;transition:transform .15s var(--ui-ease),background .2s ease}
-.invader-arrow.invader-prev{left:8px}
-.invader-arrow.invader-next{right:8px}
-.invader-arrow:active{transform:scale(.92)}
 .invader-name{text-align:center;padding:10px 14px 0}
 .invader-name h3{margin:0;font-size:24px;letter-spacing:.02em}
 .invader-name .tile-stars{position:static;display:inline-block;margin:4px 0 2px;font-size:15px;letter-spacing:1px}
@@ -6111,15 +6032,27 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .invader-skill-row{padding:7px 0;border-top:1px solid rgba(255,255,255,.07)}
 .invader-skill-row:first-of-type{border-top:0;padding-top:0}
 .invader-skill-row .cost{color:#ffd23f;font-weight:800;margin-left:4px}
-.invader-dots[hidden]{display:none}
-.invader-dots{display:flex;justify-content:center;gap:6px;margin:6px 0 10px}
-.invader-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .25s ease}
-.invader-dots i.on{width:20px;border-radius:999px;background:linear-gradient(90deg,#ff6fae,#a45cff)}
 .invader-selector-actions button{min-height:42px;border-radius:12px !important;border:1px solid rgba(255,255,255,.18) !important;background:rgba(255,255,255,.07) !important;color:#fff;font-weight:700}
 .invader-selector-actions button.primary{border-color:rgba(255,160,210,.7) !important;background:linear-gradient(135deg,#d6459a,#7a35d4) !important;box-shadow:0 4px 16px rgba(190,60,160,.4)}
 .invader-selector-actions button:disabled{opacity:.4}
-.invader-portal-button{border-radius:16px !important;min-height:84px;transition:transform .18s var(--ui-ease),box-shadow .25s var(--ui-ease)}
-.invader-portal-button:hover{box-shadow:inset 0 0 36px rgba(130,30,170,.4),0 0 24px rgba(214,70,150,.3)}
-.invader-portal-button:active{transform:scale(.99)}
-.invader-portal-title{text-shadow:0 0 14px rgba(220,100,200,.6)}
 @media (prefers-reduced-motion:reduce){.invader-stage .portal-ring,.invader-stage .portal-core{animation:none}}
+
+/* ===== 초차원 포탈 타일: 선택 타일과 같은 정사각형, 맨 앞 칸 ===== */
+.char-tile.portal-tile.portal-empty{
+  background:radial-gradient(ellipse 70% 60% at 50% 48%,rgba(190,70,220,.5),rgba(70,16,110,.35) 55%,transparent 78%) padding-box,
+    linear-gradient(160deg,#1b0c2c,#0d0818 60%,#1a0a24) padding-box,
+    linear-gradient(180deg,#e0709f,#7a3fd0 60%,#b04a8a) border-box !important;
+  box-shadow:0 4px 12px rgba(0,0,0,.4),0 0 14px rgba(190,70,200,.34),inset 0 1px 0 rgba(255,255,255,.18) !important}
+.char-tile.portal-tile .tile-art::before,.char-tile.portal-tile .tile-art::after{content:"";position:absolute;left:50%;top:50%;border-radius:50%;border:2px solid transparent;pointer-events:none;z-index:-1}
+.char-tile.portal-tile .tile-art::before{width:84%;aspect-ratio:1;margin:0;transform:translate(-50%,-50%);border-top-color:rgba(255,120,175,.85);border-bottom-color:rgba(160,100,255,.6);animation:tilePortalSpin 7s linear infinite;box-shadow:0 0 12px rgba(220,90,200,.35)}
+.char-tile.portal-tile .tile-art::after{width:62%;aspect-ratio:1;transform:translate(-50%,-50%);border-left-color:rgba(120,200,255,.75);border-right-color:rgba(255,100,160,.5);animation:tilePortalSpin 4.6s linear infinite reverse}
+.char-tile.portal-tile:not(.portal-empty) .tile-art::before,.char-tile.portal-tile:not(.portal-empty) .tile-art::after{opacity:.55}
+.char-tile.portal-tile .portal-glyph{width:34%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(255,170,230,.95),rgba(170,60,220,.55) 55%,transparent 74%);animation:tilePortalPulse 3s ease-in-out infinite}
+@keyframes tilePortalSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes tilePortalPulse{0%,100%{transform:scale(.8);opacity:.7}50%{transform:scale(1.12);opacity:1}}
+/* 선택창: 눌러 본 침략자는 분홍 테두리, 적용된 침략자는 흰 테두리(.selected) */
+.char-tile.invader-pick.focused{box-shadow:0 0 0 2px #ff78b5,0 0 18px rgba(214,92,200,.75),inset 0 1px 0 rgba(255,255,255,.4) !important;transform:translateY(-2px)}
+.char-tile.invader-pick.selected.focused{box-shadow:0 0 0 2px #fff,0 0 0 4px #ff78b5,0 0 18px rgba(214,92,200,.75) !important}
+.invader-tile-grid{margin:12px 0 6px}
+.invader-detail{animation:tileLayerIn .35s ease-out}
+@media (prefers-reduced-motion:reduce){.char-tile.portal-tile .tile-art::before,.char-tile.portal-tile .tile-art::after,.char-tile.portal-tile .portal-glyph{animation:none}}
