@@ -25,7 +25,7 @@ import { finalizeChosenPlayerAction } from "../ui/payment.js";
 export function initializeFeaturesGenocider() {
   state_features_genocider.GENO_CLIENT_VERSION = "mega-timeora-18-20260723-r17";
   state_features_genocider.GENOCIDER_BASE_HP = 240;
-  state_features_genocider.GENOCIDER_CARD = state_catalog_cards.C("genocider", "제노사이더", state_features_genocider.GENOCIDER_BASE_HP, "B 축적·소모형 침략자", "메가리그", "감속 무효. 어둠 포식: 보유 B 1개당 최대 HP +60. 새로 증가한 B 1개당 HP 30 회복.", [state_catalog_cards.S("slashClaw", "슬래시클로", "*", "2회 공격. Cost 소비 직전 보유 B 1개당 타격당 피해 +10D.", "enemy", [{
+  state_features_genocider.GENOCIDER_CARD = state_catalog_cards.C("genocider", "제노사이더", state_features_genocider.GENOCIDER_BASE_HP, "B 축적·소모형 침략자", "메가리그", "감속 무효. 어둠 포식: 보유 B 1개당 최대 HP +60. 새로 증가한 B 1개당 HP 30 회복.", [state_catalog_cards.S("slashClaw", "슬래시클로", "*", "2회 공격. 타격당 20D, Cost 소비 직전 보유 B 1개당 타격당 +10D.", "enemy", [{
     type: "genociderSlashClaw"
   }], ["damage", "multi"]), state_catalog_cards.S("displosion", "디스플로전", "B+", "기본 B 1개와 원하는 만큼의 추가 B를 지불. HP 60 회복 후 추가 B 1개당 80D.", "enemy", [{
     type: "genociderDisplosion"
