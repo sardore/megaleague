@@ -229,7 +229,7 @@ export function initializeCatalogCards() {
     formGroup: "brkeno",
     baseFormId: "bkeno",
     alternateFormId: "huve"
-  }), state_catalog_cards.C("huve", "휴브", 340, "변동 자원 화산 딜러", "메가리그", "없음.", [state_catalog_cards.S("mysticBurst", "미스틱버스트", "WB*+", "100D. 기본 WB* 뒤 추가 R당 +30D, W당 HP50 회복, B당 무작위 상태이상(화상·마비·냉동·독·감속·특성봉인 중) 2턴.", "enemy", [{
+  }), state_catalog_cards.C("huve", "휴브", 340, "변동 자원 화산 딜러", "메가리그", "없음.", [state_catalog_cards.S("mysticBurst", "미스틱버스트", "WB*+", "100D. 기본 WB* 뒤 추가 R당 +30D, W당 HP50 회복, B당 무작위 상태이상2.", "enemy", [{
     type: "mysticBurst"
   }], ["damage", "heal", "status", "variableCost"]), state_catalog_cards.S("huveEarthquake", "지진", "WR**", "160D 후 살아 있는 필드 전원의 에너지를 전부 제거.", "enemy", [{
     type: "damage",
