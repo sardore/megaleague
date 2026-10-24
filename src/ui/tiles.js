@@ -29,7 +29,7 @@ export function tileKeyAttr(c) {
 /* toggles: 폼 전환·플러스스타 같은 모서리 버튼 HTML. 정보 문구(폼 목록)는 버튼 title로 옮겨 타일을 정사각형으로 유지한다. */
 export function characterTileInner(c, effectiveCard, { slotIndex = -1, toggles = "" } = {}) {
   const grade = effectiveCard?.rarity || c.grade;
-  return `<i class="tile-gold" aria-hidden="true"></i><div class="tile-art">${pictogramHTML("small", effectiveCard?.effectiveCharacterId || c.id)}</div>${tileStarsHTML(grade)}<i class="tile-order">${slotIndex >= 0 ? slotIndex + 1 : ""}</i><div class="tile-corner">${toggles}</div><b class="tile-name">${effectiveCard?.displayName || c.name}</b>`;
+  return `<i class="tile-gold" aria-hidden="true"></i><div class="tile-art">${pictogramHTML("portrait", effectiveCard?.effectiveCharacterId || c.id)}</div>${tileStarsHTML(grade)}<i class="tile-order">${slotIndex >= 0 ? slotIndex + 1 : ""}</i><div class="tile-corner">${toggles}</div><b class="tile-name">${effectiveCard?.displayName || c.name}</b>`;
 }
 
 /* 타일 갱신: 같은 칸이면 요소를 지우지 않고 제자리에서 바꾼다. 그래서 등급 색(CSS 변수 전환)·금테(전환)가 부드럽게 이어지고,
