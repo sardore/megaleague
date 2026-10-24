@@ -1043,13 +1043,13 @@ export function heal(g, u, n, source = null, meta = {}) {
     sim: !!meta?.sim
   });
   const sourceUnit = typeof source === "string" ? state_engine_entities.GenericBattleStatisticsOwner.resolveSource(g, source) : source;
-  const splashAmount = !meta?.suppressHealingSplash && sourceUnit && traitsActive(sourceUnit) ? Number(card(sourceUnit).healingSplashAmount || 0) : 0;
-  if (got > 0 && splashAmount > 0) {
+  const splashRatio = !meta?.suppressHealingSplash && sourceUnit && traitsActive(sourceUnit) ? Number(card(sourceUnit).healingSplashMissingRatio || 0) : 0;
+  if (got > 0 && splashRatio > 0) {
     const team = teamOf(g, sourceUnit),
-      splash = Math.max(0, Math.floor(splashAmount));
+      splash = Math.max(0, Math.floor(missingBefore * splashRatio));
     if (team && splash > 0) {
       const allies = g.teams[team].field.filter(ally => ally && !ally.dead);
-      log(g, `${sourceUnit.name} 특성 · 회복 확산: ${u.name} 회복 → 필드 아군 전체 ${splash} 회복.`, "heal");
+      log(g, `${sourceUnit.name} 특성 · 회복 확산: ${u.name}의 회복 직전 잃은 HP ${missingBefore} → 필드 아군 전체 ${splash} 회복.`, "heal");
       for (const ally of allies) heal(g, ally, splash, sourceUnit, {
         ...meta,
         suppressHealingSplash: true,

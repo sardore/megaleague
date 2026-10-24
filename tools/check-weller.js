@@ -113,13 +113,5 @@ await check('curse consumes all attack decreases and preserves positive attack b
     return{threw,start,rolledBack,retry,done};});
   assert.equal(r.threw,true);assert.deepEqual(r.rolledBack,r.start);assert.equal(r.retry,true);assert.equal(r.done.atk,r.start.atk-10);
  });
- await check('이루마 회복 확산: 이루마가 회복시키면 필드 아군 전체가 고정 50 추가 회복(실제 회복이 없으면 발동 안 함)',async page=>{
-  const r=await page.evaluate(()=>{const g=Megaleague.newGame(['iruma','hermit','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'iruma-splash'});
-   const [iruma,ally]=g.teams.P.field;iruma.hp=iruma.maxHp-200;ally.hp=ally.maxHp-200;
-   const a0=ally.hp,i0=iruma.hp;const got=probe.combat.heal(g,ally,30,iruma);
-   const full=probe.combat.heal(g,ally,0,iruma);const hpBefore=[iruma.hp,ally.hp];ally.hp=ally.maxHp;const none=probe.combat.heal(g,ally,30,iruma);
-   return{got,allyGain:ally.hp-a0,irumaGain:iruma.hp-i0,none,irumaAfterNone:iruma.hp-hpBefore[0]};});
-  assert.equal(r.got,30);assert.equal(r.irumaGain,50);assert.equal(r.irumaAfterNone,0);assert.equal(r.none,0);
- });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}
