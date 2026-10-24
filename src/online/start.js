@@ -40,13 +40,15 @@ export function onlineMatchScope(result = null) {
   if (roomCode) return `room:${roomCode}`;
   return "online:pending";
 }
-export function cloneAndSanitizeOnlineDeck(deck, league = onlineLeagueNow(), composition = onlineCompositionNow()) {
+/* 플러스스타는 덱 구성 판정(3☆ → 3.5☆ 등)에 들어가므로, 정리할 때도 같은 선택과 진영을 넘겨야 한다.
+   넘기지 않으면 플러스스타로만 합법인 덱(예: 2335)에서 해당 카드가 합법 판정 없이 잘려 나간다. */
+export function cloneAndSanitizeOnlineDeck(deck, league = onlineLeagueNow(), composition = onlineCompositionNow(), plusStar = null, team = "P") {
   const clean = [];
   for (const raw of Array.isArray(deck) ? deck : []) {
     const id = String(raw || ""),
       c = state_catalog_cards.CARDS.find(x => x.id === id);
     if (!c || clean.includes(id) || !state_ui_deck.LeagueFormatOwner.cardAllowed(c, league, composition)) continue;
-    if (!state_ui_deck.LeagueFormatOwner.partialValid([...clean, id], league, composition)) continue;
+    if (!state_ui_deck.LeagueFormatOwner.partialValid([...clean, id], league, composition, plusStar, team)) continue;
     if (clean.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) clean.push(id);
   }
   return clean;
