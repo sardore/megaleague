@@ -15,6 +15,8 @@ import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
 import { timeClockMiniHTML } from "../features/timeora.js";
+import { characterArtHTML, hasCharacterArt } from "./char-art.js";
+import "./char-art/index.js";
 import { combatInt, effectsHTML, energyHTML, storeHTML, state_ui_battle_state } from "./battle-state.js";
 export function initializeUiCards() {
   state_ui_cards.CARD_EMOJI_MAP = {
@@ -88,12 +90,15 @@ export function initializeUiCards() {
   };
 }
 export function cardEmoji(cardId = "") {
+  const art = characterArtHTML(cardId);
+  if (art) return art;
   const parts = state_ui_cards.CARD_EMOJI_MAP[cardId] || ["❔"];
   return parts.map((emoji, index) => `<span class="emoji-part" style="--emoji-index:${index}">${emoji}</span>`).join("");
 }
 export function pictogramHTML(kind = "default", cardId = "") {
   let cls = kind === "small" ? "small" : "";
-  return `<div class="char-emoji ${cls}" data-card-image="${cardId}" role="img" aria-label="${cardId || "캐릭터"} 이모지">${cardEmoji(cardId)}</div>`;
+  const art = hasCharacterArt(cardId);
+  return `<div class="char-emoji ${cls}${art ? " has-art" : ""}" data-card-image="${cardId}" role="img" aria-label="${cardId || "캐릭터"} ${art ? "그림" : "이모지"}">${cardEmoji(cardId)}</div>`;
 }
 export function scheduledInfoHTML(u, ownerTeam = null) {
   if (!u?.scheduledAction) return "";
