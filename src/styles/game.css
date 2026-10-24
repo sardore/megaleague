@@ -5887,9 +5887,10 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .side.ai-side{border-color:var(--ui-ai) !important;background:linear-gradient(180deg,rgba(52,26,34,.55),rgba(14,19,29,.96) 46%),var(--ui-glass) !important}
 .side.player-side{border-color:var(--ui-me) !important;background:linear-gradient(180deg,rgba(24,40,70,.55),rgba(14,19,29,.96) 46%),var(--ui-glass) !important}
 /* 칸: 점선 대신 얇은 실선 + 바닥 조명(캐릭터가 서 있는 느낌) */
-.side .slot{border-style:solid !important;border-color:var(--ui-edge) !important;
-  background:radial-gradient(ellipse 62% 30% at 50% 84%,rgba(255,255,255,.13),rgba(255,255,255,0) 72%),linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.2)) !important;
-  transition:border-color .25s var(--ui-ease),box-shadow .25s var(--ui-ease)}
+/* 등급색 칸(.grade-t*)의 면·테두리는 위쪽 "등급별 카드 색" 규칙이 단독으로 그린다. 여기는 등급 없는 칸만 칠해서 서로 덮어쓰지 않는다. */
+.side .slot{border-style:solid !important;transition:border-color .25s var(--ui-ease),box-shadow .25s var(--ui-ease)}
+.side .slot:not(:has(> [class*="grade-t"])){border-color:var(--ui-edge) !important;
+  background:radial-gradient(ellipse 62% 30% at 50% 84%,rgba(255,255,255,.13),rgba(255,255,255,0) 72%),linear-gradient(180deg,rgba(255,255,255,.035),rgba(0,0,0,.2)) !important}
 .side .slot:has(> .battle-unit-card.dead){background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(0,0,0,.3)) !important}
 /* 체력·실드 바: 가늘고 매끈하게, 위쪽 하이라이트 */
 .unit-bar{height:9px !important;border-color:rgba(255,255,255,.1) !important;background:rgba(4,7,12,.72) !important;box-shadow:inset 0 1px 3px rgba(0,0,0,.7) !important}
@@ -5914,7 +5915,8 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .turnstrip .turntoken:nth-child(-n+2){display:flex !important}
 .turnstrip .turntoken{align-items:center;justify-content:center;min-height:34px;padding:4px 10px !important;line-height:1.15;text-align:center;font-weight:700}
 /* 후열: 칸 높이에 맞춘 한 줄 칩(체력바 + 작은 캐릭터 + 이름). 잘려 보이던 큰 카드를 대체 */
-.side .bench .battle-unit-card.bench-card{height:100% !important;min-height:0 !important;flex-direction:row !important;align-items:center;gap:6px;padding:2px 8px !important;border:1px solid var(--ui-edge) !important;background:rgba(255,255,255,.04) !important;border-radius:10px !important}
+.side .bench .battle-unit-card.bench-card{height:100% !important;min-height:0 !important;flex-direction:row !important;align-items:center;gap:6px;padding:2px 8px !important;border-radius:10px !important}
+.side .bench .battle-unit-card.bench-card:not([class*="grade-t"]){border:1px solid var(--ui-edge) !important;background:rgba(255,255,255,.04) !important}
 .side .bench .battle-unit-card.bench-card .unit-hud{flex:1 1 52%;min-width:0}
 .side .bench .battle-unit-card.bench-card .unit-stage{flex:1 1 48%;min-width:0;flex-direction:row !important;align-items:center;justify-content:flex-start;gap:5px;min-height:0 !important;padding:0 !important}
 .side .bench .battle-unit-card.bench-card .char-emoji,.side .bench .battle-unit-card.bench-card .char-picto{width:22px !important;height:22px !important;min-height:0 !important;font-size:18px !important;flex:0 0 22px;margin:0 !important}
