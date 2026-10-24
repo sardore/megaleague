@@ -229,7 +229,7 @@ export function initializeCatalogCards() {
     formGroup: "brkeno",
     baseFormId: "bkeno",
     alternateFormId: "huve"
-  }), state_catalog_cards.C("huve", "휴브", 340, "변동 자원 화산 딜러", "메가리그", "없음.", [state_catalog_cards.S("mysticBurst", "미스틱버스트", "WB*+", "100D. 기본 WB* 뒤 추가 R당 +30D, W당 HP50 회복, B당 무작위 상태이상2.", "enemy", [{
+  }), state_catalog_cards.C("huve", "휴브", 340, "변동 자원 화산 딜러", "메가리그", "없음.", [state_catalog_cards.S("mysticBurst", "미스틱버스트", "WB*+", "100D. 기본 WB* 뒤 추가 R당 +30D, W당 HP50 회복, B당 무작위 상태이상(화상·마비·냉동·독·감속·특성봉인 중) 2턴.", "enemy", [{
     type: "mysticBurst"
   }], ["damage", "heal", "status", "variableCost"]), state_catalog_cards.S("huveEarthquake", "지진", "WR**", "160D 후 살아 있는 필드 전원의 에너지를 전부 제거.", "enemy", [{
     type: "damage",
@@ -460,7 +460,7 @@ export function initializeCatalogCards() {
   }], ["damage", "heal", "status"])], {
     grade: "3.5☆",
     eclipse: true
-  }), state_catalog_cards.C("grange", "그랜지", 240, "필드·예약 딜러", "메가리그", "없음.", [state_catalog_cards.S("grandField", "그랜드필드", "WorB WorB", "에너지가 가장 적은 적에게 40D 후 코스트 변환 필드 전개. 자신과 필드 아군에게 HP 보호막 120.", "lowestEnergyEnemy", [{
+  }), state_catalog_cards.C("grange", "그랜지", 240, "필드·예약 딜러", "메가리그", "없음.", [state_catalog_cards.S("grandField", "그랜드필드", "WorB WorB", "에너지가 가장 적은 적에게 40D 후 그랜드필드 전개(아군은 W·B 요구 코스트가 *로, 적은 * 요구 코스트가 W 또는 B로 바뀜). 자신과 필드 아군에게 HP 보호막 120. 필드 효과는 하나만 유지되어 새 필드가 기존 필드를 교체하고, 전개한 캐릭터가 후퇴하거나 쓰러지면 끝난다.", "lowestEnergyEnemy", [{
     type: "grandField"
   }], ["damage", "field", "hpProtectionBarrier"]), state_catalog_cards.S("zigzagExcavate", "지그재그굴착", "WBWB", "무적 대기 후 다음 차례에 에너지 적은 적을 가중치로 5회 선택, 대상별 횟수×40D 단일 공격.", "self", [{
     type: "zigzagExcavate"
@@ -525,7 +525,7 @@ export function initializeCatalogCards() {
     traits: [],
     releaseOrder: 11,
     tags: ["legendary-dragon", "dragon"]
-  }), state_catalog_cards.C("abigate", "아비게이트", 260, "가변 저주·에너지 교환", "메가리그", "다운 프레셔: 상대 독 추가 코스트 *를 B로 고정. 딥마인드: 자신·아군 비공격기 사용 후 대상 HP 10 회복, 상대 필드 에너지 0.5 제거.", [state_catalog_cards.S("abyssCannon", "초저주포", "****-", "에너지 0~4개 선택 지불: 4/3/2/1/0개에 100/60/20/0/0D. R·W·B가 모두 지불되면 독.", "enemy", [{
+  }), state_catalog_cards.C("abigate", "아비게이트", 260, "가변 저주·에너지 교환", "메가리그", "다운 프레셔: 상대 독 추가 코스트 *를 B로 고정. 딥마인드: 자신·아군 비공격기 사용 후 대상 HP 10 회복, 상대 필드 에너지 0.5 제거.", [state_catalog_cards.S("abyssCannon", "초저주포", "****-", "에너지 0~4개 선택 지불: 4/3/2/1/0개에 100/60/20/0/0D. R·W·B가 모두 지불되면 독 3턴.", "enemy", [{
     type: "abyssCannon"
   }], ["damage", "status", "variableCost"]), state_catalog_cards.S("abyssVortex", "심해의소용돌이", "B", "서로 다른 필드 캐릭터 둘의 에너지 슬롯 색만 원하는 만큼 교환. 에너지 양·소유자 유지.", "self", [{
     type: "abyssVortex"
@@ -762,7 +762,7 @@ export function initializeCatalogCards() {
   }), state_catalog_cards.C("magSnail", "마그달팽", 120, "필드 전개 포격", "메가리그", "없음.", [state_catalog_cards.S("catapult", "투석기", "B", "20D.", "enemy", [{
     type: "damage",
     amount: 20
-  }], ["damage"]), state_catalog_cards.S("steamHeater", "스팀히터", "WR", "80D. 그랜드필드가 없다면 피해량은 0이 되고 그랜드필드를 전개.", "enemy", [{
+  }], ["damage"]), state_catalog_cards.S("steamHeater", "스팀히터", "WR", "80D. 그랜드필드가 없다면 피해량은 0이 되고 그랜드필드를 전개(아군은 W·B 요구 코스트가 *로, 적은 * 요구 코스트가 W 또는 B로 바뀜). 필드 효과는 하나만 유지되어 새 필드가 기존 필드를 교체하고, 전개한 캐릭터가 후퇴하거나 쓰러지면 끝난다.", "enemy", [{
     type: "grandField",
     damageWhenPresent: 80,
     damageWhenMissing: 0,

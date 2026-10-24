@@ -19,7 +19,7 @@ import { displaySideFor } from "../ui/setup.js";
 export function initializeFeaturesElixian() {
   state_features_elixian.ELIXIAN_CARD = state_catalog_cards.C("elixian", "엘릭시안", 200, "회복·필드 지원", "메가리그", "회복 증폭: 필드에 있는 동안 자신과 아군이 받는 각 회복 판정 +10. 잔향: 사망하면 같은 슬롯의 다음 출전 아군이 자기 차례 시작마다 HP 10을 영구 회복한다.", [state_catalog_cards.S("shiningWind", "샤이닝윈드", "RorB", "아군 전체 HP 20 회복, W½ 획득. 초과 회복은 대상별 최대 80 HP 보호막으로(감소 없음).", "self", [{
     type: "elixianShiningWind"
-  }], ["heal", "hpProtectionBarrier", "energy"]), state_catalog_cards.S("aromaField", "아로마필드", "*", "자기 진영 능력치 증감을 0으로 초기화, 필드 전개: 아군 회복 +10, 상대 회복 -10·방어 -10.", "self", [{
+  }], ["heal", "hpProtectionBarrier", "energy"]), state_catalog_cards.S("aromaField", "아로마필드", "*", "자기 진영 능력치 증감을 0으로 초기화, 필드 전개: 아군 회복 +10, 상대 회복 -10·방어 -10. 필드 효과는 하나만 유지되어 새 필드가 기존 필드를 교체하고, 전개한 캐릭터가 후퇴하거나 쓰러지면 끝난다.", "self", [{
     type: "elixianAromaField"
   }], ["field", "heal", "debuff"], {
     nonAttack: true
