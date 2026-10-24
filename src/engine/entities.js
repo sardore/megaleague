@@ -734,10 +734,22 @@ export function resolveSkillTargets(g, t, s, u, skillRef, options = {}) {
       return options.defaultEnemy ? enemies : [];
   }
 }
+/* 상대의 대상 지정을 자기에게 몰아주는 유닛(유도). 유도 여부·대상 제한·연출은 모두 이 한 곳의 판정을 쓴다. */
+export function isTargetMagnet(g, unit) {
+  return !!unit && !unit.dead && hpBarrierStanceActive(g, unit) && !!card(unit).hpBarrierStance.tauntSingleTarget;
+}
 export function singleTargetTaunters(g, actingTeam, actor, skill) {
   const target = effectiveSkillTarget(actor, skill);
   if (!['enemy', 'enemyHealAlly', 'enemySlot', 'lowestEnergyEnemy', 'anyCharacter'].includes(target)) return [];
-  return (g.teams[other(actingTeam)]?.field || []).filter(unit => hpBarrierStanceActive(g, unit) && card(unit).hpBarrierStance.tauntSingleTarget).map(unit => unit.uid);
+  return (g.teams[other(actingTeam)]?.field || []).filter(unit => isTargetMagnet(g, unit)).map(unit => unit.uid);
+}
+export function actionSkillDef(actor, action) {
+  if (action?.type !== 'skill') return null;
+  return action.copySkill ? state_catalog_cards.CARDS.find(c => c.id === action.copyCard)?.skills.find(sk => sk.id === action.copySkill) : skillOf(actor, action.skill);
+}
+export function actionTargetMagnets(g, t, actor, action) {
+  const skill = actionSkillDef(actor, action);
+  return skill ? singleTargetTaunters(g, t, actor, skill) : [];
 }
 export function battleActionConstraintsMet(g, t, s, action) {
   const actor = unitAt(g, t, s);
@@ -747,9 +759,8 @@ export function battleActionConstraintsMet(g, t, s, action) {
     if (action?.type === 'skill' && stance.blockSkill || action?.type === 'switch' && stance.blockRetreat) return false;
   }
   if (action?.type !== 'skill') return true;
-  const skill = action.copySkill ? state_catalog_cards.CARDS.find(c => c.id === action.copyCard)?.skills.find(sk => sk.id === action.copySkill) : skillOf(actor, action.skill);
-  if (!skill) return false;
-  const taunters = singleTargetTaunters(g, t, actor, skill);
+  if (!actionSkillDef(actor, action)) return false;
+  const taunters = actionTargetMagnets(g, t, actor, action);
   return !taunters.length || action.target?.team === other(t) && taunters.includes(unitAt(g, action.target.team, action.target.slot)?.uid);
 }
 export function resolvePlusStarChoice(choice, deck, team = "P") {
