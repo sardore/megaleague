@@ -1,6 +1,6 @@
 import { state_catalog_cards } from '../catalog/cards.js';
 import { addHpProtectionBarrier, clearAttackDecreases, registerScheduledAction, scheduledSlotRef, setAttack, totalAttackDecrease } from '../engine/effects.js';
-import { applyHpZeroEffect, applyStatus, dealDamage, heal, queueVisual, traitsActive } from '../engine/combat.js';
+import { applyHpZeroEffect, applyStatus, dealDamage, queueVisual, traitsActive } from '../engine/combat.js';
 import { card, cardHasCapability } from '../engine/entities.js';
 import { log } from '../presentation/audio.js';
 import { state_ui_cards } from '../ui/cards.js';
@@ -9,14 +9,14 @@ import { registerCardDefinition } from '../ui/deck.js';
 export function initializeFeaturesWeller() {
   const { C, S } = state_catalog_cards;
   registerCardDefinition(C('weller', '웰러', 160, '불사·저주 탱커', '메가리그',
-    '점액막: HP 보호막 중 피해 50% 감소, 상대 단일 기술 집중, 기술·후퇴 불가. 그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40·HP +40(4회). 1회만.', [
+    '점액막: HP 보호막 중 피해 50% 감소, 상대 단일 기술 집중, 기술·후퇴 불가. 그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40, 줄어든 만큼 HP 회복. 1회만.', [
       S('suppressedCurse', '억누른저주', 'RorB*', '공격력 -10, 자신 HP 보호막 60(턴마다 -20). 2번 더 -10 후 3번째에 감소 합×4 피해·해제.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
       S('graveDown', '그레이브다운', '****', '대상의 HP가 자신의 HP보다 낮으면 대상 HP를 0으로 만든다. 아니면 실패.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
     ], { grade: '4☆', tags: ['zombie'], releaseOrder: 55,
       hpBarrierStance: { receivedDamageMultiplier: 0.5, tauntSingleTarget: true, blockSkill: true, blockRetreat: true }, graveUp: true,
       traitRules: [
         { description: '점액막: HP 보호막 보유 중 받는 피해 50% 감소·상대 단일 대상 기술 유도·기술 사용 및 후퇴 불가.' },
-        { consumedField: 'graveUpConsumed', description: '그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40·HP +40(4회). 1회만.' }
+        { consumedField: 'graveUpConsumed', description: '그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40, 줄어든 만큼 HP 회복. 1회만.' }
       ] }));
   state_ui_cards.CARD_EMOJI_MAP.weller = ['🧟', '🪦'];
 }
@@ -24,10 +24,9 @@ export function initializeFeaturesWeller() {
 export function triggerGraveUp(g, unit) {
   if (!unit || unit.dead || unit.hp > 0 || unit.graveUpConsumed || !cardHasCapability(unit, 'graveUp') || !traitsActive(unit, g)) return false;
   unit.graveUpConsumed = true;
-  unit.graveUpRecovery = { remaining: 4, amount: 40 };
   unit.hp = 0;
   // The trait grants its declared 160 even if an HP-zero effect left another layer intact.
-  addHpProtectionBarrier(g, unit, 160, unit.uid, 'graveUp', { decayPerTurn: 40, cap: Infinity });
+  addHpProtectionBarrier(g, unit, 160, unit.uid, 'graveUp', { decayPerTurn: 40, cap: Infinity, healOnDecay: 'graveUp' });
   applyStatus(g, unit, 'undead', 4, unit);
   log(g, `${unit.name} 특성 · 그레이브업: 언데드 4턴·HP 보호막 160. 그레이브업 제거.`, 'turn');
   queueVisual(g, { type: 'wellerFx', phase: 'graveUp', uid: unit.uid, targetUid: unit.uid });
@@ -53,16 +52,6 @@ export function applyWellerEffect(g, actor, target, effect, skill, ctx = {}) {
   const old = Math.max(0, Number(target.hp));
   log(g, `${actor.name}: 그레이브다운 · ${target.name} HP ${old} → 0.`, 'damage');
   return applyHpZeroEffect(g, actor, target, skill, !!ctx.sim);
-}
-
-export function processWellerTurnStart(g, unit, sim = false) {
-  const recovery = unit.graveUpRecovery;
-  if (recovery?.remaining > 0) {
-    recovery.remaining--;
-    heal(g, unit, recovery.amount, unit, { reason: 'grave-up', effectId: 'graveUp', sim });
-    queueVisual(g, { type: 'wellerFx', phase: 'recovery', uid: unit.uid, targetUid: unit.uid, remaining: recovery.remaining });
-    if (!recovery.remaining) unit.graveUpRecovery = null;
-  }
 }
 
 // Runs on each of the owner's turns through the common reserved-action path in executeScheduled:

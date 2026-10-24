@@ -286,6 +286,7 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
       sourceUid,
       kind,
       ...(options.decayPerTurn != null ? { decayPerTurn: options.decayPerTurn } : {}),
+      ...(options.healOnDecay ? { healOnDecay: options.healOnDecay } : {}),
       lastHalvedEpoch: u.barrierTurnEpoch || 0
     });
   }
@@ -296,19 +297,24 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
   });
   return got;
 }
-export function decayHpProtectionBarriers(g, u) {
+export function decayHpProtectionBarriers(g, u, sim = false) {
   if (!u.hpProtectionBarriers?.length) return;
+  const healed = {};
   let changed = false,
     epoch = u.barrierTurnEpoch || 0;
   for (const x of u.hpProtectionBarriers) {
     if (x.kind === "elixian" && x.decayPerTurn == null) continue;
     if ((x.lastHalvedEpoch ?? -1) >= epoch) continue;
-    x.amount = x.decayPerTurn != null ? Math.max(0, combatInt(x.amount) - Number(x.decayPerTurn)) : Math.floor(combatInt(x.amount) / 2);
+    const before = combatInt(x.amount);
+    x.amount = x.decayPerTurn != null ? Math.max(0, before - Number(x.decayPerTurn)) : Math.floor(before / 2);
+    if (x.healOnDecay) healed[x.healOnDecay] = (healed[x.healOnDecay] || 0) + (before - combatInt(x.amount));
     x.lastHalvedEpoch = epoch;
     changed = true;
   }
   u.hpProtectionBarriers = u.hpProtectionBarriers.filter(x => x.amount > 0.01);
   if (changed) log(g, `${u.name}: HP 보호막의 차례 시작 감소 적용(총 ${totalHpProtection(u)}).`);
+  // A barrier that converts its decay into healing heals exactly what it lost (damage it absorbed earlier is not refunded).
+  for (const [effectId, amount] of Object.entries(healed)) if (amount > 0) heal(g, u, amount, u, { reason: effectId, effectId, sim });
 }
 export function applySkillSeal(g, u, skillId, d, source) {
   if (u.scheduledAction?.kind === "bloom") {

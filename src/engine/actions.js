@@ -1,5 +1,4 @@
 import { eternaLocksTeam } from "../app/controls.js";
-import { processWellerTurnStart } from '../features/weller.js';
 import { listRaidSkillActions } from "../features/boss-raid.js";
 import { listClockSkillActions, listMemoryActions, timeCurrentSuppressionDomain, timeFieldTimeoras, timeFieldUnits, timeRecordTurnStart } from "../features/timeora.js";
 import { listReactiveEnergyActions, reactiveEnergyRule, reconcileAllReactiveEnergyUnits } from "../features/genocider.js";
@@ -50,8 +49,7 @@ export function prepareCurrentTurn(g) {
         u.queuedSkillCostReduction = 0;
         if (u.turnSkillCostReduction) log(g, `${u.name}: 이번 자기 차례 기술 코스트 ${u.turnSkillCostReduction} 감소.`);
         u.barrierTurnEpoch = (u.barrierTurnEpoch || 0) + 1;
-        decayHpProtectionBarriers(g, u);
-        processWellerTurnStart(g, u, g !== state_ui_battle_state.game);
+        decayHpProtectionBarriers(g, u, g !== state_ui_battle_state.game);
         processQueuedHeal(g, u);
         if (u.fireWingUntil != null && u.turns >= u.fireWingUntil) {
           u.fireWingUntil = null;
