@@ -9,6 +9,7 @@ import { state_ui_battle_state } from "./battle-state.js";
 import { pictogramHTML, state_ui_cards } from "./cards.js";
 import { state_ui_deck } from "./deck.js";
 import { renderSetup, updateDeckSetup, state_ui_setup } from "./setup.js";
+import { tileStarsHTML } from "./tiles.js";
 export function initializeUiInvaders() {
   /* 제노사이더 시즌 인트로 · 초차원 포탈 · 전용 연출 보강 */
   state_ui_cards.CARD_EMOJI_MAP.genocider = ["💣", "☠️"];
@@ -78,9 +79,11 @@ export function initializeUiInvaders() {
       const card = list[normalized];
       const chosen = String(selectedId || "") === card.id;
       const previewClass = `invader-preview${chosen ? " portal-invader-selected" : ""}`;
-      root.innerHTML = `<div class="invader-selector"><div class="invader-selector-head"><h2>초차원 포탈</h2><span class="invader-tag">침략자 ${normalized + 1}/${list.length}</span></div><div class="invader-carousel"><button id="${prefix}Prev" class="invader-arrow invader-prev" type="button" aria-label="이전 침략자">&lt;</button><div class="${previewClass}" data-card-id="${card.id}"><div class="invader-preview-top">${pictogramHTML("default", card.id)}<div><h3>${card.name} <span class="tiny">${card.grade}</span></h3><div class="invader-tag">${card.faction || "초차원의 침략자"}</div></div></div><div class="invader-preview-grid"><span>HP ${card.maxHp}</span><span>등급 ${card.grade}</span><span>최대E ${card.maxEnergy}</span></div><p><b>특성</b><br>${card.trait || "없음"}</p><div><b>기술</b>${invaderSkillSummary(card)}</div></div><button id="${prefix}Next" class="invader-arrow invader-next" type="button" aria-label="다음 침략자">&gt;</button></div><div class="invader-selector-actions"><button id="${prefix}Apply" class="primary" type="button">${chosen ? "선택 유지" : "적용"}</button><button id="${prefix}Clear" type="button" ${selectedId ? "" : "disabled"}>선택 해제</button><button id="${prefix}Cancel" type="button">취소</button></div></div>`;
-      document.getElementById(`${prefix}Prev`).onclick = () => onIndex(normalized - 1);
-      document.getElementById(`${prefix}Next`).onclick = () => onIndex(normalized + 1);
+      root.innerHTML = `<div class="invader-selector"><div class="invader-selector-head"><h2>초차원 포탈</h2><span class="invader-tag">침략자 ${normalized + 1}/${list.length}</span></div><div class="invader-carousel"><div class="${previewClass}" data-card-id="${card.id}"><div class="invader-stage"><i class="portal-ring r1"></i><i class="portal-ring r2"></i><i class="portal-ring r3"></i><i class="portal-core"></i><div class="invader-art">${pictogramHTML("default", card.id)}</div>${list.length > 1 ? `<button id="${prefix}Prev" class="invader-arrow invader-prev" type="button" aria-label="이전 침략자">&#8249;</button><button id="${prefix}Next" class="invader-arrow invader-next" type="button" aria-label="다음 침략자">&#8250;</button>` : ""}</div><div class="invader-name"><h3>${card.name}</h3>${tileStarsHTML(card.grade)}<div class="invader-tag">${card.faction || "초차원의 침략자"}</div></div><div class="invader-preview-grid"><span><i>HP</i><b>${card.maxHp}</b></span><span><i>최대E</i><b>${card.maxEnergy}</b></span></div><section class="invader-sec"><h4>특성</h4><p>${card.trait || "없음"}</p></section><section class="invader-sec"><h4>기술</h4>${invaderSkillSummary(card)}</section></div></div><div class="invader-dots" aria-hidden="true" ${list.length > 1 ? "" : "hidden"}>${list.map((_, k) => `<i class="${k === normalized ? "on" : ""}"></i>`).join("")}</div><div class="invader-selector-actions"><button id="${prefix}Apply" class="primary" type="button">${chosen ? "선택 유지" : "적용"}</button><button id="${prefix}Clear" type="button" ${selectedId ? "" : "disabled"}>선택 해제</button><button id="${prefix}Cancel" type="button">취소</button></div></div>`;
+      const prevButton = document.getElementById(`${prefix}Prev`),
+        nextButton = document.getElementById(`${prefix}Next`);
+      if (prevButton) prevButton.onclick = () => onIndex(normalized - 1);
+      if (nextButton) nextButton.onclick = () => onIndex(normalized + 1);
       document.getElementById(`${prefix}Apply`).onclick = () => onApply(card.id, normalized);
       document.getElementById(`${prefix}Clear`).onclick = onClear;
       document.getElementById(`${prefix}Cancel`).onclick = onCancel;
