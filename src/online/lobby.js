@@ -13,7 +13,7 @@ import { stableOnlinePlayerId } from "./transport.js";
 import { systems } from "../runtime/systems.js";
 import { state_ui_battle_state } from "../ui/battle-state.js";
 
-import { characterTileClass, characterTileInner } from "../ui/tiles.js";
+import { characterTileClass, characterTileInner, syncTileGrid, tileKey } from "../ui/tiles.js";
 import { nextLeagueFormId, setupFormState, state_ui_deck } from "../ui/deck.js";
 import { currentSelectedInvader, invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { state_ui_setup } from "../ui/setup.js";
@@ -676,7 +676,7 @@ export function initializeOnlineLobby() {
       }) : ""}<div class="emote-bar"><b>감정 표현</b>${["👍", "🔥", "😮", "😂", "💢", "GG"].map(e => `<button data-emote="${e}">${e}</button>`).join("")}</div><div class="choice-list"><button id="onlineRoomStart" class="primary">${state_ui_deck.p2p.role === "host" ? "전투 시작" : "상대 준비 대기"}</button><button id="onlineRoomLeave">연결 끊기</button></div><p class="tiny muted">시작 화면과 동일한 리그 구성 규칙을 사용합니다. 폼 캐릭터는 이 리그에서 합법인 폼만 전환됩니다.${portalAllowed ? " 침략자는 초차원 포탈에서 최대 한 명 선택할 수 있습니다." : ""}</p>`;
       const box = document.getElementById("onlineRoomDeck");
       const draw = () => {
-        box.replaceChildren();
+        const tiles = [];
         const normalPool = state_ui_deck.LeagueFormatOwner.setupPool(league, composition, state_ui_battle_state.selected, state_ui_deck.plusStarSelection, onlineLocalTeam());
         const seen = new Set();
         for (const rawId of normalPool) {
@@ -689,13 +689,14 @@ export function initializeOnlineLobby() {
           element.tabIndex = 0;
           element.setAttribute("role", "button");
           const slotBlocked = !state_ui_battle_state.selected.includes(id) && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, id], league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam());
-          element.className = `card compact-card selectable online-room-card ${characterTileClass(c.grade)} ${state_ui_battle_state.selected.includes(id) ? "selected" : ""} ${slotBlocked ? "league-slot-blocked" : ""}`;
+          element.className = `card compact-card selectable online-room-card ${state_ui_battle_state.selected.includes(id) ? "selected" : ""} ${slotBlocked ? "league-slot-blocked" : ""}`;
           element.setAttribute("aria-disabled", String(slotBlocked));
           element.dataset.infoCard = "setup";
           element.dataset.infoSurface = state_ui_deck.p2p.role === "host" ? "host-lobby" : "guest-lobby";
           element.dataset.infoTeam = "P";
           element.dataset.infoSlotIndex = String(state_ui_battle_state.selected.indexOf(id));
           element.dataset.cardId = id;
+          element.dataset.tileKey = tileKey(c);
           element.dataset.id = rawId;
           const slotIndex = state_ui_battle_state.selected.indexOf(c.id);
           const effectiveCard = state_catalog_cards.EffectiveCardPresentationOwner.resolve(c, null, {
@@ -712,6 +713,7 @@ export function initializeOnlineLobby() {
           const toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button type="button" class="form-toggle" data-online-form="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(card => card.id === nextForm)?.name || c.name}">⇄</button>` : "";
           const plusToggle = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button type="button" class="plusstar-toggle ${plusActive ? "active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-online-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "";
           element.innerHTML = characterTileInner(c, effectiveCard, { slotIndex, toggles: `${toggle}${plusToggle}` });
+          element.classList.add(...characterTileClass(c, effectiveCard).split(" "));
           state_catalog_cards.EffectiveCardPresentationOwner.syncElement(element, effectiveCard);
           element.onclick = event => {
             if (event.target.closest(".form-toggle,.plusstar-toggle") || slotBlocked) return;
@@ -725,8 +727,9 @@ export function initializeOnlineLobby() {
               draw();
             }
           };
-          box.appendChild(element);
+          tiles.push(element);
         }
+        syncTileGrid(box, tiles);
         box.querySelectorAll("[data-online-form]").forEach(button => button.onclick = event => {
           event.stopPropagation();
           const group = button.dataset.onlineForm;
