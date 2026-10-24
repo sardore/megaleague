@@ -247,5 +247,18 @@ try {
     });
     assert.equal(result.aura,20);assert.equal(result.ignored,0);
   });
+  await check('online lobby deck sanitizing keeps a plus-star deck that is only legal with its plus-star choice', async page => {
+    const r = await page.evaluate(() => {
+      const p = window.probe, cards = p.catalog.CARDS, plain = g => cards.filter(c => c.grade === g && !c.formGroup && !c.tags?.includes('transdimensional-invader'));
+      const eligible = [...p.catalog.PLUS_STAR_ELIGIBLE];
+      const three = plain('3☆'), plus = three.find(c => eligible.includes(c.id)), base = three.find(c => !eligible.includes(c.id));
+      const deck = [plain('2☆')[0].id, base.id, plain('3.5☆')[0].id, plus.id], choice = { cardId: plus.id, slotIndex: 3 };
+      return { deck, sanitizedWithChoice: p.cloneAndSanitizeOnlineDeck(deck, 'comprehensive', '2335', choice, 'P'),
+        sanitizedGuest: p.cloneAndSanitizeOnlineDeck(deck, 'comprehensive', '2335', choice, 'A'),
+        withoutChoice: p.cloneAndSanitizeOnlineDeck(deck, 'comprehensive', '2335') };
+    });
+    assert.deepEqual(r.sanitizedWithChoice, r.deck, 'the plus-star card must not be dropped');
+    assert.equal(r.withoutChoice.length, 3, 'without a plus-star choice the same deck is illegal (sanity)');
+  });
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 if (failures.length) process.exitCode = 1;

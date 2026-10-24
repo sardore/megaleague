@@ -10,6 +10,8 @@ import { render } from '../../src/ui/payment.js';
 import { playVisuals } from '../../src/presentation/animations.js';
 import { systems } from '../../src/runtime/systems.js';
 import { state_presentation_coordinates as coordinates } from '../../src/presentation/coordinates.js';
+import { cloneAndSanitizeOnlineDeck } from '../../src/online/start.js';
+import { state_catalog_cards as catalog } from '../../src/catalog/cards.js';
 import { timeCommitPendingTurnAdvance } from '../../src/features/timeora.js';
 import { afterAction } from '../../src/ui/action-choices.js';
 import { effectApply } from '../../src/engine/effects.js';
@@ -38,4 +40,4 @@ function setupGuest() {
 }
 window.probe = { combat, snapshots, battle, deck, actions, commands, systems, render,
   serializeOnlineGame, cloneOnlineVisualEvents, visibleDefense, playVisuals, coordinates,
-  setupGuest, timeCommitPendingTurnAdvance, afterAction, effectApply, card, cardTooltipHTML, timeClockMiniHTML };
+  setupGuest, cloneAndSanitizeOnlineDeck, catalog, timeCommitPendingTurnAdvance, afterAction, effectApply, card, cardTooltipHTML, timeClockMiniHTML };
