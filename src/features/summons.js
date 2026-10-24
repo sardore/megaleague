@@ -389,7 +389,7 @@ export function summonPanelHTML(g, t, u) {
     skill = behavior === "support" ? "힐링윙 / 쪼아먹기" : behavior === "constrict" ? "조이기" : behavior === "rage" ? `분노발톱 · 사망 ${n} · Cost ${"*".repeat(Math.max(0, 3 - n)) || "없음"} · ${80 + 60 * n}D` : (def.skills || []).map(x => x.name).join(" / ") || "없음",
     cur = normalizePendingSummonTurns(g),
     state = cur?.u.uid === u.uid ? "현재 행동 중" : (g.pendingSummonTurns || []).some(q => q.summonUid === u.uid) ? "행동 대기" : "정글즈 차례 후 행동";
-  return `<div class="summon-card ${u.dead ? "dead" : ""}" data-zone="field" data-team="${t}" data-slot="summon:${u.uid}" data-uid="${u.uid}"><div class="summon-head"><span class="summon-emoji">${cardCapability(u, "summonIcon", "◆")}</span>${u.name}</div><div class="summon-detail">HP ${combatInt(u.hp)}/${u.maxHp}<br>E ${e}<br>상태 ${sts}<br>${skill}<br><span class="summon-ready">${state}</span></div></div>`;
+  return `<div class="summon-card ${u.dead ? "dead" : ""}" data-zone="field" data-team="${t}" data-slot="summon:${u.uid}" data-uid="${u.uid}"><div class="summon-head"><span class="summon-emoji">${cardCapability(u, "summonIcon", "◆")}</span>${u.name}</div><div class="summon-detail"><span>HP ${combatInt(u.hp)}/${u.maxHp}</span><span>E ${e}</span><span>상태 ${sts}</span><span>${skill}</span><span class="summon-ready">${state}</span></div></div>`;
 }
 export function pointForUid(arena, uid) {
   return state_presentation_coordinates.VfxCoordinateOwner.point(arena, state_presentation_coordinates.battleVisualElement(uid));
