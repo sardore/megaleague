@@ -5925,3 +5925,15 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 /* 사망 카드: 연출이 끝날 때까지 회색으로 남았다가 사라진다(cards.js DeathPresentationOwner) */
 .battle-unit-card.death-fade{animation:deathFade 2.4s linear forwards;pointer-events:none}
 @keyframes deathFade{0%,62%{opacity:.46;filter:grayscale(.7)}100%{opacity:0;filter:grayscale(1)}}
+
+/* ===== 유도 유닛(상대 단일 기술을 자기에게 모으는 상태): 카드 안쪽을 상시 빨간 동심원이 안쪽으로 모이며 채운다.
+   프레임·현재턴 링과 같은 카드 안쪽에서 그리고(카드 밖으로 안 나감), 글자 없이 캐릭터 뒤에 깔린다. ===== */
+@property --magnet-phase{syntax:"<length>";inherits:false;initial-value:16px}
+.battle-unit-card.target-magnet{position:relative}
+.battle-unit-card.target-magnet::before{content:"";position:absolute;inset:0;z-index:0;border-radius:inherit;pointer-events:none;
+  background:repeating-radial-gradient(circle at 50% 46%,
+    rgba(255,48,48,0) calc(var(--magnet-phase) + 0px),rgba(255,48,48,0) calc(var(--magnet-phase) + 11px),
+    rgba(255,48,48,.7) calc(var(--magnet-phase) + 11px),rgba(255,48,48,.7) calc(var(--magnet-phase) + 14px),
+    rgba(255,48,48,0) calc(var(--magnet-phase) + 14px),rgba(255,48,48,0) calc(var(--magnet-phase) + 16px));
+  animation:magnetRingsIn 1.2s linear infinite}
+@keyframes magnetRingsIn{from{--magnet-phase:16px}to{--magnet-phase:0px}}
