@@ -104,5 +104,14 @@ await check('curse consumes all attack decreases and preserves positive attack b
   });
   assert.deepEqual(r,{count:1,aura:1,ack:true,hp:0,barrier:160});
  });
+ await check('a rolled-back scheduled execution can be retried on the same turn (deterministic id is not blacklisted)',async page=>{
+  const r=await page.evaluate(()=>{const{g,target,prepareOwn,apply}=wellerFixture();probe.battle.game=g;apply('suppressedCurse',target,false);for(let i=0;i<3;i++)prepareOwn();
+    const view=()=>({atk:g.teams.A.field[0].attackMod,serial:g.turnSerial,pending:!!g.teams.P.field[0].scheduledAction});
+    const act=()=>Megaleague.legalActions(g,'P',0).find(a=>a.type==='scheduled');
+    const start=view();probe.tx.ActionFaultInjector.arm('validation-after');let threw=false;try{Megaleague.execute(g,'P',0,act(),{sim:false});}catch{threw=true;}probe.tx.ActionFaultInjector.clear();
+    const rolledBack=view();const retry=Megaleague.execute(g,'P',0,act(),{sim:false});const done=view();
+    return{threw,start,rolledBack,retry,done};});
+  assert.equal(r.threw,true);assert.deepEqual(r.rolledBack,r.start);assert.equal(r.retry,true);assert.equal(r.done.atk,r.start.atk-10);
+ });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}

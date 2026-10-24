@@ -221,9 +221,13 @@ export function initializeRuntimeTransactions() {
       state_runtime_input.InputLockManager.unlock("payment");
       state_runtime_input.InputLockManager.unlock("target-selection");
       state_runtime_input.InputLockManager.unlock("action-transaction");
-      const rejected = failed.get(g.battleId) || new Set();
-      rejected.add(tx.actionId);
-      failed.set(g.battleId, rejected);
+      /* 예약 행동의 실행 ID는 예약ID+턴 번호로 정해지는 결정적 값이라, 롤백된 시도를 영구 거부하면 같은 차례를 다시 실행할 수 없다.
+         이중 적용은 committed 집합과 g.consumedScheduledActionIds가 이미 막으므로 실패 목록에는 클라이언트가 만든 ID만 넣는다. */
+      if (!tx.action?.scheduledActionId) {
+        const rejected = failed.get(g.battleId) || new Set();
+        rejected.add(tx.actionId);
+        failed.set(g.battleId, rejected);
+      }
       const rollbackEvent = state_runtime_transactions.TransactionAuditChannel.emit({
         type: "ACTION_TRANSACTION_ROLLED_BACK",
         battleId: g.battleId,
