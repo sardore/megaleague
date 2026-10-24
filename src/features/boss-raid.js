@@ -22,7 +22,8 @@ import { systems } from "../runtime/systems.js";
 import { afterAction, processPendingTraitChoice, scheduleAI } from "../ui/action-choices.js";
 import { renderBaseActions, state_ui_action_panel } from "../ui/action-panel.js";
 import { scheduleLocalAutoTurnTimer, state_ui_battle_state } from "../ui/battle-state.js";
-import { pictogramHTML, state_ui_cards } from "../ui/cards.js";
+import { state_ui_cards } from "../ui/cards.js";
+import { characterTileClass, characterTileInner } from "../ui/tiles.js";
 import { otherFormId, setSetupFormState, setupFormState, startBgm, state_ui_deck } from "../ui/deck.js";
 import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
@@ -1333,7 +1334,7 @@ function bossVisibleNormalPool() {
 function bossDeckCardHTML(id, selected, plusActive, surface = "boss-composition") {
   const c = state_catalog_cards.CARDS.find(x => x.id === id),
     next = c?.formGroup ? otherFormId(c.id) : null;
-  const formToggle = next ? `<button type="button" class="form-toggle" data-boss-form="${c.formGroup}">${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === next)?.name || c.name}</button>` : "";
+  const formToggle = next ? `<button type="button" class="form-toggle" data-boss-form="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === next)?.name || c.name}">⇄</button>` : "";
   const slotIndex = bossRaidSelection.indexOf(id),
     effectiveCard = state_catalog_cards.EffectiveCardPresentationOwner.resolve(c, null, {
       deck: bossRaidSelection,
@@ -1343,7 +1344,7 @@ function bossDeckCardHTML(id, selected, plusActive, surface = "boss-composition"
       surface
     });
   const plusToggle = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(id) ? `<button type="button" class="plusstar-toggle ${effectiveCard.plusStar ? "active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${id}" data-boss-plus-star="${id}" aria-pressed="${effectiveCard.plusStar}">🎆</button>` : "";
-  return `<div class="boss-deck-card ${selected ? "selected" : ""} ${effectiveCard.visualModifiers.glowClass}" data-info-card="setup" data-info-surface="${surface}" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${id}" data-boss-card="${id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}">${pictogramHTML("small", effectiveCard.effectiveCharacterId)}<h3 class="card-title-line"><span>${effectiveCard.displayName}</span><span class="tiny">${effectiveCard.rarity}</span></h3><div class="tiny muted">HP ${c.maxHp} · 실드 ${c.shield || 0}</div>${formToggle}${plusToggle}</div>`;
+  return `<div class="boss-deck-card ${characterTileClass(effectiveCard.rarity, effectiveCard.visualModifiers.glowClass)} ${selected ? "selected" : ""}" data-info-card="setup" data-info-surface="${surface}" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${id}" data-boss-card="${id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}">${characterTileInner(c, effectiveCard, { slotIndex, toggles: `${formToggle}${plusToggle}` })}</div>`;
 }
 function bossCurrentInvader() {
   return bossRaidSelection.find(id => typeof isInvaderCardId === "function" && isInvaderCardId(id)) || null;
