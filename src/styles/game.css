@@ -6097,7 +6097,9 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
   height:100%;
   object-fit:contain;
   object-position:center;
-  filter:drop-shadow(0 5px 6px rgba(0,0,0,.35));
+  /* Preserve smooth resampling; heavy shadows blur the fine edges in a small tile. */
+  image-rendering:auto;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));
   transform:none;
 }
 .char-tile .tile-art {overflow:hidden;border-radius:11px;}
@@ -6109,7 +6111,7 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
   overflow:hidden;
 }
 .char-tile .character-sprite--portrait .character-sprite__image {
-  transform:scale(var(--sprite-portrait-scale,1.75));
+  transform:scale(var(--sprite-portrait-scale,1.32));
   transform-origin:var(--sprite-focus-x,50%) var(--sprite-focus-y,42%);
 }
 .battle-unit-card .unit-stage > .character-sprite--full {
