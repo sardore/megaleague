@@ -4,8 +4,8 @@ export const CHARACTER_SPRITES = Object.freeze({
   sweetna: Object.freeze({
     src: "./assets/media/sweetna.webp",
     focusX: 52,
-    focusY: 43,
-    portraitScale: 1.9,
+    focusY: 42,
+    portraitScale: 1.32,
   }),
 });
 
