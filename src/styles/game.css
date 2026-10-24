@@ -6071,3 +6071,55 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .char-tile.selected{box-shadow:0 0 0 2px #fff,0 0 16px color-mix(in srgb,var(--g-main) 80%,transparent),inset 0 1px 0 rgba(255,255,255,.4) !important}
 .char-tile.selected .tile-name{border-color:#fff}
 .char-tile.league-slot-blocked,.char-tile.disabled{filter:grayscale(.85) brightness(.55);cursor:not-allowed}
+
+/* ===== 초차원 포탈: 침략자 선택창 + 진입 버튼 ===== */
+.invader-selector{padding:16px 14px 14px;border-radius:18px;border:1px solid rgba(214,92,140,.5);
+  background:radial-gradient(120% 60% at 50% 0%,rgba(122,40,170,.3),transparent 62%),linear-gradient(170deg,rgba(24,12,36,.98),rgba(9,8,16,.99));
+  box-shadow:inset 0 0 50px rgba(96,24,128,.25),0 18px 54px rgba(0,0,0,.5)}
+.invader-selector-head{padding-right:64px}
+.invader-selector-head h2{font-size:20px;letter-spacing:.02em;text-shadow:0 0 14px rgba(214,92,200,.55)}
+.invader-selector-head .invader-tag{font-size:12px;padding:3px 9px;border-radius:999px;background:rgba(214,92,140,.16);border:1px solid rgba(214,92,140,.4);white-space:nowrap}
+.invader-carousel{display:block;margin:12px 0 8px}
+.invader-preview{min-height:0;padding:0 0 12px;border:1px solid rgba(150,100,190,.4);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,rgba(14,10,22,.8),rgba(8,8,14,.86))}
+.invader-stage{position:relative;height:186px;display:grid;place-items:center;overflow:hidden;
+  background:radial-gradient(ellipse 60% 55% at 50% 50%,rgba(150,50,200,.45),rgba(60,10,90,.2) 55%,transparent 75%),linear-gradient(180deg,#0b0613,#150a22)}
+.invader-stage .portal-ring{position:absolute;left:50%;top:50%;border-radius:50%;border:2px solid transparent;pointer-events:none}
+.invader-stage .portal-ring.r1{width:150px;height:150px;margin:-75px 0 0 -75px;border-top-color:rgba(255,110,170,.85);border-bottom-color:rgba(160,90,255,.55);animation:portalSpin 7s linear infinite;box-shadow:0 0 16px rgba(220,80,160,.35)}
+.invader-stage .portal-ring.r2{width:116px;height:116px;margin:-58px 0 0 -58px;border-left-color:rgba(120,200,255,.7);border-right-color:rgba(255,90,150,.5);animation:portalSpin 4.6s linear infinite reverse}
+.invader-stage .portal-ring.r3{width:164px;height:164px;margin:-82px 0 0 -82px;border-color:rgba(190,110,255,.18);animation:portalPulse 3.4s ease-in-out infinite}
+.invader-stage .portal-core{position:absolute;left:50%;top:50%;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;background:radial-gradient(circle,rgba(255,150,220,.5),rgba(130,40,190,.25) 55%,transparent 72%);filter:blur(4px);animation:portalPulse 3.4s ease-in-out infinite}
+@keyframes portalSpin{to{transform:rotate(360deg)}}
+@keyframes portalPulse{0%,100%{opacity:.55;transform:scale(.94)}50%{opacity:1;transform:scale(1.05)}}
+.invader-art{position:relative;z-index:2}
+.invader-art .char-emoji{min-width:0 !important;font-size:66px !important;line-height:1;filter:drop-shadow(0 8px 10px rgba(0,0,0,.6))}
+.invader-arrow{position:absolute;top:50%;margin-top:-22px;width:44px !important;height:44px;min-height:0 !important;border-radius:50% !important;z-index:4;display:grid;place-items:center;font-size:28px !important;line-height:1;padding:0 0 3px !important;
+  border:1px solid rgba(255,255,255,.28) !important;background:rgba(14,10,24,.62) !important;backdrop-filter:blur(4px);opacity:.85 !important;box-shadow:0 4px 14px rgba(0,0,0,.4) !important;transition:transform .15s var(--ui-ease),background .2s ease}
+.invader-arrow.invader-prev{left:8px}
+.invader-arrow.invader-next{right:8px}
+.invader-arrow:active{transform:scale(.92)}
+.invader-name{text-align:center;padding:10px 14px 0}
+.invader-name h3{margin:0;font-size:24px;letter-spacing:.02em}
+.invader-name .tile-stars{position:static;display:inline-block;margin:4px 0 2px;font-size:15px;letter-spacing:1px}
+.invader-name .invader-tag{font-size:12px}
+.invader-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 14px 4px}
+.invader-preview-grid span{display:flex;align-items:baseline;justify-content:center;gap:7px;padding:7px 8px;border-radius:10px;background:rgba(70,40,96,.4);border:1px solid rgba(150,100,190,.28)}
+.invader-preview-grid span i{font-style:normal;font-size:11px;color:#c9aee0}
+.invader-preview-grid span b{font-size:17px}
+.invader-sec{margin:10px 14px 0;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07)}
+.invader-sec h4{margin:0 0 5px;font-size:12px;letter-spacing:.08em;color:#ffb3d6}
+.invader-sec p{margin:0;font-size:13px;line-height:1.5}
+.invader-skill-row{padding:7px 0;border-top:1px solid rgba(255,255,255,.07)}
+.invader-skill-row:first-of-type{border-top:0;padding-top:0}
+.invader-skill-row .cost{color:#ffd23f;font-weight:800;margin-left:4px}
+.invader-dots[hidden]{display:none}
+.invader-dots{display:flex;justify-content:center;gap:6px;margin:6px 0 10px}
+.invader-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .25s ease}
+.invader-dots i.on{width:20px;border-radius:999px;background:linear-gradient(90deg,#ff6fae,#a45cff)}
+.invader-selector-actions button{min-height:42px;border-radius:12px !important;border:1px solid rgba(255,255,255,.18) !important;background:rgba(255,255,255,.07) !important;color:#fff;font-weight:700}
+.invader-selector-actions button.primary{border-color:rgba(255,160,210,.7) !important;background:linear-gradient(135deg,#d6459a,#7a35d4) !important;box-shadow:0 4px 16px rgba(190,60,160,.4)}
+.invader-selector-actions button:disabled{opacity:.4}
+.invader-portal-button{border-radius:16px !important;min-height:84px;transition:transform .18s var(--ui-ease),box-shadow .25s var(--ui-ease)}
+.invader-portal-button:hover{box-shadow:inset 0 0 36px rgba(130,30,170,.4),0 0 24px rgba(214,70,150,.3)}
+.invader-portal-button:active{transform:scale(.99)}
+.invader-portal-title{text-shadow:0 0 14px rgba(220,100,200,.6)}
+@media (prefers-reduced-motion:reduce){.invader-stage .portal-ring,.invader-stage .portal-core{animation:none}}
