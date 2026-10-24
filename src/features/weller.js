@@ -10,7 +10,7 @@ export function initializeFeaturesWeller() {
   const { C, S } = state_catalog_cards;
   registerCardDefinition(C('weller', '웰러', 160, '불사·저주 탱커', '메가리그',
     '점액막: HP 보호막 중 피해 50% 감소, 상대 단일 기술 집중, 기술·후퇴 불가. 그레이브업: HP 0이면 언데드 4턴+HP 보호막 160, 차례마다 보호막 -40, 줄어든 만큼 HP 회복. 1회만.', [
-      S('suppressedCurse', '억누른저주', 'RorB*', '공격력 -10, 자신 HP 보호막 60(턴마다 -20). 2번 더 -10 후 3번째에 감소 합×4 피해·해제. 시전 후 자기 차례 3번은 예약 행동으로 자동 진행(그동안 다른 행동 불가)되고 대상은 적 슬롯을 따라간다.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
+      S('suppressedCurse', '억누른저주', 'RorB*', '공격력 -10, 자신 HP 보호막 60(턴마다 -20). 2번 더 -10 후 3번째에 감소 합×4 피해·해제.', 'enemy', [{ type: 'suppressedCurse' }], ['damage', 'debuff', 'delayed'], { vfxTheme: 'suppressedCurse' }),
       S('graveDown', '그레이브다운', '****', '대상의 HP가 자신의 HP보다 낮으면 대상 HP를 0으로 만든다. 아니면 실패.', 'enemy', [{ type: 'graveDown' }], ['damage', 'execute'], { vfxTheme: 'graveDown' })
     ], { grade: '4☆', tags: ['zombie'], releaseOrder: 55,
       hpBarrierStance: { receivedDamageMultiplier: 0.5, tauntSingleTarget: true, blockSkill: true, blockRetreat: true }, graveUp: true,
