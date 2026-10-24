@@ -24,7 +24,7 @@ export const state_ui_battle_state = {
 import { state_engine_actions } from "../engine/actions.js";
 import { combatStats, eclipseBlocks, traitsActive } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
-import { card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillIdByEffect } from "../engine/entities.js";
+import { card, cardCapability, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillIdByEffect } from "../engine/entities.js";
 import { foxSingleCost } from "../features/foxious.js";
 import { reactiveEnergyAmount, reactiveEnergyRule } from "../features/genocider.js";
 import { fragmentDefense } from "../features/summons.js";
@@ -209,7 +209,9 @@ export function effectsHTML(u) {
     const g = state_engine_actions.timeTraitGame || (typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null),
       stopReason = g ? timeClockStopReason(g, u) : null;
     const clockState = stopReason ? stopReason === "traitSeal" ? "시계 정지(특성봉인)" : "시계 정지(상대 정렬)" : g && timeClockAlignmentsCancel(g) && timeIsAligned(u) ? "동시 정렬 상쇄" : timeIsAligned(u) ? "정렬" : "비정렬";
-    base += `<div class="effect-box tiny"><b>Time</b><br>시침 ${timeNormDeg(u.timeHourDeg)}° · 분침 ${timeNormDeg(u.timeMinuteDeg)}° · ${clockState}<br>타임프로텍트 +20 · 타임리콜 ${u.usedOnce?.[skillIdByEffect(u, "timeRecall")] ? "사용 완료" : "사용 가능"}</div>`;
+    const protectAura = Number(cardCapability(u, "defenseAura", 0)),
+      protectText = traitsActive(u, g) ? `방어 +${combatInt(protectAura)}` : "정지";
+    base += `<div class="effect-box tiny"><b>Time</b><br>시침 ${timeNormDeg(u.timeHourDeg)}° · 분침 ${timeNormDeg(u.timeMinuteDeg)}° · ${clockState}<br>타임프로텍트 ${protectText} · 타임리콜 ${u.usedOnce?.[skillIdByEffect(u, "timeRecall")] ? "사용 완료" : "사용 가능"}</div>`;
   }
   return base;
 }

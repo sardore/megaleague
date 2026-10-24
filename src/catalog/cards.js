@@ -303,10 +303,10 @@ export function initializeCatalogCards() {
         }
       }
     }
-  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 개별 피해 -40. 즉시 치료: 필드 아군의 새 상태이상 제거, 개당 HP 20 회복. 회복 확산: 이루마가 아군을 실제로 회복시키면 필드 아군 전체가 추가로 HP 50 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
+  }), state_catalog_cards.C("iruma", "이루마", 150, "피해 이전 지원", "메가리그", "피해경감: 개별 피해 -40. 즉시 치료: 필드 아군의 새 상태이상 제거, 개당 HP 20 회복(회복 확산 발동). 회복 확산: 이루마가 아군을 실제로 회복시키면 필드 아군 전체가 추가로 HP 50 회복.", [state_catalog_cards.S("shift", "시프트", "**", "필드의 다른 아군이 이미 잃은 HP를 최대 150까지 되돌리고, 같은 양의 피해를 이루마에게 이전.", "allyOtherAny", [{
     type: "shift",
     amount: 150
-  }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 전체 0D·방어 -10·감속2. 사용 직전 이루마 HP의 1/3을 필드 아군에 원하는 비율로 분배 회복.", "field", [{
+  }], ["support"]), state_catalog_cards.S("liferain", "라이프레인", "W*", "적 전체 0D·방어 -10·감속2. 사용 직전 이루마 HP의 1/3을 필드 아군에 원하는 비율로 분배 회복(실제 회복된 대상마다 회복 확산 발동).", "field", [{
     type: "lifeRain"
   }], ["damage", "heal", "status"])], {
     grade: "4☆",
