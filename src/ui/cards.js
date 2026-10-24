@@ -1,4 +1,5 @@
 import { raidCardForUnit, formatRaidCardTooltip } from "../features/boss-raid.js";
+import { characterSpriteHTML } from "./character-sprites.js";
 import { TimerManager } from "../runtime/timers.js";
 import { undeadAuraHTML } from '../presentation/weller.js';
 
@@ -92,7 +93,9 @@ export function cardEmoji(cardId = "") {
   return parts.map((emoji, index) => `<span class="emoji-part" style="--emoji-index:${index}">${emoji}</span>`).join("");
 }
 export function pictogramHTML(kind = "default", cardId = "") {
-  let cls = kind === "small" ? "small" : "";
+  const sprite = characterSpriteHTML(cardId, kind);
+  if (sprite) return sprite;
+  const cls = kind === "small" || kind === "portrait" ? "small" : "";
   return `<div class="char-emoji ${cls}" data-card-image="${cardId}" role="img" aria-label="${cardId || "캐릭터"} 이모지">${cardEmoji(cardId)}</div>`;
 }
 export function scheduledInfoHTML(u, ownerTeam = null) {
