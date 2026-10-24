@@ -16,7 +16,8 @@ import { log } from "../presentation/audio.js";
 import { systems } from "../runtime/systems.js";
 import { startBattle } from "./action-choices.js";
 import { combatInt, state_ui_battle_state } from "./battle-state.js";
-import { cardEmoji, hideCardTooltip, pictogramHTML } from "./cards.js";
+import { cardEmoji, hideCardTooltip } from "./cards.js";
+import { characterTileClass, characterTileInner } from "./tiles.js";
 import { poolForLeague, stopBgm, state_ui_deck } from "./deck.js";
 import { render, syncGrandFieldBackground } from "./payment.js";
 import { arrangeAIDeck, localTeamFor } from "./setup.js";
@@ -320,7 +321,7 @@ export function openChoice(html, items) {
   state_ui_battle_state.$("#modal").classList.add("open");
 }
 export function showCodex() {
-  let html = `<h2>카드 도감 — 총 ${state_catalog_cards.CARDS.length}장</h2><p>카드 설명은 컴퓨터에서 마우스를 올리거나 모바일에서 반초간 길게 눌러 확인합니다. 브케노↔휴브, 이루마↔각성이루마, 화락나리↔루나리↔호리진탈은 하나의 폼 패밀리이며, 리그 편성에서는 해당 구성에서 사용 가능한 폼만 표시·전환됩니다.</p><div class="cards-grid">` + state_catalog_cards.CARDS.map(c => `<div class="card compact-card ${c.grade !== "2☆" ? "mega-card" : ""}" data-info-card="codex" data-card-id="${c.id}">${pictogramHTML("small", c.id)}<h3 class="card-title-line"><span>${c.name}</span><span>${c.grade}</span></h3><div class="stats"><span>HP ${c.maxHp}</span><span>실드 ${c.shield || 0}</span>${(c.baseDefense || 0) !== 0 ? `<span>방어 ${c.baseDefense || 0}</span>` : ""}<span>최대E ${c.maxEnergy}</span></div><p class="tiny compact-role"><b>${c.role}</b></p></div>`).join("") + "</div>";
+  let html = `<h2>카드 도감 — 총 ${state_catalog_cards.CARDS.length}장</h2><p>카드 설명은 컴퓨터에서 마우스를 올리거나 모바일에서 반초간 길게 눌러 확인합니다. 브케노↔휴브, 이루마↔각성이루마, 화락나리↔루나리↔호리진탈은 하나의 폼 패밀리이며, 리그 편성에서는 해당 구성에서 사용 가능한 폼만 표시·전환됩니다.</p><div class="cards-grid">` + state_catalog_cards.CARDS.map(c => `<div class="card compact-card ${characterTileClass(c.grade)}" data-info-card="codex" data-card-id="${c.id}">${characterTileInner(c, null)}</div>`).join("") + "</div>";
   openChoice(html, []);
 }
 export function severeDeckConflict(ids) {

@@ -12,7 +12,8 @@ import { cloneAndSanitizeOnlineDeck, resetOnlineStartTransactionState, rootOnlin
 import { stableOnlinePlayerId } from "./transport.js";
 import { systems } from "../runtime/systems.js";
 import { state_ui_battle_state } from "../ui/battle-state.js";
-import { pictogramHTML } from "../ui/cards.js";
+
+import { characterTileClass, characterTileInner } from "../ui/tiles.js";
 import { nextLeagueFormId, setupFormState, state_ui_deck } from "../ui/deck.js";
 import { currentSelectedInvader, invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { state_ui_setup } from "../ui/setup.js";
@@ -688,7 +689,7 @@ export function initializeOnlineLobby() {
           element.tabIndex = 0;
           element.setAttribute("role", "button");
           const slotBlocked = !state_ui_battle_state.selected.includes(id) && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, id], league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam());
-          element.className = `card compact-card selectable online-room-card ${state_ui_battle_state.selected.includes(id) ? "selected" : ""} ${slotBlocked ? "league-slot-blocked" : ""}`;
+          element.className = `card compact-card selectable online-room-card ${characterTileClass(c.grade)} ${state_ui_battle_state.selected.includes(id) ? "selected" : ""} ${slotBlocked ? "league-slot-blocked" : ""}`;
           element.setAttribute("aria-disabled", String(slotBlocked));
           element.dataset.infoCard = "setup";
           element.dataset.infoSurface = state_ui_deck.p2p.role === "host" ? "host-lobby" : "guest-lobby";
@@ -708,13 +709,9 @@ export function initializeOnlineLobby() {
           const plusActive = effectiveCard.plusStar,
             legalForms = c.formGroup ? state_ui_deck.LeagueFormatOwner.eligibleForms(c.formGroup, state_ui_battle_state.selected, league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam()) : [],
             nextForm = c.formGroup ? nextLeagueFormId(c.formGroup, c.id, state_ui_battle_state.selected, league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam()) : null;
-          const toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button type="button" class="form-toggle" data-online-form="${c.formGroup}">${c.name} → ${state_catalog_cards.CARDS.find(card => card.id === nextForm)?.name || c.name}</button>` : "";
-          const formInfo = c.formGroup && legalForms.length ? `<div class="form-eligibility"><b>폼</b>${legalForms.map(fid => {
-            const fc = state_catalog_cards.CARDS.find(x => x.id === fid);
-            return `<span class="form-chip">${fc?.name || fid} ${fc?.grade || ""}</span>`;
-          }).join("")}</div>` : "";
+          const toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button type="button" class="form-toggle" data-online-form="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(card => card.id === nextForm)?.name || c.name}">⇄</button>` : "";
           const plusToggle = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button type="button" class="plusstar-toggle ${plusActive ? "active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-online-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "";
-          element.innerHTML = `${pictogramHTML("small", effectiveCard.effectiveCharacterId)}<h3 class="card-title-line"><span>${effectiveCard.displayName}</span><span class="tiny">${effectiveCard.rarity}</span></h3><div class="stats"><span>HP ${c.maxHp}</span><span>실드 ${c.shield || 0}</span>${c.speed ? `<span>Speed +${c.speed}</span>` : ""}</div>${toggle}${formInfo}${plusToggle}`;
+          element.innerHTML = characterTileInner(c, effectiveCard, { slotIndex, toggles: `${toggle}${plusToggle}` });
           state_catalog_cards.EffectiveCardPresentationOwner.syncElement(element, effectiveCard);
           element.onclick = event => {
             if (event.target.closest(".form-toggle,.plusstar-toggle") || slotBlocked) return;

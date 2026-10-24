@@ -18,6 +18,7 @@ import { pictogramHTML, refreshCardTooltip, unitHTML } from "./cards.js";
 import { nextLeagueFormId, normalizeSetupFormsForLeague, poolForLeague, setSetupFormState, setupCardId, setupFormState, syncLeagueSelectionSurface, state_ui_deck } from "./deck.js";
 import { isInvaderCardId, mountInvaderPortal, sanitizeSelectedInvaders, syncInvaderPortalState } from "./invaders.js";
 import { renderLog } from "./payment.js";
+import { characterTileClass, characterTileInner } from "./tiles.js";
 export function initializeUiSetup() {
   state_ui_setup.DeckDraftApplication = (() => {
     const snapshot = () => Object.freeze({
@@ -322,6 +323,8 @@ export function updateDeckSetup() {
     x.setAttribute("aria-selected", String(chosen));
     x.setAttribute("aria-pressed", String(chosen));
     x.dataset.selected = String(chosen);
+    const order = x.querySelector(".tile-order");
+    if (order) order.textContent = chosen ? String(state_ui_battle_state.selected.indexOf(actual) + 1) : "";
   });
   const complete = state_ui_deck.LeagueFormatOwner.completeValid(state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P");
   state_ui_battle_state.$("#deckCount").textContent = `${state_ui_battle_state.selected.length} / ${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)}`;
@@ -353,13 +356,9 @@ export function renderSetup(reset = true) {
       nextForm = c.formGroup ? nextLeagueFormId(c.formGroup, c.id, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : null,
       chosen = state_ui_battle_state.selected.includes(c.id),
       slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, c.id], state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P"),
-      toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button class="form-toggle" data-form-toggle="${c.formGroup}">${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === nextForm)?.name || c.name}</button>` : "",
-      plus = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button class="plusstar-toggle${plusActive ? " active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "",
-      formInfo = c.formGroup && legalForms.length ? `<div class="form-eligibility"><b>폼</b>${legalForms.map(fid => {
-        const fc = state_catalog_cards.CARDS.find(x => x.id === fid);
-        return `<span class="form-chip">${fc?.name || fid} ${fc?.grade || ""}</span>`;
-      }).join("")}</div>` : "";
-    return `<div class="card compact-card selectable ${effectiveCard.visualModifiers.glowClass} ${slotBlocked ? "league-slot-blocked" : ""}" data-info-card="setup" data-info-surface="local-composition" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${c.id}" data-id="${c.id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" aria-disabled="${slotBlocked}">${pictogramHTML("small", effectiveCard.effectiveCharacterId)}<h3 class="card-title-line"><span>${effectiveCard.displayName}</span><span class="tiny">${effectiveCard.rarity}</span>${toggle}${plus}</h3><div class="stats"><span>HP ${c.maxHp}</span><span>실드 ${c.shield || 0}</span>${(c.baseDefense || 0) !== 0 ? `<span>방어 ${c.baseDefense || 0}</span>` : ""}<span>최대E ${c.maxEnergy}</span>${c.speed ? `<span>Speed ${c.speed > 0 ? "+" : ""}${c.speed}</span>` : ""}</div>${formInfo}<div class="tiny compact-role"><b>${c.role}</b></div></div>`;
+      toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button class="form-toggle" data-form-toggle="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === nextForm)?.name || c.name}">⇄</button>` : "",
+      plus = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button class="plusstar-toggle${plusActive ? " active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "";
+    return `<div class="card compact-card selectable ${characterTileClass(effectiveCard.rarity, effectiveCard.visualModifiers.glowClass)} ${slotBlocked ? "league-slot-blocked" : ""}" data-info-card="setup" data-info-surface="local-composition" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${c.id}" data-id="${c.id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" aria-disabled="${slotBlocked}">${characterTileInner(c, effectiveCard, { slotIndex, toggles: `${toggle}${plus}` })}</div>`;
   }).join("");
   state_ui_battle_state.$$('[data-form-toggle]').forEach(button => {
     button.onclick = event => {
