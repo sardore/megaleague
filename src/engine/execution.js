@@ -1,5 +1,5 @@
 import { state_runtime_transactions } from "../runtime/transactions.js";
-import { battleActionConstraintsMet } from './entities.js';
+import { actionTargetMagnets, battleActionConstraintsMet } from './entities.js';
 import { statusTicksThisTurn } from './status-rules.js';
 import { state_runtime_entities } from "../runtime/entities.js";
 import { state_runtime_state } from "../runtime/state.js";
@@ -372,10 +372,18 @@ export function execute(g, t, s, action, options = {}) {
   return state_online_commands.OnlineActionAdmissionOwner.execute(g, t, s, action, options);
 }
 
+// Every action whose targeting was forced onto a target-magnet unit tells the presentation, whoever acted (player, AI, remote).
+function announceTargetMagnets(g, t, s, action) {
+  const actor = unitAt(g, t, s);
+  if (!actor || action?.type !== 'skill') return;
+  for (const uid of actionTargetMagnets(g, t, actor, action)) queueVisual(g, { type: 'targetMagnetFx', uid, sourceUid: actor.uid, targetUid: uid, turnSerial: g.turnSerial || 0 });
+}
+
 // One fixed action path. No per-action closure composition or fallback executor.
 export function runCanonicalBattleAction(g, t, s, action, options = {}) {
   prepareCurrentTurn(g);
   if (!battleActionConstraintsMet(g, t, s, action)) return false;
+  announceTargetMagnets(g, t, s, action);
   const energy = systems.EnergyCanonicalizationEngine;
   const before = energy.begin(g, t, s, action, options);
   const overflow = systems.__megaEnergyOverflowChoice;

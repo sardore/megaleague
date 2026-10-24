@@ -10,7 +10,7 @@ export const state_ui_cards = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
-import { card, cardHasCapability, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
+import { card, cardHasCapability, isTargetMagnet, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
@@ -455,9 +455,10 @@ export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
       contextIdentity: `${state_ui_battle_state.game?.battleId || "battle"}:${team}:${slot}`,
       sourceRevision: state_ui_battle_state.game?.networkRevision || 0
     });
+  const magnetClass = !bench && isTargetMagnet(state_ui_battle_state.game, u) ? "target-magnet" : "";
   const redClass = bossRedRole ? "red-timeora-card boss-red-live-card" : "";
   const stageClass = bossRedRole ? "unit-stage boss-red-live-stage" : "unit-stage";
-  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${u.dead ? "" : gradeTierClass(c, effectiveCard)} ${redClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead death-fade" : ""}"${dying != null ? ` style="animation-delay:-${Math.round(dying)}ms"` : ""} data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div>${duelSkillListHTML(effectiveCard, bench)}</div>`;
+  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${u.dead ? "" : gradeTierClass(c, effectiveCard)} ${redClass} ${magnetClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead death-fade" : ""}"${dying != null ? ` style="animation-delay:-${Math.round(dying)}ms"` : ""} data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div>${duelSkillListHTML(effectiveCard, bench)}</div>`;
 }
 export function safeCssValue(value) {
   const raw = String(value ?? "");
