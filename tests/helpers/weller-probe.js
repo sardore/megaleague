@@ -7,8 +7,9 @@ import * as statusRules from '../../src/engine/status-rules.js';
 import * as actions from '../../src/engine/actions.js';
 import { registerCardDefinition } from '../../src/ui/deck.js';
 import { state_runtime_snapshots } from '../../src/runtime/snapshots.js';
+import { state_runtime_transactions } from '../../src/runtime/transactions.js';
 import { healPoolWithOverflow } from '../../src/features/character-rules.js';
-Object.assign(window.probe,{effects,execution,entities,energy,statusRules,actions,registerCardDefinition,state_runtime_snapshots,healPoolWithOverflow});
+Object.assign(window.probe,{effects,execution,entities,energy,statusRules,actions,registerCardDefinition,state_runtime_snapshots,healPoolWithOverflow,tx:state_runtime_transactions});
 window.wellerFixture=()=>{
   const g=Megaleague.newGame(['weller','hermit','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'weller-test'});
   g.order=[['P',0],['A',0],['P',1],['A',1]];g.turn=0;g.turnSerial=0;g.preparedKey=null;
