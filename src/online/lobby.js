@@ -615,7 +615,7 @@ export function initializeOnlineLobby() {
     };
     const syncRoom = () => {
       project("sync-room");
-      state_ui_battle_state.InvaderPortalView.sync("onlineInvaderPortalButton", currentSelectedInvader());
+      state_ui_battle_state.InvaderPortalView.sync("onlineInvaderPortalButton", currentSelectedInvader(), state_ui_battle_state.selected.indexOf(currentSelectedInvader()));
       syncChat();
       return debug();
     };
@@ -729,6 +729,7 @@ export function initializeOnlineLobby() {
         if (portalAllowed) state_ui_battle_state.InvaderPortalView.ensureTile(box, {
           buttonId: "onlineInvaderPortalButton",
           selectedId: currentSelectedInvader(),
+          slotIndex: state_ui_battle_state.selected.indexOf(currentSelectedInvader()),
           onOpen: openOnlineInvaderPortal
         });
         box.querySelectorAll("[data-online-form]").forEach(button => button.onclick = event => {
