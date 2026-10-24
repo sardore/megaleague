@@ -1440,6 +1440,7 @@ function showBossDeckPicker(count = 4, online = false) {
     state_ui_battle_state.InvaderPortalView.ensureTile(grid, {
       buttonId: "bossInvaderPortalButton",
       selectedId: bossCurrentInvader(),
+      slotIndex: bossRaidSelection.indexOf(bossCurrentInvader()),
       onOpen: () => bossRenderInvaderPortal(count, online, 0)
     });
     if (online) bossRefreshOnlineLobby();

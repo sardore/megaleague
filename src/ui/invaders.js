@@ -30,6 +30,7 @@ export function initializeUiInvaders() {
     static tileElement({
       buttonId,
       selectedId = null,
+      slotIndex = -1,
       onOpen
     }) {
       const card = selectedId ? state_catalog_cards.CARDS.find(c => c.id === selectedId) : null;
@@ -42,8 +43,10 @@ export function initializeUiInvaders() {
       tile.dataset.invader = card ? card.id : "";
       tile.dataset.cardId = card ? card.id : "";
       tile.title = card ? `초차원 포탈 · ${card.name}` : "초차원 포탈";
-      tile.className = card ? characterTileClass(card, null, "portal-tile") : "char-tile portal-tile portal-empty";
-      tile.innerHTML = card ? characterTileInner(card, null) : `<i class="tile-gold" aria-hidden="true"></i><div class="tile-art"><i class="portal-glyph"></i></div><span class="tile-stars"></span><i class="tile-order"></i><div class="tile-corner"></div><b class="tile-name">초차원 포탈</b>`;
+      tile.className = card ? characterTileClass(card, null, "portal-tile", "selected") : "char-tile portal-tile portal-empty";
+      tile.innerHTML = card ? characterTileInner(card, null, {
+        slotIndex
+      }) : `<i class="tile-gold" aria-hidden="true"></i><div class="tile-art"><i class="portal-glyph"></i></div><span class="tile-stars"></span><i class="tile-order"></i><div class="tile-corner"></div><b class="tile-name">초차원 포탈</b>`;
       tile.onclick = onOpen || null;
       tile.onkeydown = event => {
         if (event.key === "Enter" || event.key === " ") {
@@ -68,12 +71,13 @@ export function initializeUiInvaders() {
     static removeTile(grid) {
       grid?.querySelector(":scope > [data-portal-tile]")?.remove();
     }
-    static sync(buttonId, selectedId = null) {
+    static sync(buttonId, selectedId = null, slotIndex = -1) {
       const tile = document.getElementById(buttonId);
       if (!tile?.dataset.portalTile) return;
       morphTile(tile, this.tileElement({
         buttonId,
         selectedId,
+        slotIndex,
         onOpen: tile.onclick
       }));
     }
@@ -109,9 +113,7 @@ export function initializeUiInvaders() {
         tile.dataset.cardId = c.id;
         tile.setAttribute("role", "button");
         tile.tabIndex = 0;
-        tile.innerHTML = characterTileInner(c, null, {
-          slotIndex: applied ? 0 : -1
-        });
+        tile.innerHTML = characterTileInner(c, null);
         tile.onclick = () => onIndex(k);
         tile.onkeydown = event => {
           if (event.key === "Enter" || event.key === " ") {
@@ -182,7 +184,7 @@ export function currentSelectedInvader() {
 }
 export function syncInvaderPortalState() {
   if (!state_ui_battle_state.InvaderPortalView) return;
-  state_ui_battle_state.InvaderPortalView.sync("invaderPortalButton", currentSelectedInvader());
+  state_ui_battle_state.InvaderPortalView.sync("invaderPortalButton", currentSelectedInvader(), state_ui_battle_state.selected.indexOf(currentSelectedInvader()));
 }
 export function mountInvaderPortal() {
   if (!state_ui_battle_state.InvaderPortalView) return;
@@ -196,6 +198,7 @@ export function mountInvaderPortal() {
   state_ui_battle_state.InvaderPortalView.ensureTile(deckCards, {
     buttonId: "invaderPortalButton",
     selectedId: currentSelectedInvader(),
+    slotIndex: state_ui_battle_state.selected.indexOf(currentSelectedInvader()),
     onOpen: openInvaderPortal
   });
 }
