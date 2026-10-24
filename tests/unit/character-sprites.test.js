@@ -7,7 +7,7 @@ test("Sweetna's composition tile displays an upper-body face-focused portrait", 
   assert.match(html, /character-sprite--portrait/);
   assert.match(html, /sweetna\.webp/);
   assert.match(html, /sprite-focus-x:52%/);
-  assert.match(html, /sprite-focus-y:43%/);
+  assert.match(html, /sprite-focus-y:42%/);
   assert.match(html, /sprite-portrait-scale:1\.9/);
 });
 
