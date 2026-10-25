@@ -4444,8 +4444,6 @@
     body.time-input-locked .app { pointer-events:none !important; user-select:none !important; }
     body.time-input-locked .modal { pointer-events:none !important; }
 
-    .battle-unit-card.clock-trait-suppressed,
-    .summon-card.clock-trait-suppressed { filter:saturate(33%) !important; transition:filter .18s ease; }
     .battle-unit-card.clock-owner-active { box-shadow:0 0 0 2px rgba(255,215,88,.32),0 0 24px rgba(255,195,44,.22); }
 
     .time-mini-clock-wrap { display:flex; align-items:center; gap:12px; margin-top:9px; padding:9px; border-radius:12px; background:rgba(10,12,22,.72); border:1px solid rgba(159,175,212,.22); }
@@ -5047,13 +5045,6 @@
     @media(max-width:600px){.battle-chat-popup-stack{right:8px;top:64px;width:80vw}.battle-chat-popup{font-size:11px;padding:5px 8px}.battle-chat-popup b{font-size:8px}body.spectator-mode .battle-chat-popup-stack{top:54px;}}
   
 
-  /* 시계 연출이 끝날 때까지 게임 상태 재렌더와 무관하게 채도 감소를 유지한다. */
-  .battle-unit-card.clock-visual-saturation-held,
-  .summon-card.clock-visual-saturation-held {
-    filter: saturate(33%) !important;
-    transition: filter .18s ease;
-  }
-
 
   #modal:has(#modalContent > .boss-lobby),
   #modal:has(#modalContent > .boss-select-shell) { padding:6px; }
@@ -5154,10 +5145,6 @@
     outline:3px solid #55ff9a !important;
     outline-offset:2px !important;
     box-shadow:0 0 0 2px rgba(7,31,21,.92),0 0 24px rgba(55,255,145,.86),inset 0 0 22px rgba(55,255,145,.12) !important;
-  }
-  .battle-unit-card.choice-target-selected.clock-trait-suppressed,
-  .summon-card.choice-target-selected.clock-trait-suppressed {
-    filter:saturate(72%) !important;
   }
 
   .abyss-direct-energy,
@@ -5715,21 +5702,6 @@
   #modal.open .boss-reward-card { pointer-events: auto !important; }
   #modal.open .boss-reward-card:not(:disabled) { cursor: pointer !important; }
 
-  /* timeoraSuppressionAndBossVisualR30Style: migrated clock suppression visual rules */
-  /* 실제로 특성이 정지된 필드 유닛은 어느 진영에 표시되든 동일한 채도 저하를 받는다. */
-  .arena .battle-unit-card.clock-trait-suppressed,
-  .arena .summon-card.clock-trait-suppressed,
-  .arena .battle-unit-card.choice-target-selected.clock-trait-suppressed,
-  .arena .summon-card.choice-target-selected.clock-trait-suppressed,
-  .arena .battle-unit-card.active-turn.clock-trait-suppressed,
-  .arena .battle-unit-card.targetable.clock-trait-suppressed {
-    filter: saturate(33%) !important;
-    transition: filter .18s ease !important;
-  }
-  /* 시계 자체가 정지한 타임오러는 기존의 완전 무채색 표현을 우선한다. */
-  .arena .battle-unit-card.clock-stopped-owner {
-    filter: grayscale(1) saturate(0) brightness(.72) !important;
-  }
 
   /* 붉은 보스전 테마는 전장이나 UI에 번지지 않고 타임오러의 캐릭터 표식에만 적용한다. */
   body.boss-raid-active .arena {
@@ -5782,25 +5754,21 @@
       drop-shadow(0 0 2px #ff6677) drop-shadow(0 0 5px rgba(255,24,61,.58)) !important;
   }
 
-  /* fateClockSuppressionVisualR35Style: migrated clock suppression visual rules */
-  /* R35: 채도 저하는 상태이상 특성봉인이 아니라 운명의 시계의 특성 발동 방지만 표현한다. */
-  .arena .battle-unit-card.fate-clock-trait-blocked,
-  .arena .summon-card.fate-clock-trait-blocked,
+  /* 운명의 시계로 특성이 정지된 필드 유닛(시계 주인 제외)은 진영·턴·타깃 상태와 무관하게 같은 규칙 하나로 채도가 낮아진다.
+     카드는 렌더마다 새로 만들어지므로 클래스는 HTML 생성 때 붙고, 막 정지된 순간에만 clock-sat-enter가 낮아지는 전환을 보여 준다. */
+  @property --clock-sat { syntax: "<percentage>"; inherits: false; initial-value: 100%; }
   .arena .battle-unit-card.clock-trait-suppressed,
-  .arena .summon-card.clock-trait-suppressed {
-    filter: saturate(33%) !important;
+  .arena .summon-card.clock-trait-suppressed,
+  .arena .battle-unit-card.clock-visual-saturation-held,
+  .arena .summon-card.clock-visual-saturation-held {
+    --clock-sat: 33%;
+    filter: saturate(var(--clock-sat)) !important;
     transition: none !important;
   }
+  .arena .battle-unit-card.clock-sat-enter { animation: clockSatEnter .26s ease-out both; }
+  @keyframes clockSatEnter { from { --clock-sat: 100%; } to { --clock-sat: 33%; } }
 
-  /* 카드 DOM이 재생성되어 클래스가 붙기 전에도 진영 상태값으로 즉시 채도를 유지한다. */
-  body[data-fate-clock-suppressed-team="P"] .arena .battle-unit-card[data-team="P"][data-zone="field"],
-  body[data-fate-clock-suppressed-team="A"] .arena .battle-unit-card[data-team="A"][data-zone="field"] {
-    filter: saturate(33%) !important;
-    transition: none !important;
-  }
-
-  /* 죽은 카드와 실제로 시계 자체가 정지한 타임오러의 기존 표현은 보존한다. */
-  .arena .battle-unit-card.dead.fate-clock-trait-blocked,
+  /* 죽은 카드와 시계 자체가 정지한 타임오러의 기존 표현은 보존한다. */
   .arena .battle-unit-card.dead.clock-trait-suppressed {
     filter: grayscale(.7) saturate(33%) !important;
   }

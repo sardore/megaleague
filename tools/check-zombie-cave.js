@@ -130,6 +130,23 @@ try{
   });
   assert.equal(r.cave,true);assert.equal(r.kind,'zombie');assert.equal(r.turns,11);assert.deepEqual(r.slot,{remaining:3,rounds:3});
  });
+ await check('a player-side reserved action (Sweetna sequence) runs automatically in the cave instead of freezing the turn',async page=>{
+  const r=await page.evaluate(async()=>{
+    const g=zombieFixture('sw',['sweetna','mole','boar','mantis']);probe.battle.game=g;g.matchId='sw';
+    document.querySelector('#setup').classList.remove('active');document.querySelector('#game').classList.add('active');
+    const u=g.teams.P.field[0];u.energy=[{c:'R',a:1,energyId:'a'},{c:'W',a:1,energyId:'b'},{c:'B',a:1,energyId:'c'}];
+    const cast=Megaleague.legalActions(g,'P',0).find(a=>a.type==='skill'&&a.skill==='sugarswamp');
+    const ok=Megaleague.execute(g,'P',0,cast);
+    const rows=[];
+    for(let i=0;i<14&&!g.winner;i++){
+      Megaleague.prepareCurrentTurn(g);const [t,s]=g.order[g.turn];
+      if(t==='P'&&s===0&&u.scheduledAction){const before=g.turnSerial;probe.battle.busy=false;probe.scheduleRaidTurn();await new Promise(r=>setTimeout(r,1300));rows.push(g.turnSerial>before);continue;}
+      const a=Megaleague.chooseAI(g,t,s,true);Megaleague.execute(g,t,s,a||{type:'noLegalPass'});
+    }
+    return{ok,rows,left:u.scheduledAction?.remaining??0};
+  });
+  assert.equal(r.ok,true);assert.ok(r.rows.length>=2&&r.rows.every(Boolean),'every reserved turn advances by itself');assert.equal(r.left,0);
+ });
  await check('the countdown renders inside the empty enemy card and ticks without a separate overlay',async page=>{
   const r=await page.evaluate(()=>{
     const g=zombieFixture('ui');probe.battle.game=g;g.matchId='zc-ui';

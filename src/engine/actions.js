@@ -314,6 +314,9 @@ export function listStandardActions(g, t, s) {
   }
   return a;
 }
+/* 사람 차례에도 자동으로 실행되는 규칙 행동(예약 행동·출전 지연). 자동 실행·입력 잠금·패널이 모두 이 한 곳을 쓴다. */
+export const isForcedRuleAction = a => a?.type === "scheduled" || a?.type === "speedDelay";
+export const forcedRuleAction = actions => (actions || []).find(isForcedRuleAction) || null;
 export function legalActions(g, t, s) {
   const previous = state_engine_actions.timeTraitGame;
   state_engine_actions.timeTraitGame = g;

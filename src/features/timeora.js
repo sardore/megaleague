@@ -241,13 +241,8 @@ export class TimeClockOwnershipDomain {
 }
 /* 운명의 시계 정렬이 특성을 멈추는 대상: 시계 주인을 뺀 양 진영 필드의 생존 유닛 중 특성이 있는 유닛(아군 포함).
    판정 영역(TimeClockTraitSuppressionPolicy)과 채도 저하 연출이 같은 규칙을 쓰도록 이 한 곳에서만 정한다. */
-/* 특성 문구가 "없음"으로 시작하는 카드는 멈출 특성이 없으므로 대상이 아니다(채도 저하도 걸지 않는다). */
-export function timeUnitHasTrait(unit) {
-  const text = String(card(unit)?.trait || "").trim();
-  return !!text && !text.startsWith("없음");
-}
 export function timeUnitsSuppressedByClockOwners(g, ownerUids) {
-  return [...(g?.teams?.P?.field || []), ...(g?.teams?.A?.field || [])].filter(unit => unit && !unit.dead && !ownerUids.has(String(unit.uid)) && timeUnitHasTrait(unit));
+  return [...(g?.teams?.P?.field || []), ...(g?.teams?.A?.field || [])].filter(unit => unit && !unit.dead && !ownerUids.has(String(unit.uid)) && !!String(card(unit)?.trait || "").trim());
 }
 export class TimeClockTraitSuppressionPolicy {
   resolve(g) {
@@ -997,32 +992,53 @@ export function timeSuppressedUidSet(g) {
   const domain = g ? timeCurrentSuppressionDomain(g) : null;
   return new Set([...(domain?.suppressedUids || [])].map(String));
 }
-export function timeUpdateSuppressedTeamAttribute(g, uids = timeSuppressedUidSet(g)) {
-  const teams = new Set();
-  if (g && uids.size) for (const team of ["P", "A"]) {
-    for (const unit of g.teams?.[team]?.field || []) {
-      if (unit?.uid != null && !unit.dead && uids.has(String(unit.uid))) teams.add(team);
+/* 카드에 붙는 운명의 시계 상태 클래스. 카드 HTML을 만들 때와 렌더 뒤 동기화(소환수 카드 등)가 이 한 함수만 쓴다.
+   진영·턴·타깃 상태와 무관하게 판정 영역(timeCurrentSuppressionDomain)이 정한 대로만 붙는다. */
+export function timeClockCardState(g, unit, domain = g ? timeCurrentSuppressionDomain(g) : null) {
+  const uid = unit?.uid;
+  const suppressed = !!domain && uid != null && domain.suppresses(uid);
+  const isClock = !!unit && cardHasCapability(unit, "timeControl");
+  const stopped = isClock && !!timeClockStopReason(g, unit);
+  return {
+    "clock-trait-suppressed": suppressed,
+    "clock-stopped-owner": stopped,
+    "clock-owner-active": !!domain && uid != null && domain.owns(uid) && !suppressed,
+    "clock-owner-cancelled": !!g && isClock && timeClockAlignmentsCancel(g) && timeIsAligned(unit) && !stopped
+  };
+}
+/* 막 정지된 카드에만 채도가 낮아지는 전환을 보여 주기 위한 기록. 카드는 렌더마다 새로 만들어지므로
+   정지가 시작된 시각을 유닛별로 기억해 두고, 전환 시간 안이면 지난 시간만큼 앞당겨 이어서 재생한다. */
+const TIME_CLOCK_ENTER_MS = 260;
+const timeClockSuppressedSince = new Map();
+export function timeClockCardHTMLState(g, unit) {
+  const state = timeClockCardState(g, unit);
+  const key = String(unit.uid);
+  let style = "";
+  const classes = Object.keys(state).filter(name => state[name]);
+  if (state["clock-trait-suppressed"]) {
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    if (!timeClockSuppressedSince.has(key)) timeClockSuppressedSince.set(key, now);
+    const elapsed = now - timeClockSuppressedSince.get(key);
+    if (elapsed < TIME_CLOCK_ENTER_MS) {
+      classes.push("clock-sat-enter");
+      style = `animation-delay:-${Math.round(elapsed)}ms`;
     }
-  }
-  if (teams.size === 1) document.body.dataset.fateClockSuppressedTeam = [...teams][0];else delete document.body.dataset.fateClockSuppressedTeam;
-  return teams;
+  } else timeClockSuppressedSince.delete(key);
+  return {
+    className: classes.join(" "),
+    style
+  };
 }
 export function timeSyncSuppressionVisuals(g = typeof state_ui_battle_state.game !== "undefined" ? state_ui_battle_state.game : null) {
   const domain = g ? timeCurrentSuppressionDomain(g) : null;
   const uids = timeSuppressedUidSet(g);
-  const cancelled = !!g && timeClockAlignmentsCancel(g);
-  timeUpdateSuppressedTeamAttribute(g, uids);
   document.querySelectorAll('.arena .battle-unit-card[data-zone="field"],.arena .summon-card').forEach(el => {
     const uid = el.dataset.uid || el.dataset.entityId;
     const unit = g && uid != null ? findUnit(g, uid) : null;
-    const suppressed = uid != null && uids.has(String(uid));
-    const stopped = cardHasCapability(unit, "timeControl") && !!timeClockStopReason(g, unit);
-    el.classList.toggle('clock-trait-suppressed', suppressed);
-    el.classList.toggle('fate-clock-trait-blocked', suppressed);
-    el.toggleAttribute('data-fate-clock-trait-blocked', suppressed);
-    el.classList.toggle('clock-stopped-owner', stopped);
-    el.classList.toggle('clock-owner-active', !!domain && uid != null && domain.owns(uid) && !suppressed);
-    el.classList.toggle('clock-owner-cancelled', cancelled && cardHasCapability(unit, "timeControl") && timeIsAligned(unit) && !stopped);
+    const state = timeClockCardState(g, unit || {
+      uid
+    }, domain);
+    for (const [name, on] of Object.entries(state)) el.classList.toggle(name, on);
   });
   return uids;
 }

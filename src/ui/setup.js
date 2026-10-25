@@ -4,7 +4,7 @@ export const state_ui_setup = {
   LocalInputEligibility: undefined
 };
 import { state_catalog_cards } from "../catalog/cards.js";
-import { legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
+import { isForcedRuleAction, legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
 import { aliveUnits, costGap, parseCost } from "../engine/energy.js";
 import { RNG, makeUnit, rebindPlusStarChoice, resolvePlusStarChoice, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
 import { zombieCaveSlotInfo } from "../features/zombie-cave.js";
@@ -215,8 +215,8 @@ export function initializeUiSetup() {
         reasons.push("LEGAL_ACTION_EVALUATION_FAILED");
       }
       const replacementRequired = (!actor || actor.dead) && actions.some(action => action.type === "deploy");
-      const mandatoryAutomaticAction = actions.some(action => action.type === "scheduled" || action.type === "speedDelay");
-      const manualActions = actions.filter(action => action.type !== "scheduled" && action.type !== "speedDelay");
+      const mandatoryAutomaticAction = actions.some(isForcedRuleAction);
+      const manualActions = actions.filter(action => !isForcedRuleAction(action));
       if (!g) reasons.push("NO_GAME");else {
         if (g.ended || g.winner) reasons.push("BATTLE_ENDED");
         if (!pair.length) reasons.push("CURRENT_ACTOR_MISSING");
