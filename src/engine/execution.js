@@ -1,4 +1,3 @@
-import { drawPuzzleColor, isPuzzleGame, puzzleHooks } from "./puzzle-rules.js";
 import { state_runtime_transactions } from "../runtime/transactions.js";
 import { battleActionConstraintsMet } from './entities.js';
 import { statusTicksThisTurn } from './status-rules.js';
@@ -222,7 +221,7 @@ export function executeCoreBase(g, t, s, a, {
       amt = status(u, "slow") ? 0.5 : 1,
       colors = naturalColors(g, t, u, amt, actor, "natural-gather"),
       existingHalf = amt === 0.5 ? store.find(e => e.a === 0.5) : null,
-      col = a.gatherProposal ? consumeNaturalGatherProposal(g, t, s, u, amt, actor, a.gatherProposal, "natural-gather") : existingHalf ? existingHalf.c : a.color && colors.includes(a.color) ? a.color : (isPuzzleGame(g) ? drawPuzzleColor(g, colors) : null) ?? g.rng.pick(colors),
+      col = a.gatherProposal ? consumeNaturalGatherProposal(g, t, s, u, amt, actor, a.gatherProposal, "natural-gather") : existingHalf ? existingHalf.c : a.color && colors.includes(a.color) ? a.color : g.rng.pick(colors),
       max = card(u).maxEnergy || 4;
     if (!col) return false;
     if (existingHalf) log(g, `${u.name}: 기존 ${col} 반에너지와 합치기 위해 자연 수급 색이 ${col}로 고정.`);
@@ -370,7 +369,6 @@ export function executeCoreBase(g, t, s, a, {
   return true;
 }
 export function execute(g, t, s, action, options = {}) {
-  if (isPuzzleGame(g) && t === "P" && !options.__puzzleInternal && puzzleHooks.gate && puzzleHooks.gate(g, t, s, action, options) === false) return false;
   return state_online_commands.OnlineActionAdmissionOwner.execute(g, t, s, action, options);
 }
 

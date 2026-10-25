@@ -567,7 +567,7 @@ export function triggerEnergyGainResult(g, u, actor = null) {
   let t = teamOf(g, u),
     allies = g.teams[t].field.filter(x => x && !x.dead && x.hp < x.maxHp).sort((a, b) => b.maxHp - b.hp - (a.maxHp - a.hp)),
     enemies = g.teams[other(t)].field.filter(x => x && !x.dead).sort((a, b) => a.hp - b.hp),
-    human = typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && t === "P" && g.mode === "human" && !g.puzzle;
+    human = typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && t === "P" && g.mode === "human";
   log(g, `${u.name} 특성 · 치유의 빛: 에너지 ${n}개 도달.`);
   if (human) {
     let targets = allies.length ? allies : enemies;
@@ -603,7 +603,7 @@ export function gainTraitEnergyNow(g, u, col, amount, reason) {
 export function requestTraitEnergy(g, u, col, amount, reason) {
   if (!u || u.dead || !cardHasCapability(u, "selectiveEnergyTrait") || !traitsActive(u)) return;
   let t = teamOf(g, u),
-    human = typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && t === "P" && g.mode === "human" && !g.puzzle;
+    human = typeof state_ui_battle_state.game !== "undefined" && g === state_ui_battle_state.game && t === "P" && g.mode === "human";
   if (human) g.pendingTraitChoices.push({
     uid: u.uid,
     col,

@@ -1,4 +1,3 @@
-import { renderPuzzleHud } from "./puzzle.js";
 import { state_runtime_presentation } from "../runtime/presentation.js";
 import { state_runtime_state } from "../runtime/state.js";
 import { paintChoiceTarget } from "./interactions.js";
@@ -44,7 +43,6 @@ export function render() {
     syncOnlineChatUI();
     if (current?.mode === "spectator") specDecorateBattle();
     renderRaidBattleStatus();
-    renderPuzzleHud();
     timeClockVisualSaturation.sync();
     paintChoiceTarget();
     state_runtime_state.StateFactory.updateActive(current);
@@ -652,8 +650,7 @@ export function maybeChooseDeepMind(a, next) {
     actor = unitAt(state_ui_battle_state.game, ...state_ui_battle_state.game.order[state_ui_battle_state.game.turn]),
     sk = resolvedSkillForAction(actor, a);
   const abi = activeAbigate(state_ui_battle_state.game, t);
-  /* 퍼즐은 풀이와 같은 기본 선택으로 진행한다(고를 수 없는 대화창을 띄우지 않는다). */
-  if (!abi || !isNonAttackSkill(sk) || a.deepMindTargetUid || state_ui_battle_state.game.puzzle) return next(a);
+  if (!abi || !isNonAttackSkill(sk) || a.deepMindTargetUid) return next(a);
   const targets = state_ui_battle_state.game.teams[other(t)].field.filter(u => u && !u.dead && allEnergy(u) > .001);
   if (!targets.length) return next(a);
   openChoice(`<h2>아비게이트 · 딥마인드</h2><p>HP 10 회복 후 에너지 0.5를 제거할 상대를 선택하세요.</p>`, targets.map(u => ({

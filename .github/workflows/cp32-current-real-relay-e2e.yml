@@ -83,7 +83,6 @@ jobs:
           npm test
           node tools/check-combat-online.js
           node tools/check-weller.js
-          node tools/check-puzzles.js
           node --check relay-src/server.js
 
       - name: Start exact relay source

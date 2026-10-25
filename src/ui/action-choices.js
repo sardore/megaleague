@@ -2,7 +2,6 @@ import { presentRaidReward, scheduleRaidTurn, commitRaidActionPresentation } fro
 import { specIsHostMatch, specStartHostBroadcast } from '../features/spectators.js';
 import { aiReason, maskedStateFor } from "../ai/search.js";
 import { chooseAI } from "../ai/specialists.js";
-import { chooseDefense } from "../features/tactics-puzzle.js";
 import { legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
 import { findUnit, heal, nonAttackDamage, traitsActive } from "../engine/combat.js";
 import { applyBloomAllocation, collectTargetEnergyEntries, previewNaturalGatherProposal } from "../engine/effects.js";
@@ -523,7 +522,7 @@ export function scheduleAI() {
       executed = false;
     try {
       const view = maskedStateFor(state_ui_battle_state.game, t);
-      a = noLegalActions ? null : forced ? forcedAction : state_ui_battle_state.game.puzzle ? chooseDefense(state_ui_battle_state.game) : chooseAI(view, t, s, false);
+      a = noLegalActions ? null : forced ? forcedAction : chooseAI(view, t, s, false);
       reason = a && !forced ? aiReason(view, t, s, a) : "";
       if (noLegalActions) {
         log(state_ui_battle_state.game, `${u?.name || "빈 슬롯"}: 가능한 행동이 없어 턴을 자동으로 넘김.`, "turn");
@@ -559,26 +558,6 @@ export function scheduleAI() {
       scheduleAI();
     }
   });
-}
-/* 새로 만든 전투(state_ui_battle_state.game)를 화면에 올리고 시작한다. 일반·온라인·퍼즐 전투가 같은 진입점을 쓴다. */
-export function enterBattleSession(logLine, isOnline = false) {
-  state_ui_battle_state.game.token = ++state_ui_battle_state.battleToken;
-  state_ui_battle_state.onlineAutoCommandOwner = null;
-  state_ui_battle_state.onlineAutoCommandActive = false;
-  state_ui_battle_state.busy = false;
-  state_ui_battle_state.lastLog = 0;
-  state_ui_battle_state.visualEvents = [];
-  state_ui_battle_state.visualHoldMs = 0;
-  state_ui_battle_state.$("#log").innerHTML = "";
-  log(state_ui_battle_state.game, logLine, "turn");
-  state_ui_results.NavigationApplication.request("game");
-  if (isOnline) {
-    state_ui_battle_state.$("#modal")?.classList.remove("open", "online-room-r22", "online-room-closing");
-    document.body.classList.remove("online-lobby-open");
-  }
-  render();
-  startBgm();
-  scheduleAI();
 }
 export function startBattle(seedOverride, onlineConfig = null) {
   const isOnline = onlineConfig?.mode === "online";
@@ -653,7 +632,23 @@ export function startBattle(seedOverride, onlineConfig = null) {
       } : {})
     }
   };
-  enterBattleSession(`${state_ui_battle_state.game.matchType} 시작. 피해 난수 ${state_ui_battle_state.game.variance ? "ON" : "OFF"}. 상대 후열은 미공개.`, isOnline);
+  state_ui_battle_state.game.token = ++state_ui_battle_state.battleToken;
+  state_ui_battle_state.onlineAutoCommandOwner = null;
+  state_ui_battle_state.onlineAutoCommandActive = false;
+  state_ui_battle_state.busy = false;
+  state_ui_battle_state.lastLog = 0;
+  state_ui_battle_state.visualEvents = [];
+  state_ui_battle_state.visualHoldMs = 0;
+  state_ui_battle_state.$("#log").innerHTML = "";
+  log(state_ui_battle_state.game, `${state_ui_battle_state.game.matchType} 시작. 피해 난수 ${state_ui_battle_state.game.variance ? "ON" : "OFF"}. 상대 후열은 미공개.`, "turn");
+  state_ui_results.NavigationApplication.request("game");
+  if (isOnline) {
+    state_ui_battle_state.$("#modal")?.classList.remove("open", "online-room-r22", "online-room-closing");
+    document.body.classList.remove("online-lobby-open");
+  }
+  render();
+  startBgm();
+  scheduleAI();
   if (typeof specIsHostMatch === "function" && specIsHostMatch()) {
     const timerId = systems.OnlineRuntime?.sessionScope?.setTimeout?.(specStartHostBroadcast, 120, "spectator-host-start-broadcast", {
       phase: "IN_BATTLE"
