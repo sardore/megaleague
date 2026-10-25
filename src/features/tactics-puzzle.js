@@ -7,7 +7,8 @@
 import { newGame } from "../engine/entities.js";
 import { execute, endTurn } from "../engine/execution.js";
 import { puzzleHooks } from "../engine/puzzle-rules.js";
-import { prepareCurrentTurn } from "../engine/actions.js";
+import { prepareCurrentTurn, unitAt } from "../engine/actions.js";
+import { actionSkillHasEffect, actionSkillHasTag, skillOf } from "../engine/entities.js";
 import { TacticsSolver, cloneForSolve, currentActions, applyAction, isForcedList, signature } from "./tactics-solver.js";
 
 export const PUZZLE_MAX_NODES = 600000;
@@ -147,3 +148,12 @@ export function chooseDefense(g) {
   return pick?.a || null;
 }
 export { TacticsSolver, cloneForSolve, currentActions, applyAction, puzzleHooks, signature };
+
+/* 플레이어가 화면에서 추가 선택(에너지 양·대상 에너지·변형 등)을 해야 하는 기술인가.
+   풀이는 그런 선택을 기본값으로만 따지므로, 정답 줄에는 이런 기술을 넣지 않는다(화면에서 정답을 만들 수 없게 되는 일을 막는다). */
+const CHOICE_EFFECTS = ["elixianShiningWind", "genociderDisplosion", "foxStrike", "mysticBurst", "hurricaneDive", "rampage", "lightCandelabra", "holyFlame", "abyssCannon", "abyssVortex", "lifeRain", "eternaHeal"];
+export function hasPlayerChoice(g, t, s, a) {
+  if (a?.type !== "skill") return false;
+  const def = skillOf(unitAt(g, t, s), a.skill);
+  return CHOICE_EFFECTS.some(effect => actionSkillHasEffect(a, effect)) || actionSkillHasTag(a, "copy") || !!def?.extraAnyEnergy || ["targetEnergyRemoval", "targetEnergyTransfer"].includes(def?.interaction?.kind);
+}

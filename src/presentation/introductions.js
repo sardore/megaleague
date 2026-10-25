@@ -28,6 +28,7 @@ export function initializePresentationIntroductions() {
         if (res.ok) svg.insertAdjacentHTML("afterbegin", await res.text());
       } catch {}
     }));
+    intro.classList.add("intro-ready");
     const start = performance.now();
     systems.__startupIntroTiming = {
       start,

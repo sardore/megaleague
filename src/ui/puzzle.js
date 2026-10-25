@@ -78,6 +78,7 @@ function showWaiting(text) {
 }
 export function startPuzzleRun() {
   ensureSupply();
+  clearTimeout(state_ui_puzzle.run?.advanceTimer);
   state_ui_puzzle.run = {
     level: 1,
     def: null,
@@ -85,16 +86,27 @@ export function startPuzzleRun() {
     solved: 0,
     over: false,
     credited: false,
-    message: ""
+    message: "",
+    good: false,
+    advanceTimer: 0
   };
   showWaiting("퍼즐을 만드는 중…");
   openLevel(1);
 }
-/* level 단계 퍼즐을 공급기에서 받아 연다. 아직 만드는 중이면 기다린다. */
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+/* 판이 바뀔 때 화면이 툭 끊기지 않도록 전투 화면을 잠깐 어둡게 했다가 되돌린다. */
+const arena = () => state_ui_battle_state.$(".arena");
+/* level 단계 퍼즐을 공급기에서 받아 연다. 아직 만드는 중이면 기다린다(진행 중인 전투 화면에서는 안내 문구만 바꾼다). */
 async function openLevel(level) {
   const supply = state_ui_puzzle.supply,
     run = state_ui_puzzle.run;
   if (!supply || !run) return;
+  const inBattle = !!run.def && state_ui_battle_state.game?.puzzle;
+  if (inBattle && !supply.isReady(level)) {
+    run.message = "다음 퍼즐을 준비하는 중…";
+    run.good = true;
+    render();
+  }
   let def;
   try {
     def = await supply.request(level);
@@ -104,13 +116,15 @@ async function openLevel(level) {
     state_ui_battle_state.$("#modalContent").innerHTML = `<div class="puzzle-intro"><h2>전술 퍼즐</h2><p>퍼즐을 만들지 못했습니다.</p>
       <div class="choice-list"><button id="puzzleWaitRetry" class="primary">다시 시도</button><button id="puzzleWaitCancel">메인 메뉴</button></div></div>`;
     state_ui_battle_state.$("#puzzleWaitRetry").onclick = () => {
-      showWaiting("퍼즐을 만드는 중…");
+      modal().classList.remove("open");
+      if (!inBattle) showWaiting("퍼즐을 만드는 중…");
       openLevel(level);
     };
     state_ui_battle_state.$("#puzzleWaitCancel").onclick = () => {
       modal().classList.remove("open");
       leavePuzzle();
     };
+    modal().classList.add("open");
     return;
   }
   if (supply !== state_ui_puzzle.supply || run !== state_ui_puzzle.run) return;
@@ -122,15 +136,38 @@ async function openLevel(level) {
     console.warn("[puzzle] unusable puzzle, making another", error);
     return openLevel(level);
   }
+  if (inBattle) {
+    arena()?.classList.add("puzzle-fade");
+    await sleep(240);
+    if (supply !== state_ui_puzzle.supply || run !== state_ui_puzzle.run) return;
+  }
   run.level = level;
   run.def = def;
   run.credited = false;
+  run.advancing = false;
   run.message = "";
+  run.good = false;
   modal().classList.remove("open");
   state_ui_battle_state.game = g;
   g.matchType = `전술 퍼즐 · ${leagueLabel(def)}`;
   enterBattleSession(`퍼즐 ${level}: 패배하지 않고 적을 쓰러뜨리세요.`);
+  requestAnimationFrame(() => arena()?.classList.remove("puzzle-fade"));
   for (let i = 1; i <= PREFETCH_AHEAD; i++) supply.prefetch(level + i);
+}
+/* 정답을 확인할 시간을 잠깐 주고 다음 퍼즐로 넘어간다. 클릭이 필요 없다. */
+function scheduleAdvance(run) {
+  if (run.advancing) return;
+  run.advancing = true;
+  run.message = "정답! 다음 퍼즐로 넘어갑니다…";
+  run.good = true;
+  run.advanceTimer = setTimeout(() => {
+    if (run === state_ui_puzzle.run && !run.over) openLevel(run.level + 1);
+  }, 1300);
+}
+function advanceNow(run) {
+  clearTimeout(run.advanceTimer);
+  run.advancing = true;
+  openLevel(run.level + 1);
 }
 function activeRun(g) {
   return g?.puzzle && g === state_ui_battle_state.game ? state_ui_puzzle.run : null;
@@ -147,10 +184,12 @@ function puzzleGate(g, t, s, action, options) {
   }
   if (review.counted) g.puzzle.budget--;
   run.message = "";
+  run.good = false;
   return true;
 }
 function registerMistake(g, run) {
   run.lives--;
+  run.good = false;
   run.message = run.lives > 0 ? "오답 — 그 수로는 적을 확실히 이길 수 없습니다." : "오답 — 실수를 모두 사용했습니다.";
   log(g, run.message, "turn");
   if (run.lives <= 0) {
@@ -184,13 +223,14 @@ export function renderPuzzleHud() {
     run.solved++;
     if (run.solved > readBest()) writeBest(run.solved);
   }
+  if (g.winner === "P") scheduleAdvance(run);
   hud.innerHTML = `<div class="puzzle-hud-top"><b>퍼즐 ${run.level}<small> · 해결 ${run.solved}</small></b><span class="puzzle-league">${def ? leagueLabel(def) : ""}</span>
     <span class="puzzle-lives" aria-label="남은 실수 기회">${Array.from({
     length: PUZZLE_LIVES
   }, (_, i) => `<i class="${i < run.lives ? "on" : ""}"></i>`).join("")}</span></div>
     <div class="puzzle-hud-goal"><b>패배하지 않고 적을 전멸시키세요</b></div>
     <div class="puzzle-hud-energy"><span class="puzzle-energy-row"><small>다음 에너지</small>${chips(g)}</span></div>
-    <div class="puzzle-hud-msg" role="status">${run.message || ""}</div>`;
+    <div class="puzzle-hud-msg${run.good ? " good" : ""}" role="status">${run.message || ""}</div>`;
 }
 function showRunEnd() {
   const run = state_ui_puzzle.run;
@@ -205,6 +245,7 @@ function showRunEnd() {
   modal().classList.add("open");
 }
 function leavePuzzle() {
+  clearTimeout(state_ui_puzzle.run?.advanceTimer);
   resetPuzzleCaches();
   state_ui_puzzle.supply?.cancel();
   state_ui_puzzle.supply = null;
@@ -231,15 +272,8 @@ function renderPuzzleResult(ctx) {
   };
   if (g.winner === "P") {
     title.textContent = "정답!";
-    hint.textContent = `${run.solved}문제 해결`;
-    const supply = state_ui_puzzle.supply;
-    if (supply?.isReady(run.level + 1)) add("다음 퍼즐 ▶", "primary", () => openLevel(run.level + 1));else {
-      hint.textContent = `${run.solved}문제 해결 · 다음 퍼즐을 만드는 중…`;
-      add("다음 퍼즐 ▶ (준비 중)", "primary", () => {
-        showWaiting("다음 퍼즐을 만드는 중…");
-        openLevel(run.level + 1);
-      });
-    }
+    hint.textContent = `${run.solved}문제 해결 · 곧 다음 퍼즐로 넘어갑니다`;
+    add("바로 다음 ▶", "primary", () => advanceNow(run));
   } else {
     title.textContent = "게임 오버";
     hint.textContent = `실수 ${PUZZLE_LIVES}번 · ${run.solved}문제 해결`;

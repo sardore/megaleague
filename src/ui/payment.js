@@ -190,7 +190,7 @@ export function openManualPayment(actions, done, title = "기술 코스트 선�
   const planMatches = (reqInfo, c) => {
     const total = c.R + c.W + c.B;
     if (Math.abs(total - reqInfo.need) > .001) return false;
-    if (!reqAcceptsCounts(reqInfo.transformed.req, c)) return false;
+    if (!reqAcceptsCounts(reqInfo.transformed.req, c, u)) return false;
     const p = reqInfo.action.paymentPlan;
     if (p && (Math.abs(Number(p.R || 0) - c.R) > .001 || Math.abs(Number(p.W || 0) - c.W) > .001 || Math.abs(Number(p.B || 0) - c.B) > .001)) return false;
     return true;
@@ -652,7 +652,8 @@ export function maybeChooseDeepMind(a, next) {
     actor = unitAt(state_ui_battle_state.game, ...state_ui_battle_state.game.order[state_ui_battle_state.game.turn]),
     sk = resolvedSkillForAction(actor, a);
   const abi = activeAbigate(state_ui_battle_state.game, t);
-  if (!abi || !isNonAttackSkill(sk) || a.deepMindTargetUid) return next(a);
+  /* 퍼즐은 풀이와 같은 기본 선택으로 진행한다(고를 수 없는 대화창을 띄우지 않는다). */
+  if (!abi || !isNonAttackSkill(sk) || a.deepMindTargetUid || state_ui_battle_state.game.puzzle) return next(a);
   const targets = state_ui_battle_state.game.teams[other(t)].field.filter(u => u && !u.dead && allEnergy(u) > .001);
   if (!targets.length) return next(a);
   openChoice(`<h2>아비게이트 · 딥마인드</h2><p>HP 10 회복 후 에너지 0.5를 제거할 상대를 선택하세요.</p>`, targets.map(u => ({

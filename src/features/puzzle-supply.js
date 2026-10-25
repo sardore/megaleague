@@ -103,22 +103,19 @@ export class PuzzleSupply {
       this.running = false;
     }
   }
-  /* 재고에서 단계에 맞는 후보를 꺼낸다. 정확히 맞는 것이 우선, 참을성이 다하면 가장 가까운 것. */
+  /* 재고에서 단계에 맞는 후보를 꺼낸다. 점수 = 목표 수와의 차이×10 + (함정이 아닌 국면 감점).
+     처음엔 점수 0(정확히 맞고 함정인 국면)만, 오래 못 찾으면 조금씩 눈높이를 낮춘다. */
   takeCandidate(spec, scanned) {
-    let pick = -1,
-      gap = Infinity;
+    const penalty = c => spec.level >= 2 && c.aiBlunder !== true ? 6 : 0;
+    const score = c => Math.abs(c.moves - spec.moves) * 10 + penalty(c);
+    let pick = -1;
     this.stock.forEach((c, i) => {
-      const g = Math.abs(c.moves - spec.moves);
-      if (g < gap || g === gap && pick >= 0 && c.cost < this.stock[pick].cost) {
-        gap = g;
-        pick = i;
-      }
+      if (pick < 0 || score(c) < score(this.stock[pick]) || score(c) === score(this.stock[pick]) && c.cost < this.stock[pick].cost) pick = i;
     });
     if (pick < 0) return null;
-    /* 처음엔 정확히 맞는 후보만, 오래 못 찾으면 ±1, 그래도 없으면 가장 가까운 것 */
     const patience = this.waiters.size ? PATIENCE_URGENT : PATIENCE_BACKGROUND;
-    const allowed = scanned < patience ? 0 : scanned < patience * 3 ? 1 : Infinity;
-    if (gap > allowed) return null;
+    const allowed = scanned < patience ? 0 : scanned < patience * 2 ? 6 : scanned < patience * 3 ? 10 : Infinity;
+    if (score(this.stock[pick]) > allowed) return null;
     return this.stock.splice(pick, 1)[0];
   }
   async produce(level) {
@@ -164,7 +161,8 @@ export class PuzzleSupply {
         a: decks.a
       }, this.ctx, {
         maxK: Math.min(SCAN_MAX_K, spec.moves + 1),
-        stopAt: spec.moves
+        stopAt: spec.moves,
+        wantTrap: spec.level >= 2
       });
       this.stock.push(...found);
     } catch (error) {
