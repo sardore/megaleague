@@ -923,11 +923,10 @@ export function initializeCatalogCards() {
   }, {
     type: "colorAll",
     color: "W"
-  }], ["damage", "energy"]), state_catalog_cards.S("sandWall", "방벽", "**", "원하는 대상에게 HP 보호막 100(대상의 차례 종료마다 40 감소).", "ally", [{
+  }], ["damage", "energy"]), state_catalog_cards.S("sandWall", "방벽", "**", "원하는 대상에게 HP 보호막 100(40씩 감소).", "ally", [{
     type: "hpBarrier",
     amount: 100,
-    decayPerTurn: 40,
-    decayPhase: "turnEnd"
+    decayPerTurn: 40
   }], ["shield"]), state_catalog_cards.S("sandQuake", "지진", "WW WorB *", "120D. 대상과 자신의 모든 에너지를 제거.", "enemy", [{
     type: "damage",
     amount: 120
