@@ -1,3 +1,4 @@
+import { drawPuzzleColor, isPuzzleGame, peekPuzzleColor } from "./puzzle-rules.js";
 import { applyClockEffect } from "../features/timeora.js";
 import { applyReactiveEnergyEffect } from "../features/genocider.js";
 import { applyResonanceEffect, syncAromaCombatFlags, elixianHpProtection, totalHpProtection } from "../features/elixian.js";
@@ -100,6 +101,10 @@ export class RandomEnergyGainService {
     actionFaultHit("energy-proposal-after");
     if (!pool.length) return null;
     if (pool.length === 1) return pool[0];
+    if (isPuzzleGame(ctx.game)) {
+      const scripted = drawPuzzleColor(ctx.game, pool);
+      if (scripted) return scripted;
+    }
     if (!ctx.rng?.pick) throw new Error(`무작위 에너지 RNG 없음: ${ctx.source}`);
     return ctx.rng.pick(pool);
   }
@@ -179,7 +184,7 @@ export function previewNaturalGatherProposal(g, t, s, u, amount, actor = null, s
   let color = existingHalf?.c || null;
   if (!color) {
     if (!colors.length) return null;
-    color = colors.length === 1 ? colors[0] : previewRng.pick(colors);
+    color = colors.length === 1 ? colors[0] : (isPuzzleGame(g) ? peekPuzzleColor(g, colors)?.color : null) ?? previewRng.pick(colors);
   }
   return Object.freeze({
     version: 1,
@@ -207,7 +212,7 @@ export function consumeNaturalGatherProposal(g, t, s, u, amount, actor = null, p
   if (deterministic) return deterministic === proposal.color ? deterministic : null;
   if (!colors.length || Number(g?.rng?.s ?? 0) !== Number(proposal.rngState)) return null;
   const stateBefore = Number(g.rng.s || 0),
-    actual = g.rng.pick(colors);
+    actual = (isPuzzleGame(g) ? drawPuzzleColor(g, colors) : null) ?? g.rng.pick(colors);
   if (actual !== proposal.color) {
     g.rng.s = stateBefore;
     return null;
@@ -681,7 +686,7 @@ export function executeBloom(g, t, u, sim = false) {
     injured = allies.filter(x => x.hp < x.maxHp),
     missing = injured.reduce((n, x) => n + x.maxHp - x.hp, 0);
   log(g, `피어나는생명 실질 피해 ${total}, 10단위 회복 자원 ${pool}.`, "heal");
-  if (pool >= missing || injured.length < 2 || sim || typeof state_ui_battle_state.game === "undefined" || g !== state_ui_battle_state.game || t !== "P" || g.mode !== "human") applyBloomAllocation(g, injured, pool, null, u, {
+  if (pool >= missing || injured.length < 2 || sim || typeof state_ui_battle_state.game === "undefined" || g !== state_ui_battle_state.game || t !== "P" || g.mode !== "human" || g.puzzle) applyBloomAllocation(g, injured, pool, null, u, {
     reason: "blooming-life",
     effectId: sk?.id || "bloomingLife",
     sim

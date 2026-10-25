@@ -1,3 +1,4 @@
+import { renderPuzzleHud } from "./puzzle.js";
 import { state_runtime_presentation } from "../runtime/presentation.js";
 import { state_runtime_state } from "../runtime/state.js";
 import { paintChoiceTarget } from "./interactions.js";
@@ -43,6 +44,7 @@ export function render() {
     syncOnlineChatUI();
     if (current?.mode === "spectator") specDecorateBattle();
     renderRaidBattleStatus();
+    renderPuzzleHud();
     timeClockVisualSaturation.sync();
     paintChoiceTarget();
     state_runtime_state.StateFactory.updateActive(current);

@@ -39,6 +39,7 @@ import { initializeFeaturesSpectators } from './features/spectators.js';
 import { initializeFeaturesBossRaid } from './features/boss-raid.js';
 import { initializeUiEnergyOverflow } from './ui/energy-overflow.js';
 import { initializeUiInteractions } from './ui/interactions.js';
+import { initializeUiPuzzle } from './ui/puzzle.js';
 import { initializeEngineEnergyNormalization } from './engine/energy-normalization.js';
 import { initializeAiBossPlanner } from './ai/boss-planner.js';
 import { initializeAiBossTactics } from './ai/boss-tactics.js';
@@ -93,6 +94,7 @@ export function initializeApplication() {
   initializeFeaturesBossRaid();
   initializeUiEnergyOverflow();
   initializeUiInteractions();
+  initializeUiPuzzle();
   initializeEngineEnergyNormalization();
   initializeAiBossPlanner();
   initializeAiBossTactics();
