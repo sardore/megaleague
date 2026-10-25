@@ -16,7 +16,7 @@ import { zombieCaveBadge, zombieCaveSlotInfo } from "../features/zombie-cave.js"
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
-import { timeClockMiniHTML } from "../features/timeora.js";
+import { timeClockCardHTMLState, timeClockMiniHTML } from "../features/timeora.js";
 import { combatInt, effectsHTML, energyHTML, storeHTML, state_ui_battle_state } from "./battle-state.js";
 export function initializeUiCards() {
   state_ui_cards.CARD_EMOJI_MAP = {
@@ -478,9 +478,15 @@ export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
       sourceRevision: state_ui_battle_state.game?.networkRevision || 0
     });
   const magnetClass = !bench && isTargetMagnet(state_ui_battle_state.game, u) ? "target-magnet" : "";
+  /* 운명의 시계 상태(특성 정지 채도 등)는 카드가 만들어질 때 함께 붙는다. 렌더 뒤에 클래스를 붙이면 새 카드가 잠깐 원색으로 보인다. */
+  const clockCard = !bench && !u.dead && state_ui_battle_state.game ? timeClockCardHTMLState(state_ui_battle_state.game, u) : {
+    className: "",
+    style: ""
+  };
+  const cardStyle = [dying != null ? `animation-delay:-${Math.round(dying)}ms` : "", clockCard.style].filter(Boolean).join(";");
   const redClass = bossRedRole ? "red-timeora-card boss-red-live-card" : "";
   const stageClass = bossRedRole ? "unit-stage boss-red-live-stage" : "unit-stage";
-  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${u.dead ? "" : gradeTierClass(c, effectiveCard)} ${redClass} ${magnetClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead death-fade" : ""}"${dying != null ? ` style="animation-delay:-${Math.round(dying)}ms"` : ""} data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div>${duelSkillListHTML(effectiveCard, bench)}</div>`;
+  return `<div class="card battle-unit-card ${bench ? "bench-card" : "field-card"} ${displayTeam === "P" ? "player" : "ai"} ${c.grade !== "2☆" ? "mega-card" : ""} ${u.dead ? "" : gradeTierClass(c, effectiveCard)} ${redClass} ${magnetClass} ${effectiveCard.visualModifiers.glowClass} ${unitInvulnerabilityState(u) ? "invulnerable-active" : ""} ${u.scheduledAction?.kind === "bloom" ? "cc-immune-active" : ""} ${u.dead ? "dead death-fade" : ""} ${clockCard.className}"${cardStyle ? ` style="${cardStyle}"` : ""} data-info-card="unit" data-info-surface="battle-card" data-card-id="${effectiveCard.effectiveCharacterId}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" data-zone="${bench ? "bench" : "field"}" data-team="${team}" data-slot="${slot}" data-uid="${u.uid}" data-entity-id="${u.uid}"${bossRedRole ? ' data-boss-red-timeora="true"' : ""}><div class="character-effect-popup-layer"></div>${undeadAuraHTML(u)}${unitBarsHTML(u)}<div class="${stageClass}">${pictogramHTML(bench ? "small" : "default", effectiveCard.effectiveCharacterId)}${unitEffectBadgesHTML(u)}<div class="unit-nameplate">${effectiveCard.displayName}</div></div>${duelSkillListHTML(effectiveCard, bench)}</div>`;
 }
 export function safeCssValue(value) {
   const raw = String(value ?? "");

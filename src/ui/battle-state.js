@@ -64,7 +64,7 @@ export function initializeUiBattleState() {
     }), Object.freeze({
       key: "defense",
       label: "방어",
-      value: combatInt(visibleDefense(unit) - Number(unit?.baseDefense || 0)),
+      value: combatInt(visibleDefense(unit) - appliedBaseDefense(unit)),
       effectiveValue: visibleDefense(unit)
     })].filter(item => item.value !== 0 || item.key === "defense" && item.effectiveValue !== 0));
     const render = (unit, options = {}) => {
@@ -171,6 +171,10 @@ export function energyHTML(u, actor = null) {
 }
 export function visibleDefense(u) {
   return combatInt(combatStats(state_ui_battle_state.game, u).defense);
+}
+/* 방어 '변화' 표시의 기준: 카드 원래 기본 방어가 아니라 지금 적용 중인 기본 방어(특성 정지로 빠졌으면 0). */
+export function appliedBaseDefense(u) {
+  return combatInt(combatStats(state_ui_battle_state.game, u).baseDefense);
 }
 export function effectsHTML(u) {
   let e = [];

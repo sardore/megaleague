@@ -5,7 +5,7 @@ import { captureOnlineLobbyScroll, restoreOnlineLobbyScroll } from '../ui/intera
 import { aiReason, maskedStateFor } from "../ai/search.js";
 import { actionHeuristic, chooseAI } from "../ai/specialists.js";
 import { state_catalog_cards } from "../catalog/cards.js";
-import { enemyTargets, legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
+import { enemyTargets, forcedRuleAction, legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
 import { createShield, heal, removeEnergy, teamOf } from "../engine/combat.js";
 import { state_engine_effects } from "../engine/effects.js";
 import { canPayAction, status, totalEnergy, transformedSkillReq } from "../engine/energy.js";
@@ -2150,7 +2150,8 @@ export function scheduleRaidTurn() {
   const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
     u = unitAt(state_ui_battle_state.game, t, s),
     actions = legalActions(state_ui_battle_state.game, t, s),
-    noLegalActions = actions.length === 0;
+    noLegalActions = actions.length === 0,
+    forcedAction = forcedRuleAction(actions);
   if (state_ui_battle_state.game.bossRaid.online && state_ui_deck.p2p.role === "guest") {
     state_ui_battle_state.busy = false;
     systems.OnlineRuntime?.projection?.request?.("boss-guest-wait", {
@@ -2159,7 +2160,7 @@ export function scheduleRaidTurn() {
     });
     return;
   }
-  if (t === "P" && !noLegalActions) {
+  if (t === "P" && !noLegalActions && !forcedAction) {
     systems.OnlineRuntime?.projection?.request?.("boss-player-turn", {
       phase: "IN_BATTLE",
       canonicalRevision: Number(state_ui_battle_state.game.networkRevision || 0)
@@ -2201,10 +2202,8 @@ export function scheduleRaidTurn() {
     try {
       state_ui_battle_state.visualEvents = [];
       state_ui_battle_state.visualHoldMs = 0;
-      a = u?.scheduledAction ? {
-        type: "scheduled"
-      } : chooseAI(view, t, s, false);
-      if (a && !u?.scheduledAction) reason = aiReason(view, t, s, a) || "";
+      a = forcedAction || chooseAI(view, t, s, false);
+      if (a && !forcedAction) reason = aiReason(view, t, s, a) || "";
     } finally {
       state_ui_battle_state.visualEvents = liveVisualEvents;
       state_ui_battle_state.visualHoldMs = liveVisualHoldMs;

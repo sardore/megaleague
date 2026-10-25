@@ -119,14 +119,31 @@ await check('curse consumes all attack decreases and preserves positive attack b
    const t=g.teams.P.field[0];t.timeHourDeg=90;t.timeMinuteDeg=0;probe.actions.prepareCurrentTurn(g);probe.render();
    const lease=probe.sat.acquire(g,[{clocks:[{uid:t.uid,team:'P',aligned:true,blocked:false}]}]);
    const held=[...document.querySelectorAll('.battle-unit-card[data-zone="field"]')].map(el=>[el.dataset.team+':'+el.dataset.cardId,el.classList.contains('clock-visual-saturation-held')]);lease.release();return held;});
-  assert.deepEqual(r,[['A:turtle',true],['A:mole',false],['P:timeora',false],['P:hermit',true]]);
+  assert.deepEqual(r,[['A:turtle',true],['A:mole',true],['P:timeora',false],['P:hermit',true]]);
  });
- await check('특성 정지는 기본 방어를 건드리지 않는다: 드래곤피시의 -20은 특성봉인·시계 정렬 중에도 그대로다',async page=>{
-  const r=await page.evaluate(()=>{const g=Megaleague.newGame(['timeora','dragonfish','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'dfish'});probe.battle.game=g;
-   const d=g.teams.P.field[1],t=g.teams.P.field[0],def=()=>probe.combat.combatStats(g,d).defense,ignored=()=>probe.combat.combatStats(g,d,{ignoreChanges:true}).defense;
-   const rows={plain:[def(),ignored()]};t.timeHourDeg=90;t.timeMinuteDeg=90;rows.suppressed=[def(),ignored(),probe.combat.traitsActive(d,g)];
-   t.timeMinuteDeg=0;d.statuses.traitSeal=2;rows.sealed=[def(),ignored(),probe.combat.traitsActive(d,g)];return rows;});
-  assert.deepEqual(r.plain,[-20+20,-20]);assert.deepEqual(r.suppressed,[0,-20,false]);assert.deepEqual(r.sealed,[0,-20,false]);
+ await check('방어 변화 표기는 지금 적용 중인 기본 방어를 기준으로 한다: 특성 정지로 드래곤피시의 -20이 빠져도 +20으로 표시되지 않는다',async page=>{
+  const r=await page.evaluate(()=>{document.getElementById('startupIntro')?.remove();const g=Megaleague.newGame(['dragonfish','hermit','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'dfish'});probe.battle.game=g;
+   const d=g.teams.P.field[0],chips=()=>probe.battle.CombatStatPresentationOwner.project(d).map(c=>[c.key,c.value,c.effectiveValue]);
+   const rows={plain:chips()};d.statuses.traitSeal=2;rows.sealed=chips();delete d.statuses.traitSeal;d.defenseMod=15;rows.boosted=chips();d.statuses.traitSeal=2;rows.sealedBoosted=chips();return rows;});
+  assert.deepEqual(r.plain,[['defense',0,-20]]);assert.deepEqual(r.sealed,[]);assert.deepEqual(r.boosted,[['defense',15,-5]]);assert.deepEqual(r.sealedBoosted,[['defense',15,15]]);
+ });
+ await check('운명의 시계 채도 저하는 아군·적, 행동 중·타깃 가능 여부와 무관하게 같은 경로로 즉시 걸리고 재렌더에도 원색으로 돌아가지 않는다',async page=>{
+  const r=await page.evaluate(async()=>{document.getElementById('startupIntro')?.remove();const out={};
+   for(const side of ['P','A']){
+    const mine=['timeora','dragonfish','turtle','mole'],other=['silvrae','mole','hermit','mushroom'];
+    const g=Megaleague.newGame(side==='P'?mine:other,side==='P'?other:mine,{mode:'ai',variance:false,seed:'sat'+side});
+    g.order=[['P',1],['A',1],['P',0],['A',0]];g.turn=0;g.turnSerial=0;g.preparedKey=null;probe.battle.game=g;g.matchId='sat'+side;
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById('game').classList.add('active');
+    const owner=g.teams[side].field[0];owner.timeHourDeg=90;owner.timeMinuteDeg=90;probe.actions.prepareCurrentTurn(g);probe.render();
+    await new Promise(r=>setTimeout(r,450));probe.render();
+    out[side]={cards:[...document.querySelectorAll('.arena .battle-unit-card[data-zone="field"]')].map(el=>[el.dataset.team+el.dataset.slot,getComputedStyle(el).filter,el.classList.contains('active-turn')]),attr:document.body.dataset.fateClockSuppressedTeam||null};
+   }
+   return out;});
+  for(const side of ['P','A']){
+   const rows=r[side].cards;assert.equal(rows.length,4);assert.equal(r[side].attr,null);
+   for(const [id,filter] of rows)assert.equal(filter,id===side+'0'?'none':'saturate(0.33)',`${side}: ${id}`);
+   assert.ok(rows.some(x=>x[2]&&x[1]==='saturate(0.33)'),'the acting unit is desaturated too');
+  }
  });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}

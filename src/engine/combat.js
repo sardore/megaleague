@@ -200,17 +200,20 @@ export function combatStats(g, unit, {
   ignoreChanges = false,
   defenseModMultiplier = 1
 } = {}) {
-  /* 기본 방어는 카드가 원래 가진 수치라 특성이 멈춰도 그대로다(드래곤피시 -20이 정지당할 때 사라지면 오히려 방어가 오른다). */
-  const baseDefense = Number(unit.baseDefense || 0);
+  const traitBound = cardHasCapability(unit, "baseDefenseTraitBound");
+  const baseDefense = traitBound && (ignoreChanges || !traitsActive(unit, g)) ? 0 : Number(unit.baseDefense || 0);
   if (ignoreChanges) return {
     attack: 0,
-    defense: baseDefense
+    defense: baseDefense,
+    baseDefense
   };
   const team = g && teamOf(g, unit);
   const aura = team ? Math.max(0, ...g.teams[team].field.filter(source => source && !source.dead && traitsActive(source, g)).map(source => Number(cardCapability(source, "defenseAura", 0)))) : 0;
   const penalty = unit.aromaDamagePenalty && !(traitsActive(unit, g) && card(unit).statDecreaseImmune) ? 10 : 0;
   return {
     attack: Number(unit.attackMod || 0),
+    /* baseDefense는 지금 실제로 적용 중인 기본 방어다. 특성이 정지돼 기본 방어가 빠진 경우에도 표시는 이 값을 기준으로 변화량을 계산한다. */
+    baseDefense,
     defense: baseDefense + Number(unit.defenseMod || 0) * defenseModMultiplier + fragmentDefense(unit, g) + aura - penalty
   };
 }

@@ -8,7 +8,7 @@ import { syncOnlineChatUI } from "../online/chat.js";
 import { ensureOnlineLeaveButton } from "../online/transport.js";
 import { renderAromaField, scrubUserFacingUndefined } from "../features/elixian.js";
 import { renderSummonZones } from "../features/summons.js";
-import { timeUpdateSuppressedTeamAttribute, timeSuppressedUidSet, timeSyncSuppressionVisuals } from "../features/timeora.js";
+import { timeSyncSuppressionVisuals } from "../features/timeora.js";
 import { state_engine_actions, other, unitAt } from "../engine/actions.js";
 import { renderBattleBoard, grandVisualOwner } from "./setup.js";
 import { activeAbigate, isNonAttackSkill, resolvedSkillForAction, setBattleLogOpen } from "../app/controls.js";
@@ -29,7 +29,6 @@ import { combatInt, energyAmountText, state_ui_battle_state } from "./battle-sta
 import { openChoice } from "./results.js";
 export function render() {
   const current = state_ui_battle_state.game;
-  timeUpdateSuppressedTeamAttribute(current, timeSuppressedUidSet(current));
   const previous = state_engine_actions.timeTraitGame;
   state_engine_actions.timeTraitGame = current;
   try {

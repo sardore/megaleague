@@ -2,7 +2,7 @@ import { presentRaidReward, scheduleRaidTurn, commitRaidActionPresentation } fro
 import { specIsHostMatch, specStartHostBroadcast } from '../features/spectators.js';
 import { aiReason, maskedStateFor } from "../ai/search.js";
 import { chooseAI } from "../ai/specialists.js";
-import { legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
+import { forcedRuleAction, legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
 import { findUnit, heal, nonAttackDamage, traitsActive } from "../engine/combat.js";
 import { applyBloomAllocation, collectTargetEnergyEntries, previewNaturalGatherProposal } from "../engine/effects.js";
 import { allEnergy, energyStore, gainEnergy, gainTraitEnergyNow, status, totalEnergy } from "../engine/energy.js";
@@ -429,7 +429,7 @@ export function scheduleAI() {
     serial = state_ui_battle_state.game.turnSerial,
     actions = legalActions(state_ui_battle_state.game, t, s),
     noLegalActions = actions.length === 0,
-    forcedAction = actions.find(a => a.type === "scheduled" || a.type === "speedDelay") || null,
+    forcedAction = forcedRuleAction(actions),
     forced = !!forcedAction || noLegalActions;
   if (state_ui_battle_state.game.mode === "online") {
     // PvP automatic commands are game rules, not AI turns. The host alone executes them
