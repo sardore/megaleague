@@ -2141,7 +2141,7 @@
       .skill-fx-ring{width:44px;height:44px;border-radius:50%;border:5px solid var(--fx-color);box-shadow:0 0 20px var(--fx-color);animation:skillRing .72s ease-out forwards;}
       .skill-fx-impact{width:96px;height:96px;border-radius:50%;background:radial-gradient(circle,#fff 0 8%,var(--fx-color) 12%,transparent 64%);filter:drop-shadow(0 0 12px var(--fx-color));animation:skillImpact .58s ease-out forwards;}
       .skill-fx-projectile{width:28px;height:12px;border-radius:50%;background:#fff;box-shadow:0 0 9px 5px var(--fx-color);transform:translate(calc(var(--from-x) - 50%),calc(var(--from-y) - 50%)) rotate(var(--angle));animation:skillProjectile .42s ease-in forwards;}
-      .skill-fx-slash{width:118px;height:14px;border-radius:999px;background:linear-gradient(90deg,transparent,#fff 25%,var(--fx-color) 55%,transparent);box-shadow:0 0 12px var(--fx-color);transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 50%)) rotate(var(--slash-angle));animation:skillSlash .45s ease-out forwards;}
+      .skill-fx-slash{width:118px;height:14px;border-radius:999px;background:linear-gradient(90deg,transparent,#fff 25%,var(--fx-color) 55%,transparent);box-shadow:0 0 12px var(--fx-color);transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 50%));rotate:var(--slash-angle);animation:skillSlash .45s ease-out forwards;}
       .skill-fx-status{font-size:34px;font-weight:900;color:#fff;text-shadow:0 0 5px #000,0 0 14px var(--fx-color);animation:skillStatus .85s ease-out forwards;}
       .skill-fx-label{position:absolute;pointer-events:none;z-index:82 !important;left:0;top:0;max-width:170px;text-align:center;padding:3px 8px;border-radius:999px;background:rgba(8,10,20,.82);border:1px solid var(--fx-color);color:#fff;font-size:12px;font-weight:800;box-shadow:0 0 10px var(--fx-color);transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 72px));animation:skillLabel .8s ease-out forwards;}
       @keyframes skillCast{0%{opacity:0;scale:.25;rotate:-35deg}45%{opacity:1;scale:1.05}100%{opacity:0;scale:1.55;rotate:35deg}}
@@ -2151,6 +2151,10 @@
       @keyframes skillSlash{0%{opacity:0;scale:.2}30%{opacity:1;scale:1.2}100%{opacity:0;scale:1.65}}
       @keyframes skillStatus{0%{opacity:0;translate:0 18px;scale:.5}35%{opacity:1;scale:1.2}100%{opacity:0;translate:0 -42px;scale:.9}}
       @keyframes skillLabel{0%{opacity:0;translate:0 12px}20%{opacity:1}100%{opacity:0;translate:0 -14px}}
+      /* 한 점(--fx-x/--fx-y)에 놓이는 연출의 공통 규칙: 위치는 transform(translate)으로 잡고, 커지기·돌기는 scale/rotate 속성으로 한다.
+         속성 scale/rotate는 transform 바깥에서 적용되므로 기준점이 요소 중심에 있으면 위치까지 같이 곱해져 화면 밖으로 튄다.
+         그래서 기준점을 그 점 자체로 둔다(요소 중심이 그 점에 놓이므로 제자리에서 커지고 돈다). */
+      .arena > :is(.skill-fx-cast,.skill-fx-impact,.skill-fx-ring,.skill-fx-status,.skill-fx-slash,.marine-fx-core,.marine-fx-ring,.marine-fx-slice,.marine-fx-particle,.eruption-cast,.eruption-fissure,.eruption-shockwave,.eruption-surge){transform-origin:var(--fx-x) var(--fx-y)}
       /* 해양·조류 신규 카드 전용 VFX — 기존 visualEvents/arena owner 사용 */
       .arena > .marine-fx-core,.arena > .marine-fx-ring,.arena > .marine-fx-beam,.arena > .marine-fx-slice,
       .arena > .marine-fx-particle,.arena > .marine-fx-column,.arena > .marine-fx-label{position:absolute;left:0;top:0;pointer-events:none;z-index:91}
@@ -2159,15 +2163,15 @@
       .marine-fx-core{width:88px;height:88px;border-radius:50%;background:radial-gradient(circle,#fff 0 6%,var(--marine-color,#6ee7ff) 15%,transparent 68%);filter:drop-shadow(0 0 18px var(--marine-color,#6ee7ff));animation:marineCore .8s cubic-bezier(.15,.7,.2,1) forwards}
       .marine-fx-ring{width:72px;height:72px;border-radius:50%;border:4px solid var(--marine-color,#6ee7ff);box-shadow:0 0 16px var(--marine-color,#6ee7ff),inset 0 0 14px var(--marine-color,#6ee7ff);animation:marineRing .9s ease-out forwards}
       .marine-fx-beam{height:12px;width:var(--beam-length,120px);border-radius:999px;background:linear-gradient(90deg,transparent,#fff 12%,var(--marine-color,#6ee7ff) 45%,#fff 72%,transparent);box-shadow:0 0 14px var(--marine-color,#6ee7ff);transform-origin:left center;transform:translate(var(--from-x),var(--from-y)) rotate(var(--beam-angle));animation:marineBeam .62s ease-out forwards}
-      .marine-fx-slice{width:132px;height:12px;border-radius:999px;background:linear-gradient(90deg,transparent,#fff 24%,var(--marine-color,#6ee7ff) 56%,transparent);box-shadow:0 0 14px var(--marine-color,#6ee7ff);transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 50%)) rotate(var(--slice-angle,0deg));animation:marineSlice .58s ease-out forwards}
+      .marine-fx-slice{width:132px;height:12px;border-radius:999px;background:linear-gradient(90deg,transparent,#fff 24%,var(--marine-color,#6ee7ff) 56%,transparent);box-shadow:0 0 14px var(--marine-color,#6ee7ff);transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 50%));rotate:var(--slice-angle,0deg);animation:marineSlice .58s ease-out forwards}
       .marine-fx-particle{width:var(--particle-size,9px);height:var(--particle-size,9px);border-radius:50%;background:var(--marine-color,#6ee7ff);box-shadow:0 0 9px var(--marine-color,#6ee7ff);animation:marineParticle var(--particle-time,.82s) ease-out forwards;animation-delay:var(--particle-delay,0ms)}
       .marine-fx-column{width:54px;height:150px;border-radius:45% 45% 18% 18%;background:linear-gradient(90deg,transparent,var(--marine-color,#6ee7ff),#fff,var(--marine-color,#6ee7ff),transparent);filter:blur(1px) drop-shadow(0 0 15px var(--marine-color,#6ee7ff));transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 88%)) scaleY(.25);animation:marineColumn .85s ease-out forwards}
       @keyframes marineCore{0%{opacity:0;scale:.18;rotate:-40deg}35%{opacity:1;scale:1.2}100%{opacity:0;scale:1.8;rotate:35deg}}
       @keyframes marineRing{0%{opacity:1;scale:.18}100%{opacity:0;scale:3}}
-      @keyframes marineBeam{0%{opacity:0;transform:scaleX(.08)}22%{opacity:1}100%{opacity:0;transform:scaleX(1)}}
+      @keyframes marineBeam{0%{opacity:0;transform:translate(var(--from-x),var(--from-y)) rotate(var(--beam-angle)) scaleX(.08)}22%{opacity:1}100%{opacity:0;transform:translate(var(--from-x),var(--from-y)) rotate(var(--beam-angle)) scaleX(1)}}
       @keyframes marineSlice{0%{opacity:0;scale:.25}25%{opacity:1;scale:1.05}100%{opacity:0;scale:1.7}}
       @keyframes marineParticle{0%{opacity:0;translate:0 0;scale:.4}18%{opacity:1}100%{opacity:0;translate:var(--particle-x,0) var(--particle-y,-65px);scale:1.3}}
-      @keyframes marineColumn{0%{opacity:0;transform:scaleY(.15)}30%{opacity:1;transform:scaleY(1.15)}100%{opacity:0;transform:scaleY(1.7)}}
+      @keyframes marineColumn{0%{opacity:0;transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 88%)) scaleY(.15)}30%{opacity:1;transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 88%)) scaleY(1.15)}100%{opacity:0;transform:translate(calc(var(--fx-x) - 50%),calc(var(--fx-y) - 88%)) scaleY(1.7)}}
       @keyframes marineLabel{0%{opacity:0;translate:0 10px}18%{opacity:1}100%{opacity:0;translate:0 -20px}}
 
       /* 브케노 · 분화 전용 이펙트 */
