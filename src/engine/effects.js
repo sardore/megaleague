@@ -2,6 +2,7 @@ import { applyClockEffect } from "../features/timeora.js";
 import { applyReactiveEnergyEffect } from "../features/genocider.js";
 import { applyResonanceEffect, syncAromaCombatFlags, elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { applyWellerEffect, resolveSuppressedCurse } from '../features/weller.js';
+import { applyZombieEffect } from '../features/zombie-cave.js';
 import { healingBecomesDamage, healingCapacity } from './status-rules.js';
 import { applyStrikeEffect } from "../features/foxious.js";
 import { applySummonEffect, circuitBlocksExternal, resolveVoltageBurst } from "../features/summons.js";
@@ -1031,6 +1032,11 @@ export function effectApply(g, actor, target, e, skill, ctx) {
     case 'suppressedCurse':
     case 'graveDown':
       return applyWellerEffect(g, actor, target, e, skill, ctx);
+    case 'zFieldHit':
+    case 'zStatReset':
+    case 'zRally':
+    case 'zBarrier':
+      return applyZombieEffect(g, actor, target, e, skill, ctx);
     case "mysticBurst":
       return executeMysticBurst(g, actor, target, skill, ctx);
     case "mutualEnergyTrade":

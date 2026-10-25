@@ -13,7 +13,7 @@ import { RNG, actionSkillHasEffect, card, cardHasCapability, clone, isPlusStarCh
 import { endTurn, execute } from "../engine/execution.js";
 import { timeClockMiniHTML, timeNormDeg, timePaidAmountFromAction, timeRecallValue, timeSetInputLock, timeSyncSuppressionVisuals, state_features_timeora } from "./timeora.js";
 import { onlineCurrentMatchId, onlineSafeSend, state_online_commands } from "../online/commands.js";
-import { cloneOnlineVisualEvents, p2pSend, registerOnlineConnectionRoute, serializeOnlineBattleProjection, showEnd, state_online_connection } from "../online/connection.js";
+import { cloneOnlineVisualEvents, mvpResultHTML, p2pSend, registerOnlineConnectionRoute, serializeOnlineBattleProjection, showEnd, state_online_connection } from "../online/connection.js";
 import { renderManualSummonActions } from "../online/emotes.js";
 import { sendAuthoritativeOnlineState } from "../online/snapshots.js";
 import { onlineStartPacketDigest, scheduleOnlineStartPublicationRetry, traceOnlineStart } from "../online/start.js";
@@ -29,6 +29,7 @@ import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
 import { state_ui_results } from "../ui/results.js";
 import { validFormDeck } from "../ui/setup.js";
+import { ZOMBIE_CAVE, isZombieCave, zombieCaveCalmField, zombieCaveDelayEntrances, zombieCaveSetup, zombieCaveUnitDefeated } from "./zombie-cave.js";
 export function initializeFeaturesBossRaid() {
   BOSS_RAID_VERSION = "red-timeora-raid-r8";
   BOSS_LOBBY_PROTOCOL = "mega-red-timeora-raid-lobby-r8";
@@ -70,6 +71,7 @@ export function initializeFeaturesBossRaid() {
   bossIntroPromise = null;
   bossOnlineAiTimer = 0;
   bossPendingStartGame = null;
+  bossLobbyKind = "timeora";
   BossLobbyApplication = (() => {
     const snapshot = () => Object.freeze({
       deck: Object.freeze([...bossRaidSelection]),
@@ -110,6 +112,7 @@ export function initializeFeaturesBossRaid() {
           deck: [...state_ui_deck.p2p.bossLocalDeck],
           plusStar: state_ui_deck.p2p.bossLocalPlusStar,
           ready,
+          kind: bossActiveKind(),
           at: Date.now()
         });
         return true;
@@ -260,59 +263,82 @@ export function initializeFeaturesBossRaid() {
 
   BOSS_REWARDS = [{
     id: "energyPair",
+    kinds: RAID_BOTH,
     rarity: "common",
     weight: 34,
     name: "시간 결정 묶음",
     desc: "현재 필드 아군 둘에게 무작위 에너지 1개씩 지급."
   }, {
     id: "teamHeal",
+    kinds: RAID_BOTH,
     rarity: "common",
     weight: 30,
     name: "응급 복구",
     desc: "생존한 아군 전체 HP 30 회복."
   }, {
     id: "shieldPatch",
+    kinds: RAID_BOTH,
     rarity: "common",
     weight: 22,
     name: "방벽 재구축",
     desc: "현재 필드 아군에게 실드 35 부여."
   }, {
     id: "clockReverse",
+    kinds: RAID_BOSS_ONLY,
     rarity: "uncommon",
     weight: 18,
     name: "역행 침",
     desc: "붉은 공용 시침을 60° 역회전."
   }, {
     id: "bossDrain",
+    kinds: RAID_BOSS_ONLY,
     rarity: "uncommon",
     weight: 15,
     name: "시간 누수",
     desc: "생존한 붉은 타임오러의 에너지 1개씩 제거."
   }, {
     id: "hyperGuard",
+    kinds: RAID_BOSS_ONLY,
     rarity: "rare",
     weight: 10,
     name: "시간 방벽",
     desc: "다음 적 하이퍼클락 피해를 60 감소."
   }, {
     id: "revive",
+    kinds: RAID_BOTH,
     rarity: "rare",
     weight: 8,
     name: "되감긴 생명",
     desc: "사망한 아군 하나를 HP 80으로 후열에 복귀."
   }, {
     id: "overdrive",
+    kinds: RAID_BOTH,
     rarity: "rare",
     weight: 7,
     name: "연합 오버드라이브",
     desc: "생존 아군 HP 20 회복 후 현재 필드에 에너지 1개씩 지급."
   }, {
     id: "summonTimeora",
+    kinds: RAID_BOSS_ONLY,
     rarity: "legendary",
     weight: 0,
     chance: .05,
     name: "금빛 시간의 지원",
     desc: "아군 타임오러를 선택자의 후열에 소환. 후보 등장 확률 정확히 5%."
+  }, {
+    id: "caveTorch",
+    kinds: ["zombie"],
+    rarity: "uncommon",
+    weight: 16,
+    name: "횃불 보급",
+    desc: "필드 좀비의 격노와 생존 턴을 처음으로 되돌림."
+  }, {
+    id: "caveBarricade",
+    kinds: ["zombie"],
+    rarity: "uncommon",
+    weight: 14,
+    name: "바리케이드",
+    desc: "모든 빈 칸의 좀비 입장을 2라운드 늦춤."
   }];
   if (!systems.__megaBossRewardDelegationR44) {
     document.addEventListener("click", bossHandleRewardClick, true);
@@ -432,6 +458,48 @@ let bossVictoryMatchId;
 let bossIntroPromise;
 let bossOnlineAiTimer;
 let bossPendingStartGame;
+let bossLobbyKind;
+/* 레이드 종류별 이름·문구. 로비·온라인·보상·결과 흐름은 종류와 상관없이 하나를 공유한다. */
+const RAID_KINDS = Object.freeze({
+  timeora: Object.freeze({
+    id: "timeora",
+    title: "붉은 시간의 군단",
+    lobby: "붉은 레이드",
+    menuLabel: "보스전",
+    icon: "⏳",
+    solo: "솔로 레이드 덱 편성",
+    start: "보스전 시작",
+    enemySide: "붉은 시간 군단",
+    mySide: "레이드 연합",
+    enemyTurn: "붉은 타임오러 계산 중…",
+    matchType: "보스전 · 붉은 시간의 군단"
+  }),
+  zombie: Object.freeze({
+    id: "zombie",
+    title: "좀비굴",
+    lobby: "좀비굴",
+    menuLabel: "좀비굴",
+    icon: "🧟",
+    solo: "좀비굴 덱 편성",
+    start: "탐험 시작",
+    enemySide: "좀비 떼",
+    mySide: "탐험대",
+    enemyTurn: "좀비 행동 중…",
+    matchType: "좀비굴"
+  })
+});
+function raidKindInfo(kind) {
+  return RAID_KINDS[kind] || RAID_KINDS.timeora;
+}
+function raidKindOf(g) {
+  return g?.bossRaid?.kind === "zombie" ? "zombie" : "timeora";
+}
+/* 온라인에서는 호스트가 고른 종류가 기준이고, 게스트는 호스트의 로비 패킷을 따른다. */
+function bossActiveKind() {
+  const p2p = state_ui_deck.p2p;
+  if (p2p?.sessionMode === "bossRaid" && p2p.role === "guest" && p2p.bossHostKind) return raidKindInfo(p2p.bossHostKind).id;
+  return raidKindInfo(bossLobbyKind).id;
+}
 function bossRaidPool() {
   /* 보스 편성에서는 기본형/각성형을 모두 실제 카드로 노출한다.
      MEGA_SETUP_IDS는 일반 편성용 대표 슬롯이라 각성이루마·휴브가 빠지므로 사용하지 않는다. */
@@ -518,6 +586,13 @@ function bossRefreshOnlineLobby() {
   const mine = bossDeckValid(bossRaidSelection, 2),
     theirs = bossDeckValid(state_ui_deck.p2p.bossRemoteDeck || [], 2);
   const conflict = false;
+  const kind = bossActiveKind(),
+    title = document.getElementById("bossLobbyTitle");
+  if (title) title.textContent = `${raidKindInfo(kind).lobby} 온라인 대기실`;
+  document.querySelectorAll("[data-boss-kind]").forEach(button => {
+    button.classList.toggle("on", button.dataset.bossKind === kind);
+    button.disabled = state_ui_deck.p2p.role !== "host" || !!state_ui_deck.p2p.battleStarted;
+  });
   const ready = document.getElementById("bossDeckConfirm");
   if (ready) {
     ready.textContent = state_ui_deck.p2p.bossLocalReady ? "준비 취소" : "준비 완료";
@@ -557,7 +632,7 @@ export function bossRedUnits(g) {
   });
 }
 function bossSyncClock(g) {
-  if (!g?.bossRaid) return;
+  if (!g?.bossRaid || isZombieCave(g)) return;
   const c = bossClock(g);
   for (const u of bossRedUnits(g)) {
     u.timeHourDeg = timeNormDeg(c.hourDeg);
@@ -753,8 +828,9 @@ function bossAssignRed(u, index) {
   u.timeHourDeg = 0;
   u.timeMinuteDeg = 90;
 }
-function bossCreateGame(hostDeck, guestDeck = null, online = false, plusState = null) {
-  const solo = !online,
+function bossCreateGame(hostDeck, guestDeck = null, online = false, plusState = null, kind = "timeora") {
+  const zombie = kind === "zombie",
+    solo = !online,
     ordered = solo ? [...hostDeck] : [hostDeck[0], guestDeck[0], hostDeck[1], guestDeck[1]],
     seed = bossRandomId("raid-seed");
   const hostChoice = resolvePlusStarChoice(plusState?.host ?? (online ? state_ui_deck.p2p?.bossLocalPlusStar : bossPlusStarSelection), hostDeck, "P");
@@ -769,7 +845,7 @@ function bossCreateGame(hostDeck, guestDeck = null, online = false, plusState = 
   const g = newGame(ordered.slice(0, 4), ["timeora", "timeora", "timeora", "timeora"], {
     seed,
     variance: false,
-    difficulty: "boss45",
+    difficulty: zombie ? "normal" : "boss45",
     mode: online ? "bossOnline" : "bossSolo",
     league: "mega",
     plusStar: {
@@ -781,18 +857,19 @@ function bossCreateGame(hostDeck, guestDeck = null, online = false, plusState = 
     u.bossOwner = solo ? "solo" : i % 2 === 0 ? "host" : "guest";
   });
   const aAll = [...g.teams.A.field, ...g.teams.A.bench];
-  aAll.forEach(bossAssignRed);
+  if (!zombie) aAll.forEach(bossAssignRed);
   g.revealed.P = pAll.map(u => u.uid);
   g.revealed.A = aAll.map(u => u.uid);
   g.mode = online ? "bossOnline" : "bossSolo";
-  g.matchType = "보스전 · 붉은 시간의 군단";
-  g.difficulty = "4.5";
+  g.matchType = raidKindInfo(zombie ? "zombie" : "timeora").matchType;
+  g.difficulty = zombie ? "normal" : "4.5";
   g.variance = false;
   g.bossRaid = {
     version: BOSS_RAID_VERSION,
+    kind: zombie ? "zombie" : "timeora",
     online,
-    difficulty: 4.5,
-    bossId: "red-timeora-legion",
+    difficulty: zombie ? null : 4.5,
+    bossId: zombie ? "zombie-cave" : "red-timeora-legion",
     sharedClock: {
       hourDeg: 0,
       minuteDeg: 90
@@ -809,7 +886,7 @@ function bossCreateGame(hostDeck, guestDeck = null, online = false, plusState = 
   };
   g.matchId = online ? state_ui_deck.p2p.matchId || bossRandomId("raid-match") : bossRandomId("raid-solo");
   g.token = ++state_ui_battle_state.battleToken;
-  bossSyncClock(g);
+  if (zombie) zombieCaveSetup(g);else bossSyncClock(g);
   return g;
 }
 function bossPrepareGame(g) {
@@ -830,7 +907,7 @@ function bossPrepareGame(g) {
   state_ui_battle_state.visualEvents = [];
   state_ui_battle_state.visualHoldMs = 0;
   document.getElementById("log").innerHTML = "";
-  log(g, "붉은 시간의 군단 보스전 시작 · 타임오러 사용 불가 · 적 공용 시계 활성.", "turn");
+  log(g, isZombieCave(g) ? "좀비굴 탐험 시작 · 타임오러 사용 불가 · 좀비는 끝없이 입장한다." : "붉은 시간의 군단 보스전 시작 · 타임오러 사용 불가 · 적 공용 시계 활성.", "turn");
   state_ui_results.NavigationApplication.request("game");
   render();
   startBgm();
@@ -840,8 +917,9 @@ function bossPlayIntro() {
   let cancelIntro = null;
   const introPromise = new Promise(resolve => {
     const el = document.createElement("div");
-    el.className = "boss-raid-intro";
-    el.innerHTML = `<div class="boss-intro-core"><div class="boss-intro-hourglasses"><span>⏳</span><span>⏳</span><span>⏳</span><span>⏳</span></div><div class="boss-intro-title">붉은 시간의 군단</div><div class="boss-intro-sub">SHARED CLOCK RAID</div></div>`;
+    const info = raidKindInfo(raidKindOf(state_ui_battle_state.game));
+    el.className = `boss-raid-intro ${info.id === "zombie" ? "zombie-cave-intro" : ""}`;
+    el.innerHTML = `<div class="boss-intro-core"><div class="boss-intro-hourglasses">${`<span>${info.icon}</span>`.repeat(4)}</div><div class="boss-intro-title">${info.title}</div><div class="boss-intro-sub">${info.id === "zombie" ? "ZOMBIE CAVE · DEPTH RUN" : "SHARED CLOCK RAID"}</div></div>`;
     let done = false,
       backgrounded = false,
       endingTimer = 0,
@@ -911,8 +989,11 @@ async function bossLaunch(g) {
   scheduleAI();
 }
 let BOSS_REWARDS;
+const RAID_BOTH = Object.freeze(["timeora", "zombie"]);
+const RAID_BOSS_ONLY = Object.freeze(["timeora"]);
 function bossWeightedReward(g, excluded) {
-  const pool = BOSS_REWARDS.filter(r => r.id !== "summonTimeora" && !excluded.has(r.id) && Number(r.weight || 0) > 0);
+  const kind = raidKindOf(g),
+    pool = BOSS_REWARDS.filter(r => r.id !== "summonTimeora" && r.kinds.includes(kind) && !excluded.has(r.id) && Number(r.weight || 0) > 0);
   let total = pool.reduce((n, r) => n + r.weight, 0);
   if (!total) return null;
   let roll = g.rng.next() * total,
@@ -930,7 +1011,7 @@ function bossRollRewards(g) {
   const out = [],
     used = new Set(),
     hasAlliedTimeora = [...g.teams.P.field, ...g.teams.P.bench].some(u => cardHasCapability(u, "timeControl") && !u.bossRed),
-    legend = BOSS_REWARDS.find(r => r.id === "summonTimeora");
+    legend = raidKindOf(g) === "timeora" ? BOSS_REWARDS.find(r => r.id === "summonTimeora") : null;
   const legendaryAppears = !hasAlliedTimeora && legend && g.rng.next() < Number(legend.chance || .05),
     normalCount = legendaryAppears ? 2 : 3;
   while (out.length < normalCount) {
@@ -1009,7 +1090,7 @@ function bossApplyReward(g, reward, chooserRole) {
       effectId: "overdrive"
     });
     for (const u of field) bossGainOne(g, u);
-  } else if (reward.id === "summonTimeora") {
+  } else if (reward.id === "caveTorch") zombieCaveCalmField(g);else if (reward.id === "caveBarricade") zombieCaveDelayEntrances(g, 2);else if (reward.id === "summonTimeora") {
     const u = makeUnit("timeora", bossRandomId("reward-timeora"));
     u.name = "지원 타임오러";
     u.bossOwner = g.bossRaid.online ? chooserRole || "host" : "solo";
@@ -1042,7 +1123,7 @@ function bossRewardHTML(q) {
     rare: "희귀",
     legendary: "전설"
   };
-  return `<div class="boss-reward-shell"><h2 class="boss-reward-title">붉은 타임오러 처치 보상</h2><p data-boss-reward-status>세 보상 중 하나를 선택하세요. 강한 보상일수록 등장 확률이 낮습니다.</p><div class="boss-reward-grid">${q.options.map((r, i) => `<button type="button" class="boss-reward-card ${r.rarity}" data-boss-reward="${i}"><span class="boss-reward-rarity">${labels[r.rarity] || r.rarity}</span><span class="boss-reward-name">${r.name}</span><span class="boss-reward-desc">${r.desc}</span></button>`).join("")}</div></div>`;
+  return `<div class="boss-reward-shell"><h2 class="boss-reward-title">${q.title || "붉은 타임오러 처치 보상"}</h2><p data-boss-reward-status>세 보상 중 하나를 선택하세요. 강한 보상일수록 등장 확률이 낮습니다.</p><div class="boss-reward-grid">${q.options.map((r, i) => `<button type="button" class="boss-reward-card ${r.rarity}" data-boss-reward="${i}"><span class="boss-reward-rarity">${labels[r.rarity] || r.rarity}</span><span class="boss-reward-name">${r.name}</span><span class="boss-reward-desc">${r.desc}</span></button>`).join("")}</div></div>`;
 }
 function bossRewardSetStatus(text) {
   const el = document.querySelector("[data-boss-reward-status]");
@@ -1197,7 +1278,7 @@ function renderBossActions(ctx = null) {
   const r = viewModel.surfaceKind === "manual-summon" ? renderManualSummonActions(viewModel) : renderBaseActions(viewModel);
   const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
     current = unitAt(state_ui_battle_state.game, t, s);
-  if (!state_ui_battle_state.game.winner && !local) document.getElementById("actionTitle").textContent = t === "A" ? "붉은 타임오러 계산 중…" : "동료 행동 대기 중…";
+  if (!state_ui_battle_state.game.winner && !local) document.getElementById("actionTitle").textContent = t === "A" ? raidKindInfo(raidKindOf(state_ui_battle_state.game)).enemyTurn : "동료 행동 대기 중…";
   if (local && t === "P" && !current && !state_ui_battle_state.game.winner) {
     const pass = [...document.querySelectorAll("#actionButtons button")].find(button => (button.textContent || "").includes("빈 슬롯 넘기기"));
     if (pass) pass.onclick = () => {
@@ -1208,8 +1289,9 @@ function renderBossActions(ctx = null) {
   }
   if (state_ui_battle_state.game.winner) {
     const box = document.getElementById("actionButtons");
-    box.innerHTML = '<button id="bossRaidAgain" data-action-panel-meta="terminal">보스전 메뉴</button><button data-nav="setup" data-action-panel-meta="terminal">메인 메뉴</button>';
-    document.getElementById("bossRaidAgain").onclick = showBossRaidMenu;
+    const kindInfo = raidKindInfo(raidKindOf(state_ui_battle_state.game));
+    box.innerHTML = `<button id="bossRaidAgain" data-action-panel-meta="terminal">${kindInfo.menuLabel} 메뉴</button><button data-nav="setup" data-action-panel-meta="terminal">메인 메뉴</button>`;
+    document.getElementById("bossRaidAgain").onclick = kindInfo.id === "zombie" ? showZombieCaveMenu : showBossRaidMenu;
     box.querySelector('[data-nav]').onclick = () => state_ui_results.NavigationApplication.request("setup");
   }
   return r;
@@ -1258,6 +1340,7 @@ function bossHandlePacket(msg) {
   if (msg.type === "bossLobbyState" && msg.protocol === BOSS_LOBBY_PROTOCOL) {
     if (state_ui_deck.p2p?.sessionMode !== "bossRaid" || state_ui_deck.p2p?.battleStarted) return false;
     if (msg.matchId && state_ui_deck.p2p.matchId && msg.matchId !== state_ui_deck.p2p.matchId) return false;
+    if (state_ui_deck.p2p.role === "guest") state_ui_deck.p2p.bossHostKind = raidKindInfo(msg.kind).id;
     state_ui_deck.p2p.bossRemoteDeck = bossSanitizeDeck(msg.deck, 2);
     state_ui_deck.p2p.bossRemotePlusStar = resolvePlusStarChoice(msg.plusStar, state_ui_deck.p2p.bossRemoteDeck, "A");
     state_ui_deck.p2p.bossRemoteReady = !!msg.ready && bossDeckValid(state_ui_deck.p2p.bossRemoteDeck, 2);
@@ -1313,10 +1396,13 @@ export function renderRaidBattleStatus() {
   document.getElementById("bossSharedClockHud")?.remove();
   const aiHead = document.querySelector(".ai-side .side-head b"),
     pHead = document.querySelector(".player-side .side-head b");
-  if (aiHead) aiHead.textContent = "붉은 시간 군단";
-  if (pHead) pHead.textContent = state_ui_battle_state.game.bossRaid.online ? "레이드 연합 · P1/P2" : "레이드 연합";
+  const game = state_ui_battle_state.game,
+    info = raidKindInfo(raidKindOf(game)),
+    cave = isZombieCave(game) ? game.bossRaid.cave : null;
+  if (aiHead) aiHead.textContent = cave ? `${info.enemySide} · 지하 ${cave.depth}층` : info.enemySide;
+  if (pHead) pHead.textContent = game.bossRaid.online ? `${info.mySide} · P1/P2` : info.mySide;
   const aliveLabel = document.getElementById("AAlive");
-  if (aliveLabel) aliveLabel.textContent = `생존 ${[...(state_ui_battle_state.game.teams.A.field || []), ...(state_ui_battle_state.game.teams.A.bench || [])].filter(u => u && !u.dead).length}/4 · 교체 불가`;
+  if (aliveLabel) aliveLabel.textContent = cave ? `처치 ${cave.kills} · 다음 층까지 ${ZOMBIE_CAVE.killsPerFloor - cave.kills % ZOMBIE_CAVE.killsPerFloor}` : `생존 ${[...(game.teams.A.field || []), ...(game.teams.A.bench || [])].filter(u => u && !u.dead).length}/4 · 교체 불가`;
   timeSyncSuppressionVisuals(state_ui_battle_state.game);
 }
 function bossVisibleNormalPool() {
@@ -1395,7 +1481,8 @@ function showBossDeckPicker(count = 4, online = false) {
   if (!root) return;
   delete root.dataset.bossLobbySubview;
   const currentInvader = bossCurrentInvader();
-  root.innerHTML = `<div class="boss-lobby"><h2>${online ? "붉은 레이드 온라인 대기실" : "솔로 레이드 덱 편성"}</h2><div id="bossDeckStatus" class="boss-lobby-status"></div><div id="bossDeckGrid" class="boss-deck-grid"></div><div class="choice-list"><button id="bossDeckConfirm" class="primary">${online ? "준비 완료" : "보스전 시작"}</button><button id="bossDeckBack">뒤로</button></div><p class="tiny muted">타임오러는 편성할 수 없습니다. 침략자는 초차원 포탈에서 최대 한 명만 선택합니다. ${online ? "각 플레이어가 2명을 선택하며 자기 슬롯·폼·PlusStar만 조작합니다." : "4명을 선택하며 PlusStar는 덱에서 최대 한 명입니다."}</p></div>`;
+  const kindInfo = raidKindInfo(bossActiveKind());
+  root.innerHTML = `<div class="boss-lobby"><h2 id="bossLobbyTitle">${online ? `${kindInfo.lobby} 온라인 대기실` : kindInfo.solo}</h2>${online ? `<div id="bossKindSwitch" class="boss-kind-switch" role="group" aria-label="던전 선택"><button type="button" data-boss-kind="timeora">보스전</button><button type="button" data-boss-kind="zombie">좀비굴</button></div>` : ""}<div id="bossDeckStatus" class="boss-lobby-status"></div><div id="bossDeckGrid" class="boss-deck-grid"></div><div class="choice-list"><button id="bossDeckConfirm" class="primary">${online ? "준비 완료" : kindInfo.start}</button><button id="bossDeckBack">뒤로</button></div><p class="tiny muted">타임오러는 편성할 수 없습니다. 침략자는 초차원 포탈에서 최대 한 명만 선택합니다. ${online ? "각 플레이어가 2명을 선택하며 자기 슬롯·폼·PlusStar만 조작합니다." : "4명을 선택하며 PlusStar는 덱에서 최대 한 명입니다."}</p></div>`;
   const draw = () => {
     const drawScroll = typeof captureOnlineLobbyScroll === "function" ? captureOnlineLobbyScroll("boss") : null;
     const inv = bossCurrentInvader(),
@@ -1453,7 +1540,8 @@ function showBossDeckPicker(count = 4, online = false) {
     if (typeof restoreOnlineLobbyScroll === "function") restoreOnlineLobbyScroll("boss", drawScroll);
   };
   draw();
-  document.getElementById("bossDeckBack").onclick = () => online ? bossCancelMatchmaking() : showBossRaidMenu();
+  document.getElementById("bossDeckBack").onclick = () => online ? bossCancelMatchmaking() : bossActiveKind() === "zombie" ? showZombieCaveMenu() : showBossRaidMenu();
+  document.querySelectorAll("[data-boss-kind]").forEach(button => button.onclick = () => bossSetLobbyKind(button.dataset.bossKind));
   document.getElementById("bossDeckConfirm").onclick = () => {
     if (!bossDeckValid(bossRaidSelection, count)) return;
     if (online) {
@@ -1461,7 +1549,7 @@ function showBossDeckPicker(count = 4, online = false) {
     } else {
       const g = bossCreateGame([...bossRaidSelection], null, false, {
         host: bossPlusStarSelection
-      });
+      }, bossActiveKind());
       document.querySelector(".boss-lobby")?.classList.add("boss-lobby-closing");
       TimerManager.setTimeout(() => {
         document.getElementById("modal").classList.remove("open");
@@ -1471,6 +1559,16 @@ function showBossDeckPicker(count = 4, online = false) {
   };
   document.getElementById("modal").classList.add("open");
   if (typeof restoreOnlineLobbyScroll === "function") restoreOnlineLobbyScroll("boss", initialScroll);
+}
+/* 호스트만 던전 종류를 바꾼다. 바뀌면 양쪽 준비를 다시 받는다. */
+function bossSetLobbyKind(kind) {
+  const next = raidKindInfo(kind).id;
+  if (!bossLobbyActive() || state_ui_deck.p2p.role !== "host" || next === bossLobbyKind) return false;
+  bossLobbyKind = next;
+  state_ui_deck.p2p.bossLocalReady = false;
+  BossLobbyApplication.publish("boss-kind-change");
+  bossRefreshOnlineLobby();
+  return true;
 }
 function showBossOnlineLobby(force = false) {
   if (!bossTransportUsable()) {
@@ -1494,7 +1592,7 @@ function bossMaybeStartOnline() {
   const g = bossCreateGame(state_ui_deck.p2p.bossLocalDeck || bossRaidSelection, state_ui_deck.p2p.bossRemoteDeck, true, {
     host: state_ui_deck.p2p.bossLocalPlusStar,
     guest: state_ui_deck.p2p.bossRemotePlusStar
-  });
+  }, bossActiveKind());
   const startTransactionId = `start:${g.matchId}:boss`;
   const startPacket = {
     type: "start",
@@ -1558,7 +1656,7 @@ function bossAbortPendingStart(reason = "boss-start-aborted") {
 function bossMatchStatus(text) {
   const s = bossRaidNetwork;
   if (!bossMatchUiAllowed || !s || !s.active || s.matched) return false;
-  document.getElementById("modalContent").innerHTML = `<div class="boss-lobby"><h2>붉은 레이드 동료 탐색</h2><div class="boss-lobby-status">${text}</div><div style="display:grid;place-items:center;padding:26px"><span class="boss-red-hourglass" style="font-size:64px">⏳</span></div><div class="choice-list"><button id="bossMatchCancel">매칭 취소</button></div></div>`;
+  document.getElementById("modalContent").innerHTML = `<div class="boss-lobby"><h2>레이드 동료 탐색</h2><div class="boss-lobby-status">${text}</div><div style="display:grid;place-items:center;padding:26px"><span class="${bossActiveKind() === "zombie" ? "zombie-cave-icon" : "boss-red-hourglass"}" style="font-size:64px">${raidKindInfo(bossActiveKind()).icon}</span></div><div class="choice-list"><button id="bossMatchCancel">매칭 취소</button></div></div>`;
   document.getElementById("bossMatchCancel").onclick = bossCancelMatchmaking;
   document.getElementById("modal").classList.add("open");
   return true;
@@ -1667,7 +1765,8 @@ function bossFinalizeMatch(s, remote, role, matchId, rawConnection = null) {
   state_ui_deck.p2p.connected = true;
   state_ui_deck.p2p.role = role;
   state_ui_deck.p2p.matchId = matchId || bossRandomId("boss-match");
-  state_ui_deck.p2p.roomCode = "붉은 레이드";
+  state_ui_deck.p2p.roomCode = raidKindInfo(bossActiveKind()).lobby;
+  state_ui_deck.p2p.bossHostKind = null;
   state_ui_deck.p2p.sessionMode = "bossRaid";
   state_ui_deck.p2p.matchType = "bossRaid";
   state_ui_deck.p2p.bossLocalDeck = [];
@@ -1816,6 +1915,7 @@ function showBossRaidMenu() {
     closeModal: false
   });
   bossMatchUiAllowed = false;
+  bossLobbyKind = "timeora";
   BossLobbyApplication.resetDraft("boss-menu-open");
   document.getElementById("modalContent").innerHTML = `<div class="boss-select-shell"><h2>보스전</h2><div class="boss-select-card"><div class="boss-select-title"><span class="boss-red-hourglass">⏳</span><span>붉은 시간의 군단</span></div><div class="boss-difficulty">난이도 4.5</div><div class="boss-select-desc">동기화된 붉은 타임오러 4명이 하나의 공용 시계를 사용합니다. 처치할 때마다 희귀도 기반 보상 3개 중 하나를 선택합니다.<br><b>사용 불가: 타임오러</b></div></div><div class="boss-mode-buttons"><button id="bossSolo" class="primary">솔로 · 캐릭터 4명</button><button id="bossMulti">온라인 협동 · 각자 2명</button><button id="bossSpectate">진행 중 보스전 관전</button></div><button id="bossMenuClose">닫기</button></div>`;
   document.getElementById("bossSolo").onclick = () => {
@@ -1841,6 +1941,73 @@ function installBossButton() {
   b.textContent = "보스전";
   b.onclick = showBossRaidMenu;
   online?.insertAdjacentElement("afterend", b);
+  if (document.getElementById("zombieCaveBtn")) return;
+  const z = document.createElement("button");
+  z.id = "zombieCaveBtn";
+  z.textContent = "좀비굴";
+  z.onclick = showZombieCaveMenu;
+  b.insertAdjacentElement("afterend", z);
+}
+const ZOMBIE_BEST_KEY = "megaleague.zombieCave.bestDepth";
+function zombieBestDepth() {
+  try {
+    return Math.max(0, Number(localStorage.getItem(ZOMBIE_BEST_KEY)) || 0);
+  } catch {
+    return 0;
+  }
+}
+function zombieRememberDepth(depth) {
+  const previous = zombieBestDepth();
+  if (depth > previous) {
+    try {
+      localStorage.setItem(ZOMBIE_BEST_KEY, String(depth));
+    } catch (error) {
+      systems.__megaRecordRecoveredError?.(error, "zombieCave.best");
+    }
+  }
+  return { previous, best: Math.max(previous, depth) };
+}
+function showZombieCaveMenu() {
+  if (bossRaidNetwork?.active && !bossRaidNetwork.matched) bossAbortMatchmaking({
+    showMenu: false,
+    closeModal: false
+  });
+  bossMatchUiAllowed = false;
+  bossLobbyKind = "zombie";
+  BossLobbyApplication.resetDraft("zombie-menu-open");
+  const best = zombieBestDepth();
+  document.getElementById("modalContent").innerHTML = `<div class="boss-select-shell zombie-cave-shell"><h2>좀비굴</h2><div class="boss-select-card zombie-cave-card"><div class="boss-select-title"><span class="zombie-cave-icon">🧟</span><span>끝없이 쏟아지는 지하</span></div><div class="boss-difficulty">${best ? `최고 기록 지하 ${best}층` : "아직 기록 없음"}</div><div class="boss-select-desc">다양한 좀비가 쉬지 않고 입장합니다. 한 칸이 비면 입장 카운트다운이 돌고, 0이 되면 다음 좀비가 들어옵니다. 3마리 처치마다 한 층 내려가며 보상 3개 중 하나를 고릅니다.<br>좀비는 10턴을 살아남으면 매 턴 공격력이 오르고, 일부 좀비는 쌓아 둔 능력치를 지웁니다.<br><b>사용 불가: 타임오러</b></div></div><div class="boss-mode-buttons"><button id="zombieSolo" class="primary">솔로 · 캐릭터 4명</button><button id="zombieMulti">온라인 협동 · 각자 2명</button></div><button id="zombieMenuClose">닫기</button></div>`;
+  document.getElementById("zombieSolo").onclick = () => {
+    bossAbortMatchmaking({
+      showMenu: false,
+      closeModal: false
+    });
+    bossLobbyKind = "zombie";
+    showBossDeckPicker(4, false);
+  };
+  document.getElementById("zombieMulti").onclick = bossStartMatchmaking;
+  document.getElementById("zombieMenuClose").onclick = () => bossAbortMatchmaking({
+    showMenu: false,
+    closeModal: true
+  });
+  document.getElementById("modal").classList.add("open");
+}
+/* 좀비굴 결과창: 층·처치·기록. 보스전과 달리 이기고 지는 것이 아니라 얼마나 깊이 갔는지가 결과다. */
+export function showZombieCaveResult(g = state_ui_battle_state.game) {
+  const cave = g.bossRaid.cave,
+    { previous, best } = zombieRememberDepth(cave.depth),
+    record = cave.depth > previous;
+  const units = [...g.teams.P.field, ...g.teams.P.bench, ...g.teams.P.graveyard].filter(Boolean);
+  const dealt = Math.round(units.reduce((n, u) => n + Number(u.damageDealt || 0), 0)),
+    taken = Math.round(units.reduce((n, u) => n + Number(u.damageTaken || 0), 0));
+  document.getElementById("modalContent").innerHTML = `<div class="victory-window defeat zombie-cave-result"><div class="victory-title">지하 ${cave.depth}층</div><div class="victory-sub">${record ? "새 최고 기록!" : `최고 기록 지하 ${best}층`}</div>${mvpResultHTML(g, "P", "P")}<div class="victory-stats"><span><b>처치</b><br>${cave.kills}</span><span><b>총 행동</b><br>${g.stats.turns}</span><span><b>가한 피해</b><br>${dealt}</span><span><b>받은 피해</b><br>${taken}</span></div><div class="choice-list" style="justify-content:center"><button id="zombieResultField">전장 보기</button><button id="zombieResultAgain" class="primary">다시 도전</button><button id="zombieResultMenu">메인 메뉴</button></div></div>`;
+  document.getElementById("modal").classList.add("open");
+  document.getElementById("zombieResultField").onclick = () => document.getElementById("modal").classList.remove("open");
+  document.getElementById("zombieResultAgain").onclick = showZombieCaveMenu;
+  document.getElementById("zombieResultMenu").onclick = () => {
+    document.getElementById("modal").classList.remove("open");
+    state_ui_results.NavigationApplication.request("setup");
+  };
 }
 export function listRaidSkillActions(g, t, s) {
   let actions = [],
@@ -1909,6 +2076,20 @@ export function raidActionReason(g, t, s, a) {
   return null;
 }
 export function onRaidUnitDefeated(g, u, killer) {
+  if (isZombieCave(g) && u?.dead) {
+    if (zombieCaveUnitDefeated(g, u)) {
+      g.pendingTraitChoices ||= [];
+      g.pendingTraitChoices.push({
+        kind: "bossReward",
+        serial: ++g.bossRaid.rewardSerial,
+        chooserRole: g.bossRaid.online ? "any" : "solo",
+        final: false,
+        title: `지하 ${g.bossRaid.cave.depth}층 도달 보상`,
+        options: bossRollRewards(g)
+      });
+    }
+    return;
+  }
   if (g?.bossRaid && u?.bossRed && u.dead) {
     g.bossRaid.kills = Number(g.bossRaid.kills || 0) + 1;
     const finalKill = !!g.winner || g.bossRaid.kills >= 4;

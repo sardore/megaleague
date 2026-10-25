@@ -37,6 +37,7 @@ import { initializeAiSpecialists } from './ai/specialists.js';
 import { initializeOnlineChat } from './online/chat.js';
 import { initializeFeaturesSpectators } from './features/spectators.js';
 import { initializeFeaturesBossRaid } from './features/boss-raid.js';
+import { initializeFeaturesZombieCave } from './features/zombie-cave.js';
 import { initializeUiEnergyOverflow } from './ui/energy-overflow.js';
 import { initializeUiInteractions } from './ui/interactions.js';
 import { initializeEngineEnergyNormalization } from './engine/energy-normalization.js';
@@ -90,6 +91,7 @@ export function initializeApplication() {
   initializeAiSpecialists();
   initializeOnlineChat();
   initializeFeaturesSpectators();
+  initializeFeaturesZombieCave();
   initializeFeaturesBossRaid();
   initializeUiEnergyOverflow();
   initializeUiInteractions();

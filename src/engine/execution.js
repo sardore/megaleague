@@ -11,6 +11,7 @@ import { beginScheduledActionExecution, completeScheduledActionExecution, consum
 import { aliveUnits, bestEnergyReplacementPlan, canPayAction, canPayReq, canSwitch, energyStore, energyValue, findPaymentPlan, gainEnergy, initializeDeployment, parseCost, reqAcceptsCounts, requestTraitEnergy, spendAction, spendFrom, spendPaymentPlan, spendReq, status, switchCost, totalEnergy, state_engine_energy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillsOf, state_engine_entities } from "./entities.js";
 import { triggerDeepMind } from "../features/character-rules.js";
+import { isZombieCave, zombieCaveCheckWinner, zombieCaveOwnTurnEnded } from "../features/zombie-cave.js";
 import { syncAromaCombatFlags } from "../features/elixian.js";
 import { reactiveEnergyRule, syncReactiveEnergyMaxHp } from "../features/genocider.js";
 import { processJunglesSummons, targetRef } from "../features/summons.js";
@@ -432,6 +433,7 @@ export function endTurn(g, t, s, usedSkill) {
         }
       }
       u.turns++;
+      zombieCaveOwnTurnEnded(g, t, u);
       u.turnEndHp = u.hp;
       u.turnSkillCostReduction = 0;
       if (cardHasCapability(u, "horizonFlow") && Number(u.hp) <= Number(u.maxHp) / 2) {
@@ -506,6 +508,8 @@ export function endTurn(g, t, s, usedSkill) {
 }
 export function checkWinner(g) {
   if (g.winner === "P" || g.winner === "A") return;
+  /* 좀비굴은 적이 끝없이 입장하므로 승패 규칙과 입장 시각 갱신을 던전 규칙이 맡는다. */
+  if (isZombieCave(g)) return zombieCaveCheckWinner(g);
   actionFaultHit("victory-before");
   let p = aliveUnits(g.teams.P).length,
     a = aliveUnits(g.teams.A).length;
