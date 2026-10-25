@@ -1233,7 +1233,12 @@ export function effectApply(g, actor, target, e, skill, ctx) {
         }, skill, ctx.sim);
       }
     case "damage":
-      return dealDamage(g, actor, target, e, skill, ctx.sim);
+      {
+        const dealt = dealDamage(g, actor, target, e, skill, ctx.sim);
+        /* 반동: 실제로 가한 피해량의 일정 비율을 자신도 받는다(고정 피해). */
+        if (e.recoilFraction > 0 && dealt > 0 && !actor.dead) nonAttackDamage(g, actor, Math.round(dealt * e.recoilFraction), `${skill.name} 반동`);
+        return dealt;
+      }
     case "proportionalDamage":
       return dealProportionalDamage(g, actor, target, e.basis, e.ratio, skill, ctx.sim);
     case "firstBurst":
@@ -1406,7 +1411,7 @@ export function effectApply(g, actor, target, e, skill, ctx) {
         break;
       }
     case "status":
-      return applyStatus(g, target, e.status, e.duration, actor);
+      return applyStatus(g, e.target === "self" ? actor : target, e.status, e.duration, actor);
     case "statusChance":
       {
         let ok = ctx.sim ? e.chance >= 0.5 : g.rng.next() < e.chance;
