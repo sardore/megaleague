@@ -13,7 +13,7 @@ export const state_catalog_cards = {
   FormFamilyOwner: undefined
 };
 import { other } from "../engine/actions.js";
-import { queueVisual } from "../engine/combat.js";
+import { queueVisual, traitsActive } from "../engine/combat.js";
 import { costTokens } from "../engine/energy.js";
 import { card, resolvePlusStarChoice, skillOf } from "../engine/entities.js";
 import { log } from "../presentation/audio.js";
@@ -867,6 +867,56 @@ export function initializeCatalogCards() {
     league: "mega",
     critTakenAtHp: 190,
     tags: ["grass"]
+  }), state_catalog_cards.C("helmetShark", "투구상어", 130, "실드 형태 전환 딜러", "메가리그", "실드가 있을 때는 드래곤의 모습, 없을 때는 상어의 모습이다. 모습에 따라 사용할 수 있는 기술이 다르다.", [state_catalog_cards.S("whirl", "회오리", "R", "40D.", "enemy", [{
+    type: "damage",
+    amount: 40
+  }], ["damage"], {
+    requirements: {
+      shield: "present",
+      traitBound: true
+    }
+  }), state_catalog_cards.S("dragonRush", "드래곤러시", "***", "120D. 자신도 1/3의 반동 피해를 받는다.", "enemy", [{
+    type: "damage",
+    amount: 120,
+    recoilFraction: 1 / 3
+  }], ["damage"], {
+    requirements: {
+      shield: "absent",
+      traitBound: true
+    }
+  })], {
+    grade: "2☆",
+    shield: 30,
+    league: "mega",
+    tags: ["water", "dragon"]
+  }), state_catalog_cards.C("snakeArmor", "뱀비늘갑옷", 70, "방어형 독 딜러", "메가리그", "기본 방어 10. 실드가 없을 때 공격이 10 오른다.", [state_catalog_cards.S("poisonTail", "포이즌테일", "B**", "70D. 50%로 독.", "enemy", [{
+    type: "damage",
+    amount: 70
+  }, {
+    type: "statusChance",
+    status: "poison",
+    duration: 2,
+    chance: 0.5
+  }], ["damage", "status"]), state_catalog_cards.S("dig", "굴착", "WR", "80D. 자신에게 감속 및 방어력 10 상승.", "enemy", [{
+    type: "damage",
+    amount: 80
+  }, {
+    type: "status",
+    status: "slow",
+    duration: 2,
+    target: "self"
+  }, {
+    type: "defenseMod",
+    amount: 10,
+    target: "self"
+  }], ["damage", "status", "defense"])], {
+    grade: "2☆",
+    speed: -1,
+    shield: 40,
+    baseDefense: 10,
+    noShieldAttackBonus: 10,
+    league: "mega",
+    tags: ["poison"]
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{
@@ -1167,5 +1217,10 @@ export function skillRequirementsMet(unit, skillRef) {
     requirements = skill?.requirements;
   if (!skill || !requirements) return !!skill;
   if (requirements.minShield != null && Number(unit?.shield || 0) + 1e-6 < Number(requirements.minShield)) return false;
+  /* 특성에 묶인 사용 조건: 자기 기술일 때만, 특성이 켜져 있을 때만 적용한다. 특성봉인 중에는 모든 기술을 쓸 수 있고, 다른 유닛이 복사한 기술에는 걸리지 않는다. */
+  const ownSkill = !!unit && (unit.presentationOnly ? false : card(unit)?.skills.some(x => x.id === skill.id));
+  const bound = requirements.traitBound ? ownSkill && traitsActive(unit) : true;
+  if (bound && requirements.shield === "present" && !(Number(unit?.shield || 0) > 0)) return false;
+  if (bound && requirements.shield === "absent" && Number(unit?.shield || 0) > 0) return false;
   return true;
 }

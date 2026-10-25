@@ -41,6 +41,8 @@ export function initializeUiCards() {
     master: ["🍃"],
     tube: ["🛟"],
     bush: ["🌿"],
+    helmetShark: ["🦈"],
+    snakeArmor: ["🐍", "🛡️"],
     phantomMuner: ["🎩", "🃏"],
     magSnail: ["♨️", "🐌"],
     thornJellyfish: ["⚡", "🫧"],
@@ -154,15 +156,14 @@ export function cardTooltipHTML(c, u = null) {
     surface: "tooltip",
     sourceRevision: state_ui_battle_state.game?.networkRevision || 0
   });
-  let html = `<div class="card-info-head"><div><h3 class="card-title-line"><span>${effectiveView.displayName}</span><span class="tiny">${effectiveView.rarity}</span></h3><div class="card-info-sub">${c.grade} · ${c.role}${location ? ` · ${location.zone === "field" ? "필드" : location.zone === "bench" ? "후열" : "퇴장"} ${location.slot + 1}` : ""}</div></div><button type="button" class="card-info-close" aria-label="설명 닫기">×</button></div>${liveStats}${effectiveView.traitDescription ? `<div class="card-info-section"><b>특성</b><div class="tiny">${effectiveView.traitDescription}</div></div>` : ""}<div class="card-info-section"><b>기술</b>${effectiveView.skills.map(sk => `<div class="skill-line"><span class="skill-heading"><b>${sk.name}</b><span class="cost">${sk.cost || "없음"}</span></span><div class="tiny">${sk.description}</div></div>`).join("")}</div>`;
+  let html = `<div class="card-info-head"><div><h3 class="card-title-line"><span>${effectiveView.displayName}</span><span class="tiny">${effectiveView.rarity}</span></h3><div class="card-info-sub">${c.grade} · ${c.role}${c.tags?.includes("dragon") ? ' · <span class="dragon-mark">🐉 드래곤</span>' : ""}${location ? ` · ${location.zone === "field" ? "필드" : location.zone === "bench" ? "후열" : "퇴장"} ${location.slot + 1}` : ""}</div></div><button type="button" class="card-info-close" aria-label="설명 닫기">×</button></div>${liveStats}${effectiveView.traitDescription ? `<div class="card-info-section"><b>특성</b><div class="tiny">${effectiveView.traitDescription}</div></div>` : ""}<div class="card-info-section"><b>기술</b>${effectiveView.skills.map(sk => `<div class="skill-line"><span class="skill-heading"><b>${sk.name}</b><span class="cost">${sk.cost || "없음"}</span></span><div class="tiny">${sk.description}</div></div>`).join("")}</div>`;
   if (c?.reactiveEnergyMaxHp && u) {
     const slash = combatInt(20 + reactiveEnergyAmount(u) * 10);
     html = html.replace(`<b>슬래시클로</b> <span class="cost">*</span><div class="tiny">${c.skills.find(x => skillDefHasEffect(x, "genociderSlashClaw"))?.desc || ""}</div>`, `<b>슬래시클로</b> <span class="cost">*</span><div class="tiny">현재 기준 위력 ${slash}D ×2</div>`);
   }
   if (cardHasCapability(c, "timeControl")) {
-    const dragon = '<div class="effect-box tiny"><b>내부 분류</b><br>드래곤 · 드래곤메모리 대상</div>',
-      clock = u && state_ui_battle_state.game && findUnit(state_ui_battle_state.game, u.uid) === u ? timeClockMiniHTML(u, state_ui_battle_state.game) : "";
-    html = html.replace('</div><div class="card-info-section"><b>특성</b>', `</div>${clock}${dragon}<div class="card-info-section"><b>특성</b>`);
+    const clock = u && state_ui_battle_state.game && findUnit(state_ui_battle_state.game, u.uid) === u ? timeClockMiniHTML(u, state_ui_battle_state.game) : "";
+    html = html.replace('</div><div class="card-info-section"><b>특성</b>', `</div>${clock}<div class="card-info-section"><b>특성</b>`);
   }
   return formatRaidCardTooltip(html, u);
 }

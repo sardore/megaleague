@@ -221,6 +221,7 @@ export function rawDamage(effect, actor, target, skill, g = state_engine_actions
     ignoreChanges: statIgnored
   }).attack;
   if (effect.noShieldBonus && !actor.shield) n += effect.noShieldBonus;
+  if (card(actor).noShieldAttackBonus && !actor.shield && traitsActive(actor, g)) n += card(actor).noShieldAttackBonus;
   if (effect.ifTargetGathered && target.lastAction === "gather") n += effect.ifTargetGathered;
   if (effect.lastEnergyBonus && totalEnergy(actor) < 0.01) n += effect.lastEnergyBonus;
   if (effect.sameTargetBonus && actor.lastTarget === target.uid) n += effect.sameTargetBonus;
