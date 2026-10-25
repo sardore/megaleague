@@ -22,3 +22,17 @@ test("unregistered characters continue to use emoji through pictogramHTML", () =
   assert.ok(Object.isFrozen(CHARACTER_SPRITES));
   assert.ok(Object.isFrozen(CHARACTER_SPRITES.sweetna));
 });
+
+test("Sweetna image asset is high-resolution with transparent pixels", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const bytes = await readFile(new URL("../../assets/media/sweetna.webp", import.meta.url));
+  assert.equal(bytes.toString("ascii", 0, 4), "RIFF");
+  assert.equal(bytes.toString("ascii", 8, 12), "WEBP");
+  assert.equal(bytes.toString("ascii", 12, 16), "VP8X");
+  const width = bytes.readUIntLE(24, 3) + 1;
+  const height = bytes.readUIntLE(27, 3) + 1;
+  assert.equal(width, 1254);
+  assert.equal(height, 1254);
+  assert.ok((bytes[20] & 0x10) !== 0, "Alpha channel must be present");
+  assert.ok(bytes.byteLength > 40000, "Small preview sprites must not replace the master asset");
+});
