@@ -105,6 +105,12 @@ export function actionHeuristicBase(g, t, s, a) {
     const e = sk.effects.find(x => x.type === "randomScaledDamage");
     sc += Number(e.amount || 0) * (Number(e.minMultiplier ?? 1) + Number(e.maxMultiplier ?? 1)) / 2;
   }
+  if (skillDefHasEffect(sk, "orbVolley") && tar) {
+    const e = sk.effects.find(x => x.type === "orbVolley");
+    sc += damageRange(g, u, tar, {
+      amount: Number(e.amount || 0)
+    }, sk).mean * Number(e.hits || 1) + 10 * Number(e.hits || 1);
+  }
   if (skillDefHasEffect(sk, "hpLossBlast") && tar) sc += Math.max(0, Number(u.turnEndHp ?? u.hp) - Number(u.hp));
   if (skillDefHasEffect(sk, "prawnCharge") && tar) sc += hasNullifyTrait(tar) ? 170 : 125;
   for (const e of sk.effects) {
@@ -361,6 +367,10 @@ export function expectedActionDamage(g, t, u, a, target) {
   if (e) return damageRange(g, u, target, e, sk).mean * (e.hits || 1);
   const scaled = sk?.effects.find(x => x.type === "randomScaledDamage");
   if (scaled) return Number(scaled.amount || 0) * (Number(scaled.minMultiplier ?? 1) + Number(scaled.maxMultiplier ?? 1)) / 2;
+  const volley = sk?.effects.find(x => x.type === "orbVolley");
+  if (volley) return damageRange(g, u, target, {
+    amount: Number(volley.amount || 0)
+  }, sk).mean * Number(volley.hits || 1);
   if (actionSkillHasEffect(a, "hpLossBlast")) return Math.max(0, Number(u.turnEndHp ?? u.hp) - Number(u.hp));
   if (actionSkillHasEffect(a, "prawnCharge")) return hasNullifyTrait(target) ? 160 : 120;
   if (actionSkillHasEffect(a, "firestorm")) return 80;

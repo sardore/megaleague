@@ -1111,6 +1111,47 @@ export function effectApply(g, actor, target, e, skill, ctx) {
           hits
         }, skill, ctx.sim);
       }
+    case "orbVolley":
+      {
+        /* 구체를 한 발씩 날린다. 발마다 따로 상태이상 판정을 하고, 걸린 구체는 그 상태의 색으로 날아간다.
+           판정은 연출(구체 색)과 실제 적용이 같은 결과를 쓰도록 먼저 모두 굴린 뒤 한 번에 넘긴다. */
+        const hits = Math.max(1, Math.trunc(Number(e.hits || 1))),
+          outcomes = Array.isArray(e.outcomes) ? e.outcomes : [],
+          rolls = Array.from({
+            length: hits
+          }, () => !ctx.sim && outcomes.length && g.rng.next() < Number(e.chance || 0) ? outcomes[g.rng.int(0, outcomes.length - 1)] : null);
+        if (!ctx.sim) {
+          const actionIdentity = ctx.action?.actionId || ctx.action?.commandId || `${g.battleId || g.matchId || "battle"}:${g.turnSerial}:${actor.uid}:${skill?.id || "orbVolley"}:${target?.uid || "none"}`;
+          queueVisual(g, {
+            type: "orbVolley",
+            uid: actor.uid,
+            targetUid: target?.uid || null,
+            sourceInstanceId: actor.uid,
+            targetInstanceId: target?.uid || null,
+            sourceTeam: ctx.team,
+            targetTeam: other(ctx.team),
+            sourceSlot: ctx.slot,
+            targetSlot: ctx.action?.target?.slot ?? null,
+            skillId: skill?.id || null,
+            actionId: actionIdentity,
+            transactionId: ctx.action?.commandId || actionIdentity,
+            vfxSequenceId: `${actionIdentity}:orb-volley`,
+            orbs: rolls.map(roll => roll?.kind || "plain")
+          });
+        }
+        let total = 0;
+        for (const roll of rolls) {
+          if (actor.dead || target.dead) break;
+          total += dealDamage(g, actor, target, {
+            amount: Number(e.amount || 0),
+            hits: 1
+          }, skill, ctx.sim);
+          if (!roll || target.dead) continue;
+          if (roll.status) applyStatus(g, target, roll.status, roll.duration, actor);
+          else if (roll.defense) setDefense(g, target, Number(roll.defense));
+        }
+        return total;
+      }
     case "horizonStrike":
       {
         const actionIdentity = ctx.action?.actionId || ctx.action?.commandId || `${g.battleId || g.matchId || "battle"}:${g.turnSerial}:${actor.uid}:${skill?.id || "horizon"}:${target?.uid || "none"}`;

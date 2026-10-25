@@ -837,6 +837,36 @@ export function initializeCatalogCards() {
     grade: "2☆",
     league: "mega",
     tags: ["water"]
+  }), state_catalog_cards.C("bush", "덤불", 190, "방어 지원·상태이상 연사", "메가리그", "HP가 190 이상일 때 받는 공격 피해가 크리티컬이 된다(150%, 공격자에게 불리한 공격·방어 수치는 무시).", [state_catalog_cards.S("guard", "막기", "*", "자신의 HP 50을 소모해 아군 하나에게 실드 50.", "ally", [{
+    type: "selfDamage",
+    amount: 50
+  }, {
+    type: "shield",
+    amount: 50
+  }], ["shield"]), state_catalog_cards.S("triple", "트리플", "*****", "30D씩 3회. 각 공격마다 33%로 냉동 1턴·마비 2턴·방어 -10 중 하나를 건다.", "enemy", [{
+    type: "orbVolley",
+    amount: 30,
+    hits: 3,
+    chance: 0.33,
+    outcomes: [{
+      kind: "freeze",
+      status: "freeze",
+      duration: 1
+    }, {
+      kind: "paralyze",
+      status: "paralyze",
+      duration: 2
+    }, {
+      kind: "defense",
+      defense: -10
+    }]
+  }], ["damage", "multi", "status"])], {
+    grade: "2☆",
+    speed: -1,
+    maxEnergy: 5,
+    league: "mega",
+    critTakenAtHp: 190,
+    tags: ["grass"]
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{

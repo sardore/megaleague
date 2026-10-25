@@ -536,8 +536,53 @@ export function initializePresentationAnimations() {
       }
       return true;
     };
+    /* 구체 연사: 발마다 자기 색(상태이상이 걸린 구체는 그 상태의 색)으로 한 발씩 날아가 명중 지점에서 같은 색으로 터진다. */
+    const playOrbVolley = (event, overlay, snapshot) => {
+      const targetUid = String(event.targetInstanceId || event.targetUid || ""),
+        target = snapshot.targets?.[targetUid],
+        orbs = Array.isArray(event.orbs) ? event.orbs : [];
+      if (!target || !orbs.length) return false;
+      const dx = target.x - snapshot.source.x,
+        dy = target.y - snapshot.source.y,
+        angle = Math.atan2(dy, dx),
+        size = Math.max(18, Math.min(34, Math.min(snapshot.source.width, snapshot.source.height) * .2));
+      orbs.forEach((kind, k) => {
+        const delay = k * 190,
+          orb = visualNode(overlay, "orb-volley-projectile", "", 900 + delay);
+        if (!orb) return;
+        positionFx(orb, snapshot.source);
+        const bend = (k % 2 ? 1 : -1) * (k === 1 ? 0 : 20 + k * 6);
+        orb.dataset.kind = String(kind);
+        orb.dataset.hitIndex = String(k + 1);
+        orb.dataset.vfxSequenceId = event.vfxSequenceId || "";
+        orb.dataset.targetInstanceId = targetUid;
+        orb.style.setProperty("--orb-size", `${size}px`);
+        orb.style.setProperty("--orb-dx", `${dx}px`);
+        orb.style.setProperty("--orb-dy", `${dy}px`);
+        orb.style.setProperty("--orb-mid-x", `${dx * .5 - Math.sin(angle) * bend}px`);
+        orb.style.setProperty("--orb-mid-y", `${dy * .5 + Math.cos(angle) * bend}px`);
+        orb.style.setProperty("--orb-angle", `${angle}rad`);
+        orb.style.setProperty("--orb-delay", `${delay}ms`);
+        const burst = visualNode(overlay, "orb-volley-burst", "", 1100 + delay);
+        if (burst) {
+          positionFx(burst, target);
+          burst.dataset.kind = String(kind);
+          burst.dataset.hitIndex = String(k + 1);
+          burst.dataset.vfxSequenceId = event.vfxSequenceId || "";
+          burst.style.setProperty("--orb-size", `${size}px`);
+          burst.style.setProperty("--orb-delay", `${delay + 400}ms`);
+          for (let r = 0; r < 6; r++) {
+            const shard = document.createElement("i");
+            shard.style.setProperty("--shard-angle", `${r * 60 + k * 17}deg`);
+            shard.style.setProperty("--shard-distance", `${size * (.9 + r % 2 * .45)}px`);
+            burst.appendChild(shard);
+          }
+        }
+      });
+      return true;
+    };
     const play = event => {
-      if (!event || !["lunaShard", "sugarSwamp", "leafBlade"].includes(event.type)) return false;
+      if (!event || !["lunaShard", "sugarSwamp", "leafBlade", "orbVolley"].includes(event.type)) return false;
       const sourceIndependent = event.type === "lunaShard",
         resolved = resolve(event, {
           requireSource: !sourceIndependent
@@ -551,6 +596,7 @@ export function initializePresentationAnimations() {
       if (!expectedTargets.length || expectedTargets.some(uid => !snapshot.targets?.[uid])) return fail(event, "one or more target anchors unavailable");
       if (event.type === "lunaShard") return playLunaShard(event, overlay, snapshot);
       if (event.type === "sugarSwamp") return playSugarSwamp(event, overlay, snapshot);
+      if (event.type === "orbVolley") return playOrbVolley(event, overlay, snapshot);
       return playLeafBlade(event, overlay, snapshot);
     };
     return Object.freeze({
@@ -598,7 +644,7 @@ export function playVisualsCoreBase() {
       return;
     }
     if (v.vfxSequenceId && events.some(item => item?.type === "horizonStrike" && item.vfxSequenceId === v.vfxSequenceId)) return;
-    if (["lunaShard", "sugarSwamp", "leafBlade"].includes(v.type)) {
+    if (["lunaShard", "sugarSwamp", "leafBlade", "orbVolley"].includes(v.type)) {
       state_presentation_animations.DynamicSkillVfxPresentationOwner.play(v);
       return;
     }
