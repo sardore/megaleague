@@ -6,7 +6,7 @@ export const state_ui_setup = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
 import { aliveUnits, costGap, parseCost } from "../engine/energy.js";
-import { RNG, makeUnit, resolvePlusStarChoice, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
+import { RNG, makeUnit, rebindPlusStarChoice, resolvePlusStarChoice, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
 import { showEnd } from "../online/connection.js";
 import { playVisuals } from "../presentation/animations.js";
 import { battlefieldCardForUid } from "../presentation/coordinates.js";
@@ -28,6 +28,13 @@ export function initializeUiSetup() {
     const normalizePlusStar = () => {
       state_ui_deck.plusStarSelection = resolvePlusStarChoice(state_ui_deck.plusStarSelection, state_ui_battle_state.selected, "P");
       return snapshot();
+    };
+    /* 덱 내용을 바꾸는 모든 경로의 단일 출구. 칸이 밀려도 플러스스타가 같은 카드에 남도록 한 곳에서 다시 묶는다. */
+    const replaceDeck = nextDeck => {
+      const previous = [...state_ui_battle_state.selected],
+        choice = state_ui_deck.plusStarSelection;
+      state_ui_battle_state.selected.splice(0, state_ui_battle_state.selected.length, ...nextDeck);
+      state_ui_deck.plusStarSelection = rebindPlusStarChoice(choice, previous, state_ui_battle_state.selected, "P");
     };
     const reset = () => {
       state_ui_battle_state.selected = [];
@@ -56,7 +63,7 @@ export function initializeUiSetup() {
       let index = state_ui_battle_state.selected.indexOf(id);
       const group = card.formGroup;
       if (group) index = state_ui_battle_state.selected.findIndex(value => state_catalog_cards.CARDS.find(entry => entry.id === value)?.formGroup === group);
-      if (index >= 0) state_ui_battle_state.selected.splice(index, 1);else {
+      if (index >= 0) replaceDeck(state_ui_battle_state.selected.filter((_, at) => at !== index));else {
         if (state_ui_battle_state.selected.length >= capacity) return false;
         if (group && state_ui_battle_state.selected.some(value => state_catalog_cards.CARDS.find(entry => entry.id === value)?.formGroup === group)) return false;
         if (!state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, id], rules.mode, rules.composition, rules.plusStar, rules.team)) return false;
@@ -99,13 +106,13 @@ export function initializeUiSetup() {
         }
         if (!clean.includes(id) && clean.length < state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)) clean.push(id);
       }
-      if (clean.length !== state_ui_battle_state.selected.length || clean.some((id, index) => state_ui_battle_state.selected[index] !== id)) state_ui_battle_state.selected.splice(0, state_ui_battle_state.selected.length, ...clean);
+      if (clean.length !== state_ui_battle_state.selected.length || clean.some((id, index) => state_ui_battle_state.selected[index] !== id)) replaceDeck(clean);
       normalizePlusStar();
       return snapshot();
     };
     const clearInvaders = () => {
       const next = state_ui_battle_state.selected.filter(id => !isInvaderCardId(id));
-      if (next.length !== state_ui_battle_state.selected.length) state_ui_battle_state.selected.splice(0, state_ui_battle_state.selected.length, ...next);
+      if (next.length !== state_ui_battle_state.selected.length) replaceDeck(next);
       normalizePlusStar();
       return snapshot();
     };

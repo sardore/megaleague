@@ -786,6 +786,17 @@ export function resolvePlusStarChoice(choice, deck, team = "P") {
     cardId
   };
 }
+/* 플러스스타는 '카드'에 붙는 것이지 몇 번째 칸에 붙는 것이 아니다. 편성 중 덱이 바뀌어 칸 번호가 밀려도
+   같은 카드에 그대로 따라가도록, 이전 덱에서 확정된 선택을 새 덱의 칸 번호로 다시 묶는다. */
+export function rebindPlusStarChoice(choice, prevDeck, nextDeck, team = "P") {
+  const before = resolvePlusStarChoice(choice, prevDeck, team);
+  if (!before) return null;
+  const index = (Array.isArray(nextDeck) ? nextDeck : []).indexOf(before.cardId);
+  return index < 0 ? null : resolvePlusStarChoice({
+    slotIndex: index,
+    cardId: before.cardId
+  }, nextDeck, team);
+}
 export function resolvePlusStarChoices(choice, deck, team = "P") {
   const requested = Array.isArray(choice) ? choice : [choice];
   const bySlot = new Map();

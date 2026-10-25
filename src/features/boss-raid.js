@@ -9,7 +9,7 @@ import { enemyTargets, legalActions, prepareCurrentTurn, unitAt } from "../engin
 import { createShield, heal, removeEnergy, teamOf } from "../engine/combat.js";
 import { state_engine_effects } from "../engine/effects.js";
 import { canPayAction, status, totalEnergy, transformedSkillReq } from "../engine/energy.js";
-import { RNG, actionSkillHasEffect, card, cardHasCapability, clone, isPlusStarChoiceForCard, makeUnit, newGame, registerRuntimeSkillContainer, resolvePlusStarChoice, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect, state_engine_entities } from "../engine/entities.js";
+import { RNG, actionSkillHasEffect, card, cardHasCapability, clone, isPlusStarChoiceForCard, makeUnit, rebindPlusStarChoice, newGame, registerRuntimeSkillContainer, resolvePlusStarChoice, skillIdByEffect, skillIdByEffectGlobal, skillRefHasEffect, state_engine_entities } from "../engine/entities.js";
 import { endTurn, execute } from "../engine/execution.js";
 import { timeClockMiniHTML, timeNormDeg, timePaidAmountFromAction, timeRecallValue, timeSetInputLock, timeSyncSuppressionVisuals, state_features_timeora } from "./timeora.js";
 import { onlineCurrentMatchId, onlineSafeSend, state_online_commands } from "../online/commands.js";
@@ -78,6 +78,12 @@ export function initializeFeaturesBossRaid() {
       connected: !!state_ui_deck.p2p?.connected,
       transportUsable: bossTransportUsable()
     });
+    /* 보스 덱 내용을 바꾸는 단일 출구: 칸이 밀려도 플러스스타가 같은 카드에 남도록 다시 묶는다. */
+    const replaceBossDeck = nextDeck => {
+      const previous = [...bossRaidSelection];
+      bossRaidSelection = [...nextDeck];
+      bossPlusStarSelection = rebindPlusStarChoice(bossPlusStarSelection, previous, bossRaidSelection, "P");
+    };
     const normalizeDraft = (count = 2) => {
       bossRaidSelection = bossSanitizeDeck(bossRaidSelection, count);
       bossPlusStarSelection = resolvePlusStarChoice(bossPlusStarSelection, bossRaidSelection, "P");
@@ -124,7 +130,7 @@ export function initializeFeaturesBossRaid() {
     const toggleCard = (id, count, online) => {
       const index = bossRaidSelection.indexOf(id),
         card = state_catalog_cards.CARDS.find(x => x.id === id);
-      if (index >= 0) bossRaidSelection.splice(index, 1);else {
+      if (index >= 0) replaceBossDeck(bossRaidSelection.filter((_, at) => at !== index));else {
         if (bossRaidSelection.length >= count) return false;
         if (card?.formGroup && bossRaidSelection.some(value => state_catalog_cards.CARDS.find(x => x.id === value)?.formGroup === card.formGroup)) return false;
         bossRaidSelection.push(id);
@@ -175,7 +181,7 @@ export function initializeFeaturesBossRaid() {
       return true;
     };
     const clearInvader = (count, online) => {
-      bossRaidSelection = bossRaidSelection.filter(id => !(typeof isInvaderCardId === "function" && isInvaderCardId(id)));
+      replaceBossDeck(bossRaidSelection.filter(id => !(typeof isInvaderCardId === "function" && isInvaderCardId(id))));
       draftChanged(online, count, "boss-invader-clear");
       return true;
     };
