@@ -153,7 +153,12 @@ export function initializeUiDeck() {
       const req = this.requirements(mode, composition);
       return req ? new Set(Object.keys(req)) : new Set(state_catalog_cards.CARDS.map(c => c.grade));
     },
-    cardAllowed(cardRef, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
+    /* 종합리그는 편성 중에는 전체 카드를 열어 두고 구성 검증은 마지막(완성·시작)에만 한다.
+       그 외 리그는 편성 중에도 등급 제한을 건다. */
+    open(mode) {
+      return this.normalizeLeague(mode) === "comprehensive";
+    },
+    gradeAllowed(cardRef, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
       const c = typeof cardRef === "string" ? state_catalog_cards.CARDS.find(x => x.id === cardRef) : cardRef;
       if (!c) return false;
       if (this.free(mode)) return true;
@@ -188,6 +193,10 @@ export function initializeUiDeck() {
         plusStar: plusStarChoice || null
       });
     },
+    cardAllowed(cardRef, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
+      const c = typeof cardRef === "string" ? state_catalog_cards.CARDS.find(x => x.id === cardRef) : cardRef;
+      return !!c && (this.open(mode) || this.gradeAllowed(c, mode, composition));
+    },
     identityValid(ids) {
       if (!Array.isArray(ids) || new Set(ids).size !== ids.length) return false;
       const groups = ids.map(id => state_catalog_cards.CARDS.find(c => c.id === id)?.formGroup).filter(Boolean);
@@ -217,7 +226,14 @@ export function initializeUiDeck() {
       }
       return out;
     },
+    /* 편성 중 허용 여부. 종합리그는 중복·장수만 보고 등급 구성은 보지 않는다. */
     partialValid(ids, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
+      if (!this.identityValid(ids) || ids.length > this.deckSize(mode)) return false;
+      if (this.open(mode)) return true;
+      return this.fitsPattern(ids, mode, composition, plusStarChoice, team);
+    },
+    /* 등급 구성(플러스스타 반영)이 리그 규칙 안에 들어가는지. AI·무작위 덱 생성과 최종 검증이 쓴다. */
+    fitsPattern(ids, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
       if (!this.identityValid(ids) || ids.length > this.deckSize(mode)) return false;
       mode = this.normalizeLeague(mode);
       if (this.free(mode)) return true;
@@ -227,7 +243,7 @@ export function initializeUiDeck() {
       return true;
     },
     completeValid(ids, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
-      if (!Array.isArray(ids) || ids.length !== this.deckSize(mode) || !this.partialValid(ids, mode, composition, plusStarChoice, team)) return false;
+      if (!Array.isArray(ids) || ids.length !== this.deckSize(mode) || !this.fitsPattern(ids, mode, composition, plusStarChoice, team)) return false;
       if (this.free(mode)) return true;
       const req = this.requirements(mode, composition),
         counts = this.counts(ids, plusStarChoice, team);
@@ -266,7 +282,8 @@ export function initializeUiDeck() {
       if (this.free(mode)) return `${ids.length}/${this.deckSize(mode)} · 자유 편성`;
       const req = this.requirements(mode, composition),
         counts = this.counts(ids, plusStarChoice, team);
-      return Object.entries(req).map(([grade, n]) => `${grade} ${counts[grade] || 0}/${n}`).join(" · ");
+      const extra = Object.keys(counts).filter(grade => !(grade in req));
+      return [...Object.entries(req).map(([grade, n]) => `${grade} ${counts[grade] || 0}/${n}`), ...extra.map(grade => `${grade} ${counts[grade]}/0`)].join(" · ");
     },
     eligibleForms(group, deck = state_ui_battle_state.selected, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
       if (!group) return [];
@@ -311,7 +328,7 @@ export function initializeUiDeck() {
       return entries.sort((left, right) => right.orderGrade - left.orderGrade || left.sourceIndex - right.sourceIndex).map(entry => entry.id);
     },
     allPool(mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
-      return state_catalog_cards.CARDS.filter(c => this.cardAllowed(c, mode, composition)).map(c => c.id);
+      return state_catalog_cards.CARDS.filter(c => this.gradeAllowed(c, mode, composition)).map(c => c.id);
     },
     invaderAllowed(mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
       return state_catalog_cards.CARDS.some(c => c.tags?.includes("transdimensional-invader") && this.cardAllowed(c, mode, composition));

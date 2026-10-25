@@ -333,7 +333,7 @@ export function randomBattleDeck(r, league = "mega", composition = state_ui_deck
   let pool = [...poolForLeague(league, composition)],
     d = [];
   while (d.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) {
-    const valid = pool.filter(id => state_ui_deck.LeagueFormatOwner.partialValid([...d, id], league, composition)),
+    const valid = pool.filter(id => state_ui_deck.LeagueFormatOwner.fitsPattern([...d, id], league, composition)),
       compatible = state_ui_deck.LeagueFormatOwner.free(league) ? valid.filter(id => !severeDeckConflict([...d, id])) : valid,
       choices = compatible.length ? compatible : valid;
     if (!choices.length) throw new Error(`random deck composition exhausted: ${league}/${composition}/${d.join(",")}`);

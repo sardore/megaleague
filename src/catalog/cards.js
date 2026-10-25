@@ -822,7 +822,7 @@ export function initializeCatalogCards() {
     amount: 70
   }], ["damage"], {
     vfxTheme: "waveRide"
-  }), state_catalog_cards.S("tornadoSplash", "토네이도 스플래시", "BB**", "30×(1~6)D. 단일 공격, 피해량만 무작위.", "enemy", [{
+  }), state_catalog_cards.S("tornadoSplash", "토네이도 스플래시", "BB**", "30×(1~6)D 무작위 피해.", "enemy", [{
     type: "randomScaledDamage",
     amount: 30,
     minMultiplier: 1,

@@ -443,7 +443,7 @@ export function buildAIDeck(seed, league = "mega", composition = state_ui_deck.c
     deck = [],
     pool = [...poolForLeague(league, composition)];
   while (deck.length < state_ui_deck.LeagueFormatOwner.deckSize(league)) {
-    const ranked = pool.filter(id => state_ui_deck.LeagueFormatOwner.partialValid([...deck, id], league, composition)).map(id => ({
+    const ranked = pool.filter(id => state_ui_deck.LeagueFormatOwner.fitsPattern([...deck, id], league, composition)).map(id => ({
       id,
       score: deckScore([...deck, id], league) + rng.next() * (state_ui_deck.LeagueFormatOwner.free(league) ? 12 : 4)
     })).sort((a, b) => b.score - a.score);
