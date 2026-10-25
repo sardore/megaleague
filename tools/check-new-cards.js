@@ -53,5 +53,28 @@ try{
    out.poisonRate=poisoned/300;return out;})()`);
   assert.equal(r.dmg,80);assert.ok(r.slow>0&&r.targetSlow===0,JSON.stringify(r));assert.equal(r.defGain,10);assert.ok(r.poisonRate>.4&&r.poisonRate<.6,JSON.stringify(r));
  });
+ await check('sandcastle: wind whitens all target energy, wall decays 40 at the holder\'s turn end, quake empties both sides',async page=>{
+  const r=await page.evaluate(`(()=>{${setup('sandcastle')}
+   const c=probe.card(u);const out={hp:c.maxHp,grade:c.grade,cost:c.skills.map(s=>s.cost)};
+   t.hp=t.maxHp=999;t.shield=0;t.defense=0;t.baseDefense=0;t.defenseMod=0;t.energy=[{c:'R',a:1},{c:'B',a:1},{c:'W',a:1}];
+   const run=(sid,tgt,i=0)=>probe.effectApply(g,u,tgt,skill(sid).effects[i],skill(sid),{team:'P',slot:0,sim:false,action:{}});
+   run('sandWind',t,0);run('sandWind',t,1);out.wind={dmg:999-t.hp,colors:[...new Set(t.energy.map(e=>e.c))],total:t.energy.reduce((n,e)=>n+e.a,0)};
+   u.energy=[{c:'R',a:1},{c:'W',a:2}];t.energy=[{c:'B',a:2}];t.hp=999;
+   for(let i=0;i<3;i++)run('sandQuake',t,i);out.quake={dmg:999-t.hp,target:t.energy.length,self:u.energy.length};
+   const ally=g.teams.P.field[1];run('sandWall',ally);out.wall0=ally.hpProtectionBarriers.map(b=>b.amount);
+   probe.effects.decayHpProtectionBarriers(g,ally,true,'turnStart');out.afterStart=ally.hpProtectionBarriers.map(b=>b.amount);
+   probe.effects.decayHpProtectionBarriers(g,ally,true,'turnEnd');out.end1=ally.hpProtectionBarriers.map(b=>b.amount);
+   probe.effects.decayHpProtectionBarriers(g,ally,true,'turnEnd');probe.effects.decayHpProtectionBarriers(g,ally,true,'turnEnd');out.end3=ally.hpProtectionBarriers.map(b=>b.amount);
+   return out;})()`);
+  assert.equal(r.hp,140);assert.equal(r.grade,'2☆');assert.deepEqual(r.cost,['W','**','WW WorB *']);
+  assert.deepEqual(r.wind,{dmg:30,colors:['W'],total:3});assert.deepEqual(r.quake,{dmg:120,target:0,self:0});
+  assert.deepEqual(r.wall0,[100]);assert.deepEqual(r.afterStart,[100]);assert.deepEqual(r.end1,[60]);assert.deepEqual(r.end3,[]);
+ });
+ await check('turn end really decays a sandcastle wall through the battle flow',async page=>{
+  const r=await page.evaluate(`(()=>{${setup('sandcastle')}
+   const ally=g.teams.P.field[0];probe.effects.addHpProtectionBarrier(g,ally,100,u.uid,'standard',{decayPerTurn:40,decayPhase:'turnEnd'});
+   const before=ally.hpProtectionBarriers.map(b=>b.amount);Megaleague.endTurn(g,'P',0,false);return {before,after:ally.hpProtectionBarriers.map(b=>b.amount)};})()`);
+  assert.deepEqual(r,{before:[100],after:[60]});
+ });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

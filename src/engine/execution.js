@@ -7,7 +7,8 @@ import { isNonAttackSkill } from "../app/controls.js";
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { effectApply, legalActions, other, prepareCurrentTurn, unitAt, state_engine_actions } from "./actions.js";
 import { applyStatus, checkDeath, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, traitsActive, state_engine_combat } from "./combat.js";
-import { beginScheduledActionExecution, completeScheduledActionExecution, consumeNaturalGatherProposal, executeScheduled, naturalColors } from "./effects.js";
+import { beginScheduledActionExecution, completeScheduledActionExecution, consumeNaturalGatherProposal, decayHpProtectionBarriers, executeScheduled, naturalColors } from "./effects.js";
+import { state_ui_battle_state } from "../ui/battle-state.js";
 import { aliveUnits, bestEnergyReplacementPlan, canPayAction, canPayReq, canSwitch, energyStore, energyValue, findPaymentPlan, gainEnergy, initializeDeployment, parseCost, reqAcceptsCounts, requestTraitEnergy, spendAction, spendFrom, spendPaymentPlan, spendReq, status, switchCost, totalEnergy, state_engine_energy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillsOf, state_engine_entities } from "./entities.js";
 import { triggerDeepMind } from "../features/character-rules.js";
@@ -432,6 +433,7 @@ export function endTurn(g, t, s, usedSkill) {
         }
       }
       u.turns++;
+      decayHpProtectionBarriers(g, u, g !== state_ui_battle_state.game, "turnEnd");
       u.turnEndHp = u.hp;
       u.turnSkillCostReduction = 0;
       if (cardHasCapability(u, "horizonFlow") && Number(u.hp) <= Number(u.maxHp) / 2) {
