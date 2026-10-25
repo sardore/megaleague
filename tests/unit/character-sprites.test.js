@@ -15,10 +15,10 @@ test("Master uses a face-centered upper-body portrait and full-body combat sprit
   const portrait = characterSpriteHTML("master", "portrait");
   assert.match(portrait, /character-sprite--portrait/);
   assert.match(portrait, /data-card-image="master"/);
-  assert.match(portrait, /master\\.webp\\?v=master-hq1442-20261025/);
+  assert.match(portrait, /master\.webp\?v=master-hq1442-20261025/);
   assert.match(portrait, /sprite-focus-x:50%/);
   assert.match(portrait, /sprite-focus-y:47%/);
-  assert.match(portrait, /sprite-portrait-scale:1\\.28/);
+  assert.match(portrait, /sprite-portrait-scale:1\.28/);
   assert.match(characterSpriteHTML("master"), /character-sprite--full/);
   assert.match(characterSpriteHTML("master", "small"), /character-sprite--small/);
   assert.ok(Object.isFrozen(CHARACTER_SPRITES.master));
