@@ -2,7 +2,7 @@
 // New characters only need an entry here and an image placed under assets/media.
 export const CHARACTER_SPRITES = Object.freeze({
   sweetna: Object.freeze({
-    src: "./assets/media/sweetna.webp",
+    src: "./assets/media/sweetna.webp?v=hq1254-20261025",
     focusX: 52,
     focusY: 42,
     portraitScale: 1.32,
