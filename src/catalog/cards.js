@@ -351,8 +351,7 @@ export function initializeCatalogCards() {
     tags: ["dragon"],
     poisonImmune: true,
     slowImmune: true,
-    nullifyTrait: true,
-    baseDefenseTraitBound: true
+    nullifyTrait: true
   }), state_catalog_cards.C("silvrae", "실브래", 220, "실드 보호 드래곤", "메가리그", "냉동·마비 외 상태이상 면역. 실드 대신피해: 실드 보유 중 아군 공격 피해 절반을 대신 받음. 기술 사용 시 HP10 회복.", [state_catalog_cards.S("firstGuard", "퍼스트가드", "", "전투 1회. 40D 후 실드120.", "enemy", [{
     type: "damage",
     amount: 40

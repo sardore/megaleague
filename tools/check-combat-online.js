@@ -176,7 +176,7 @@ try {
         w.attackMod = 70; w.defenseMod = -30; t.attackMod = -40; t.defenseMod = 50;
         t.aromaDamagePenalty = true;
         if(p.combat.rawDamage({amount:30},w,t,{id:'probe'},g)!==30)errors.push(`${c.id}: attack ignore`);
-        if(p.combat.effectiveDefense(w,t,{},false,g)!==(api.card(t).baseDefenseTraitBound?0:Number(t.baseDefense||0)))errors.push(`${c.id}: defense ignore`);
+        if(p.combat.effectiveDefense(w,t,{},false,g)!==Number(t.baseDefense||0))errors.push(`${c.id}: defense ignore`);
         if(p.combat.rawDamage({amount:30},t,w,{id:'probe'},g)!==30)errors.push(`${c.id}: reciprocal ignore`);
         count += 3;
       }

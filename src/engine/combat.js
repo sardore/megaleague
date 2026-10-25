@@ -200,8 +200,8 @@ export function combatStats(g, unit, {
   ignoreChanges = false,
   defenseModMultiplier = 1
 } = {}) {
-  const traitBound = cardHasCapability(unit, "baseDefenseTraitBound");
-  const baseDefense = traitBound && (ignoreChanges || !traitsActive(unit, g)) ? 0 : Number(unit.baseDefense || 0);
+  /* 기본 방어는 카드가 원래 가진 수치라 특성이 멈춰도 그대로다(드래곤피시 -20이 정지당할 때 사라지면 오히려 방어가 오른다). */
+  const baseDefense = Number(unit.baseDefense || 0);
   if (ignoreChanges) return {
     attack: 0,
     defense: baseDefense
