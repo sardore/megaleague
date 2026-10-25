@@ -119,7 +119,14 @@ await check('curse consumes all attack decreases and preserves positive attack b
    const t=g.teams.P.field[0];t.timeHourDeg=90;t.timeMinuteDeg=0;probe.actions.prepareCurrentTurn(g);probe.render();
    const lease=probe.sat.acquire(g,[{clocks:[{uid:t.uid,team:'P',aligned:true,blocked:false}]}]);
    const held=[...document.querySelectorAll('.battle-unit-card[data-zone="field"]')].map(el=>[el.dataset.team+':'+el.dataset.cardId,el.classList.contains('clock-visual-saturation-held')]);lease.release();return held;});
-  assert.deepEqual(r,[['A:turtle',true],['A:mole',true],['P:timeora',false],['P:hermit',true]]);
+  assert.deepEqual(r,[['A:turtle',true],['A:mole',false],['P:timeora',false],['P:hermit',true]]);
+ });
+ await check('특성 정지는 기본 방어를 건드리지 않는다: 드래곤피시의 -20은 특성봉인·시계 정렬 중에도 그대로다',async page=>{
+  const r=await page.evaluate(()=>{const g=Megaleague.newGame(['timeora','dragonfish','turtle','mole'],['turtle','mole','hermit','mushroom'],{mode:'ai',variance:false,seed:'dfish'});probe.battle.game=g;
+   const d=g.teams.P.field[1],t=g.teams.P.field[0],def=()=>probe.combat.combatStats(g,d).defense,ignored=()=>probe.combat.combatStats(g,d,{ignoreChanges:true}).defense;
+   const rows={plain:[def(),ignored()]};t.timeHourDeg=90;t.timeMinuteDeg=90;rows.suppressed=[def(),ignored(),probe.combat.traitsActive(d,g)];
+   t.timeMinuteDeg=0;d.statuses.traitSeal=2;rows.sealed=[def(),ignored(),probe.combat.traitsActive(d,g)];return rows;});
+  assert.deepEqual(r.plain,[-20+20,-20]);assert.deepEqual(r.suppressed,[0,-20,false]);assert.deepEqual(r.sealed,[0,-20,false]);
  });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}
