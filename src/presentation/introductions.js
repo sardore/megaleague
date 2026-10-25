@@ -13,13 +13,21 @@ import { showCardTooltip, state_ui_cards } from "../ui/cards.js";
 export function initializePresentationIntroductions() {
   startPlusStarShimmerSync();
   /* 시작 연출(업데이트 판) canonical owner: exact-once, monotonic timing, 약 4초. */
-  (function startStartupIntro() {
+  (async function startStartupIntro() {
     const intro = document.getElementById("startupIntro");
     if (!intro || systems.__startupIntroPlayed) {
       intro?.remove();
       return;
     }
     systems.__startupIntroPlayed = true;
+    /* 진입 페이지 용량 예산 때문에 시작 연출 SVG 내부 마크업은 assets/intro/<이름>.svg 에서 불러와 채운다. */
+    timeSetInputLock(true, false);
+    await Promise.all([...intro.querySelectorAll("svg[class^=intro-]")].map(async svg => {
+      try {
+        const res = await fetch(`./assets/intro/${svg.getAttribute("class").slice(6)}.svg`);
+        if (res.ok) svg.insertAdjacentHTML("afterbegin", await res.text());
+      } catch {}
+    }));
     const start = performance.now();
     systems.__startupIntroTiming = {
       start,

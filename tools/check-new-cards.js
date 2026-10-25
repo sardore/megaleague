@@ -68,5 +68,15 @@ try{
   assert.deepEqual(r.wind,{dmg:30,colors:['W'],total:3});assert.deepEqual(r.quake,{dmg:120,target:0,self:0});
   assert.deepEqual(r.wall0,[100]);assert.deepEqual([r.t1,r.t2,r.t3],[[60],[20],[]]);
  });
+ await check('dual-actor targets: colour change and removal reach both the beast and rider stores',async page=>{
+  const r=await page.evaluate(`(()=>{const g=Megaleague.newGame(['sandcastle','mole','turtle','hermit'],['iceknight','turtle','hermit','mushroom'],{mode:'ai',variance:false,seed:'d'});
+   const u=g.teams.P.field[0],t=g.teams.A.field[0];const sk=id=>probe.card(u).skills.find(s=>s.id===id);const ctx={team:'P',slot:0,sim:false,action:{}};
+   t.energy=[];t.beastEnergy=[{c:'R',a:1},{c:'B',a:1}];t.riderEnergy=[{c:'W',a:1},{c:'R',a:1}];
+   probe.effectApply(g,u,t,sk('sandWind').effects[1],sk('sandWind'),ctx);
+   const colors=[...t.beastEnergy,...t.riderEnergy].map(e=>e.c).join('');
+   probe.effectApply(g,u,t,sk('sandQuake').effects[1],sk('sandQuake'),ctx);
+   return {colors,left:t.beastEnergy.length+t.riderEnergy.length};})()`);
+  assert.deepEqual(r,{colors:'WWWW',left:0});
+ });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
