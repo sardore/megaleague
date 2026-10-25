@@ -7,12 +7,6 @@ export const CHARACTER_SPRITES = Object.freeze({
     focusY: 42,
     portraitScale: 1.32,
   }),
-  master: Object.freeze({
-    src: "./assets/media/master.webp?v=master-hq1442-20261025",
-    focusX: 50,
-    focusY: 47,
-    portraitScale: 1.28,
-  }),
 });
 
 export function characterSpriteHTML(cardId, mode = "full") {
