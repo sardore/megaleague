@@ -843,7 +843,7 @@ export function initializeCatalogCards() {
   }, {
     type: "shield",
     amount: 50
-  }], ["shield"]), state_catalog_cards.S("triple", "트리플", "*****", "30D씩 3회. 각 공격마다 33%로 냉동 1턴·마비 2턴·방어 -10 중 하나를 건다.", "enemy", [{
+  }], ["shield"]), state_catalog_cards.S("triple", "트리플", "*****", "30D씩 3회. 각 공격마다 33%로 냉동·마비 2턴, 방어 -10 중 하나를 건다.", "enemy", [{
     type: "orbVolley",
     amount: 30,
     hits: 3,
@@ -851,7 +851,7 @@ export function initializeCatalogCards() {
     outcomes: [{
       kind: "freeze",
       status: "freeze",
-      duration: 1
+      duration: 2
     }, {
       kind: "paralyze",
       status: "paralyze",
