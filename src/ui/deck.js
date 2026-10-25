@@ -269,7 +269,9 @@ export function initializeUiDeck() {
           seenGroups.add(c.formGroup);
           const legal = this.eligibleForms(c.formGroup, deck, mode, composition, plusStarChoice, team);
           if (!legal.length) continue;
-          const current = setupFormState(c.formGroup),
+          // 덱에 이미 들어 있는 폼이 있으면 그 폼이 곧 현재 폼이다. 편성 화면의 별도 폼 기억값보다 덱이 항상 우선한다.
+          const inDeck = (deck || []).find(id => state_catalog_cards.CARDS.find(card => card.id === id)?.formGroup === c.formGroup),
+            current = inDeck || setupFormState(c.formGroup),
             shown = legal.includes(current) ? current : legal[0];
           // A form family owns one composition slot. Its visible form may change rarity,
           // but its placement is ordered by the first form legal in the current format.
@@ -526,6 +528,9 @@ export function syncLeagueSelectionSurface() {
     summary.classList.add(state_ui_deck.leagueSelection);
     summary.innerHTML = `<div><div class="league-summary-name">${def.label}</div><div class="league-summary-rule">${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}</div></div><div class="league-summary-progress">${state_ui_deck.LeagueFormatOwner.progressText(state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P")}</div>`;
   }
+  const deckTitle = state_ui_battle_state.$("#deckTitle"), deckHelp = state_ui_battle_state.$("#deckHelp");
+  if (deckTitle) deckTitle.childNodes[0].textContent = `${def.label} 덱 편성 `;
+  if (deckHelp) deckHelp.textContent = `${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}. 카드 ${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)}장을 선택합니다. 폼 캐릭터는 현재 리그에서 사용 가능한 폼만 전환됩니다.`;
   const onlineButton = state_ui_battle_state.$("#onlineBtn");
   if (onlineButton) {
     const short = def.short || def.label;
@@ -542,9 +547,6 @@ export function setLeague(mode, reset = true) {
   state_ui_deck.leagueSelection = state_ui_deck.LeagueFormatOwner.normalizeLeague(mode);
   state_ui_battle_state.$("#leagueMode").value = state_ui_deck.leagueSelection;
   normalizeSetupFormsForLeague();
-  const def = state_ui_deck.LeagueFormatOwner.definition(state_ui_deck.leagueSelection);
-  state_ui_battle_state.$("#deckTitle").childNodes[0].textContent = `${def.label} 덱 편성 `;
-  state_ui_battle_state.$("#deckHelp").textContent = `${state_ui_deck.LeagueFormatOwner.rulesText(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition)}. 카드 ${state_ui_deck.LeagueFormatOwner.deckSize(state_ui_deck.leagueSelection)}장을 선택합니다. 폼 캐릭터는 현재 리그에서 사용 가능한 폼만 전환됩니다.`;
   syncLeagueSelectionSurface();
   renderSetup(reset);
 }
