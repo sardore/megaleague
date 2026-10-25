@@ -1406,22 +1406,8 @@ export function renderRaidBattleStatus() {
   timeSyncSuppressionVisuals(state_ui_battle_state.game);
 }
 function bossVisibleNormalPool() {
-  const out = [],
-    seenGroups = new Set();
-  for (const rawId of bossRaidPool()) {
-    if (typeof isInvaderCardId === "function" && isInvaderCardId(rawId)) continue;
-    const raw = state_catalog_cards.CARDS.find(x => x.id === rawId);
-    if (!raw) continue;
-    const id = raw.formGroup ? setupFormState(raw.formGroup) || raw.id : raw.id;
-    const cardDef = state_catalog_cards.CARDS.find(x => x.id === id);
-    if (!cardDef) continue;
-    if (cardDef.formGroup) {
-      if (seenGroups.has(cardDef.formGroup)) continue;
-      seenGroups.add(cardDef.formGroup);
-    }
-    if (!out.includes(id)) out.push(id);
-  }
-  return out;
+  /* 일반 편성·온라인 대기실과 같은 목록·정렬(등급 높은 순)을 쓴다. 보스 전용 정렬을 따로 두지 않는다. */
+  return state_ui_deck.LeagueFormatOwner.setupPool("mega", state_ui_deck.comprehensiveComposition, bossRaidSelection, bossPlusStarSelection, "P").filter(id => id !== "timeora" && id !== "red_timeora");
 }
 function bossDeckCardHTML(id, selected, plusActive, surface = "boss-composition") {
   const c = state_catalog_cards.CARDS.find(x => x.id === id),
