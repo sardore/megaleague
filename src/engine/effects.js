@@ -1171,6 +1171,26 @@ export function effectApply(g, actor, target, e, skill, ctx) {
         }
         return total;
       }
+    case "randomScaledDamage":
+      {
+        const lo = Math.max(1, Math.floor(Number(e.minMultiplier ?? 1))),
+          hi = Math.max(lo, Math.floor(Number(e.maxMultiplier ?? lo))),
+          multiplier = ctx.sim ? (lo + hi) / 2 : g.rng.int(lo, hi),
+          amount = Number(e.amount || 0) * multiplier;
+        log(g, `${actor.name}: ${skill?.name || "기술"} 배수 ×${multiplier} → ${amount}D.`);
+        return dealDamage(g, actor, target, {
+          amount
+        }, skill, ctx.sim);
+      }
+    case "hpLossBlast":
+      {
+        const loss = Math.max(0, Number(actor.turnEndHp ?? actor.hp) - Number(actor.hp));
+        log(g, `${actor.name}: ${skill?.name || "기술"} · 이전 차례 끝 HP ${actor.turnEndHp ?? actor.hp} → 현재 HP ${actor.hp}, 피해 ${loss}D.`);
+        if (!(loss > 0)) return 0;
+        return dealDamage(g, actor, target, {
+          amount: loss
+        }, skill, ctx.sim);
+      }
     case "damage":
       return dealDamage(g, actor, target, e, skill, ctx.sim);
     case "proportionalDamage":

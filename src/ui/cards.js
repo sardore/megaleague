@@ -39,6 +39,7 @@ export function initializeUiCards() {
     bkeno: ["🌋"],
     huve: ["⛰️", "☄️"],
     master: ["🍃"],
+    tube: ["🛟"],
     phantomMuner: ["🎩", "🃏"],
     magSnail: ["♨️", "🐌"],
     thornJellyfish: ["⚡", "🫧"],

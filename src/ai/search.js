@@ -101,6 +101,11 @@ export function actionHeuristicBase(g, t, s, a) {
     let d = Math.max(0, 100 - 20 * allEnergy(tar));
     sc += d + (100 - d) * 0.9;
   }
+  if (skillDefHasEffect(sk, "randomScaledDamage") && tar) {
+    const e = sk.effects.find(x => x.type === "randomScaledDamage");
+    sc += Number(e.amount || 0) * (Number(e.minMultiplier ?? 1) + Number(e.maxMultiplier ?? 1)) / 2;
+  }
+  if (skillDefHasEffect(sk, "hpLossBlast") && tar) sc += Math.max(0, Number(u.turnEndHp ?? u.hp) - Number(u.hp));
   if (skillDefHasEffect(sk, "prawnCharge") && tar) sc += hasNullifyTrait(tar) ? 170 : 125;
   for (const e of sk.effects) {
     if (e.type === "damage" && tar) {
@@ -354,6 +359,9 @@ export function expectedActionDamage(g, t, u, a, target) {
   let sk = card(u).skills.find(x => x.id === a.skill),
     e = sk?.effects.find(x => x.type === "damage");
   if (e) return damageRange(g, u, target, e, sk).mean * (e.hits || 1);
+  const scaled = sk?.effects.find(x => x.type === "randomScaledDamage");
+  if (scaled) return Number(scaled.amount || 0) * (Number(scaled.minMultiplier ?? 1) + Number(scaled.maxMultiplier ?? 1)) / 2;
+  if (actionSkillHasEffect(a, "hpLossBlast")) return Math.max(0, Number(u.turnEndHp ?? u.hp) - Number(u.hp));
   if (actionSkillHasEffect(a, "prawnCharge")) return hasNullifyTrait(target) ? 160 : 120;
   if (actionSkillHasEffect(a, "firestorm")) return 80;
   if (actionSkillHasEffect(a, "holyFlame")) return Math.max(0, 100 - 20 * allEnergy(target));
