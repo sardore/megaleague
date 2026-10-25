@@ -247,7 +247,7 @@ try {
     });
     assert.equal(result.aura,20);assert.equal(result.ignored,0);
   });
-  await check('online lobby deck sanitizing keeps a plus-star deck that is only legal with its plus-star choice', async page => {
+  await check('online lobby deck sanitizing keeps the whole comprehensive draft; the composition is judged only at the end', async page => {
     const r = await page.evaluate(() => {
       const p = window.probe, cards = p.catalog.CARDS, plain = g => cards.filter(c => c.grade === g && !c.formGroup && !c.tags?.includes('transdimensional-invader'));
       const eligible = [...p.catalog.PLUS_STAR_ELIGIBLE];
@@ -258,7 +258,7 @@ try {
         withoutChoice: p.cloneAndSanitizeOnlineDeck(deck, 'comprehensive', '2335') };
     });
     assert.deepEqual(r.sanitizedWithChoice, r.deck, 'the plus-star card must not be dropped');
-    assert.equal(r.withoutChoice.length, 3, 'without a plus-star choice the same deck is illegal (sanity)');
+    assert.equal(r.withoutChoice.length, 4, 'comprehensive drafts are not trimmed per card; the composition check happens when the deck is complete');
   });
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
 if (failures.length) process.exitCode = 1;
