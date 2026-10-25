@@ -155,7 +155,38 @@ export function initializeUiDeck() {
     },
     cardAllowed(cardRef, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition) {
       const c = typeof cardRef === "string" ? state_catalog_cards.CARDS.find(x => x.id === cardRef) : cardRef;
-      return !!c && (this.free(mode) || this.allowedGrades(mode, composition).has(c.grade));
+      if (!c) return false;
+      if (this.free(mode)) return true;
+      const allowed = this.allowedGrades(mode, composition);
+      return allowed.has(c.grade) || (state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) && allowed.has(this.plusGrade(c.grade)));
+    },
+    /* 플러스스타를 켠 등급(+0.5☆). 구성 판정·편성 가능 여부가 모두 이 한 곳의 계산을 쓴다. */
+    plusGrade(grade) {
+      const n = Number.parseFloat(String(grade || ""));
+      return Number.isFinite(n) ? `${n + 0.5}☆` : grade;
+    },
+    /* 카드 한 장을 덱 끝에 넣을 수 있는지와, 그때 확정되는 플러스스타를 판정하는 유일한 경로.
+       기본 등급으로 안 맞아도 플러스스타를 켠 등급으로 맞으면(예: 구성 A의 3.5☆+플러스 = 4☆) 플러스스타를 켠 채 들어간다. */
+    admit(ids, id, mode = state_ui_deck.leagueSelection, composition = state_ui_deck.comprehensiveComposition, plusStarChoice = null, team = "P") {
+      const next = [...ids, id];
+      if (this.partialValid(next, mode, composition, plusStarChoice, team)) return Object.freeze({
+        ok: true,
+        plusStar: plusStarChoice || null
+      });
+      if (!plusStarChoice && state_catalog_cards.PLUS_STAR_ELIGIBLE.has(id)) {
+        const choice = resolvePlusStarChoice({
+          slotIndex: ids.length,
+          cardId: id
+        }, next, team);
+        if (choice && this.partialValid(next, mode, composition, choice, team)) return Object.freeze({
+          ok: true,
+          plusStar: choice
+        });
+      }
+      return Object.freeze({
+        ok: false,
+        plusStar: plusStarChoice || null
+      });
     },
     identityValid(ids) {
       if (!Array.isArray(ids) || new Set(ids).size !== ids.length) return false;
@@ -175,8 +206,7 @@ export function initializeUiDeck() {
       const index = Array.isArray(ids) ? ids.indexOf(id) : -1;
       const resolved = index >= 0 ? resolvePlusStarChoice(plusStarChoice, ids, team) : null;
       if (!resolved || resolved.slotIndex !== index || resolved.cardId !== id) return def.grade;
-      const n = Number.parseFloat(String(def.grade || ""));
-      return Number.isFinite(n) ? `${n + 0.5}☆` : def.grade;
+      return this.plusGrade(def.grade);
     },
     counts(ids, plusStarChoice = null, team = "P") {
       const out = Object.create(null);
