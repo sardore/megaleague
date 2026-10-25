@@ -6151,3 +6151,20 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
     max-width:100%;
   }
 }
+
+/* 덤불 · 트리플: 구체 연사. 상태이상이 걸린 구체는 그 상태의 색으로 날아가고 같은 색으로 터진다. */
+.orb-volley-projectile,.orb-volley-burst{position:absolute;left:var(--fx-x);top:var(--fx-y);z-index:95;pointer-events:none;transform:translate(-50%,-50%)}
+.orb-volley-projectile,.orb-volley-burst{--orb-core:#f6ffe6;--orb-mid:#8be65a;--orb-edge:#2f9a3c;--orb-glow:rgba(120,255,110,.72)}
+.orb-volley-projectile[data-kind="freeze"],.orb-volley-burst[data-kind="freeze"]{--orb-core:#f2ffff;--orb-mid:#8fe8ff;--orb-edge:#2f8fe0;--orb-glow:rgba(120,220,255,.82)}
+.orb-volley-projectile[data-kind="paralyze"],.orb-volley-burst[data-kind="paralyze"]{--orb-core:#fffbd2;--orb-mid:#ffe44a;--orb-edge:#d99a00;--orb-glow:rgba(255,226,72,.85)}
+.orb-volley-projectile[data-kind="defense"],.orb-volley-burst[data-kind="defense"]{--orb-core:#ffeedd;--orb-mid:#ff9a52;--orb-edge:#b8431c;--orb-glow:rgba(255,140,70,.78)}
+.orb-volley-projectile{width:var(--orb-size,26px);height:var(--orb-size,26px);border-radius:50%;opacity:0;background:radial-gradient(circle at 36% 32%,#fff 0 9%,var(--orb-core) 16%,var(--orb-mid) 46%,var(--orb-edge) 82%,transparent 84%);box-shadow:inset 0 0 6px rgba(255,255,255,.85),0 0 10px var(--orb-glow),0 0 24px var(--orb-glow);will-change:transform,opacity;animation:orbVolleyFly .52s cubic-bezier(.3,.1,.35,1) var(--orb-delay,0ms) forwards}
+.orb-volley-projectile:before{content:"";position:absolute;inset:-34%;border-radius:50%;border:1px solid var(--orb-glow);opacity:.7;animation:orbVolleyPulse .26s ease-in-out infinite alternate}
+.orb-volley-projectile:after{content:"";position:absolute;left:50%;top:calc(50% - var(--orb-size,26px)*.28);width:calc(var(--orb-size,26px)*2.3);height:calc(var(--orb-size,26px)*.56);border-radius:99px;transform-origin:0 50%;transform:rotate(calc(var(--orb-angle,0rad) + 3.14159rad));background:linear-gradient(90deg,var(--orb-glow),transparent);filter:blur(2px)}
+.orb-volley-burst{width:var(--orb-size,26px);height:var(--orb-size,26px);opacity:0;animation:orbVolleyBurst .46s ease-out var(--orb-delay,0ms) forwards}
+.orb-volley-burst:before{content:"";position:absolute;inset:-60%;border-radius:50%;background:radial-gradient(circle,var(--orb-core) 0 14%,var(--orb-mid) 32%,var(--orb-glow) 52%,transparent 70%)}
+.orb-volley-burst i{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:var(--orb-mid);box-shadow:0 0 8px var(--orb-glow);animation:orbVolleyShard .46s ease-out var(--orb-delay,0ms) forwards}
+@keyframes orbVolleyFly{0%{opacity:0;transform:translate(-50%,-50%) scale(.35)}16%{opacity:1;transform:translate(-50%,-50%) scale(1)}55%{opacity:1;transform:translate(calc(-50% + var(--orb-mid-x)),calc(-50% + var(--orb-mid-y))) scale(1.08)}100%{opacity:.95;transform:translate(calc(-50% + var(--orb-dx)),calc(-50% + var(--orb-dy))) scale(.82)}}
+@keyframes orbVolleyPulse{to{transform:scale(1.18);opacity:.35}}
+@keyframes orbVolleyBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}30%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+@keyframes orbVolleyShard{0%{transform:rotate(var(--shard-angle)) translateX(0) scale(1)}100%{transform:rotate(var(--shard-angle)) translateX(var(--shard-distance)) scale(.2);opacity:0}}

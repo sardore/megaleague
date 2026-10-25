@@ -40,6 +40,7 @@ export function initializeUiCards() {
     huve: ["⛰️", "☄️"],
     master: ["🍃"],
     tube: ["🛟"],
+    bush: ["🌿"],
     phantomMuner: ["🎩", "🃏"],
     magSnail: ["♨️", "🐌"],
     thornJellyfish: ["⚡", "🫧"],

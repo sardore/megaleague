@@ -228,6 +228,13 @@ export function rawDamage(effect, actor, target, skill, g = state_engine_actions
   if ((effect.sweetPoisonBonus || cardHasCapability(actor, "sweetna") && traitsActive(actor, g)) && status(target, "poison")) n += 10 * status(target, "poison");
   return n;
 }
+/* 이 공격이 크리티컬이 될 확률의 단일 판정. 맞는 쪽 특성(critTakenAtHp: 그 HP 이상이면 받는 공격이 항상 크리티컬)이 우선한다. */
+export function criticalChanceOf(actor, target, effect, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
+  if (effect?.forceCritical) return 1;
+  const threshold = card(target)?.critTakenAtHp;
+  if (Number.isFinite(threshold) && traitsActive(target, g) && Number(target.hp || 0) >= threshold) return 1;
+  return Math.max(0, Math.min(1, Number(effect?.crit ?? card(actor).crit ?? 0)));
+}
 export function effectiveDefense(actor, target, effect, crit, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   if (crit) return 0;
   const statIgnored = ignoresCombatStatChanges(actor, target, g),
@@ -253,7 +260,7 @@ export function damageRange(g, actor, target, effect, skill) {
       n: rawDamage(effect, actor, target, skill, g),
       w: 1
     }],
-    critChance = effect.forceCritical ? 1 : effect.crit ?? card(actor).crit ?? 0,
+    critChance = criticalChanceOf(actor, target, effect, g),
     vals = [],
     sum = 0,
     weight = 0,
@@ -369,7 +376,7 @@ export function queueVisual(g, u, type, amount, meta = {}) {
         };
       }
       if (["damage", "directHp"].includes(event.type) && typeof state_presentation_coordinates.DamagePresentationAnchorOwner !== "undefined") state_presentation_coordinates.DamagePresentationAnchorOwner.captureInto(g, event);
-      if (["skillFx", "horizonStrike", "lunaShard", "sugarSwamp", "leafBlade"].includes(event.type) && typeof state_presentation_coordinates.VfxCoordinateOwner !== "undefined") state_presentation_coordinates.VfxCoordinateOwner.captureInto(event);
+      if (["skillFx", "horizonStrike", "lunaShard", "sugarSwamp", "leafBlade", "orbVolley"].includes(event.type) && typeof state_presentation_coordinates.VfxCoordinateOwner !== "undefined") state_presentation_coordinates.VfxCoordinateOwner.captureInto(event);
       state_ui_battle_state.visualEvents.push(event);
     }
   }
@@ -401,7 +408,7 @@ export function queueSkillVisual(g, actor, target, skill, effects = []) {
     return;
   }
   if (typeof state_ui_battle_state.game === "undefined" || g !== state_ui_battle_state.game || !actor || !skill) return;
-  if (["lifeRain", "horizonStrike", "lunaShard", "leafBlade", "startSequence", 'suppressedCurse', 'graveDown'].some(type => skillDefHasEffect(skill, type))) return;
+  if (["lifeRain", "horizonStrike", "lunaShard", "leafBlade", "orbVolley", "startSequence", 'suppressedCurse', 'graveDown'].some(type => skillDefHasEffect(skill, type))) return;
   if (skill.vfxTheme) {
     state_ui_battle_state.visualEvents.push({
       type: "marineSkillFx",
@@ -891,12 +898,12 @@ export function dealDamage(g, actor, target, effect, skill, sim = false) {
       criticalBaselineRolled = null,
       criticalAdjustedAfterDefense = null;
     const criticalMultiplier = state_engine_combat.CRITICAL_DAMAGE_MULTIPLIER;
-    const criticalChance = effect.forceCritical ? 1 : Math.max(0, Math.min(1, Number(effect.crit ?? card(actor).crit ?? 0)));
+    const criticalChance = criticalChanceOf(actor, target, effect, g);
     const attackModParticipates = !ignoresCombatStatChanges(actor, target, g) && !effect.ignoreAttackMod;
     const noAttackStatBase = attackModParticipates ? base - Number(actor.attackMod || 0) : base;
     const defenseForCriticalComparison = effect.ignoreDefense ? 0 : effectiveDefense(actor, target, effect, false, g);
     if (!sim) {
-      crit = effect.forceCritical || g.rng.next() < criticalChance;
+      crit = criticalChance >= 1 || g.rng.next() < criticalChance;
       if (g.variance && !effect.ignoreVariance) pct = g.rng.int(66, 100);
       if (crit) {
         const adjustedCriticalBase = base * criticalMultiplier,
