@@ -59,6 +59,7 @@ export function canSwitch(g, t, u) {
 export function initializeDeployment(g, u) {
   if (!u) return;
   const speed = Number(card(u).speed || 0);
+  u.turnEndHp = u.hp;
   u.speedDelayTurns = Math.max(0, -speed);
   if (u.speedDelayTurns) log(g, `${u.name}: Speed ${speed} 출전 지연 ${u.speedDelayTurns}턴.`);
   if (!u.everDeployed) {

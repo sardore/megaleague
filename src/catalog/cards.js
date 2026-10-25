@@ -817,6 +817,26 @@ export function initializeCatalogCards() {
     grade: "2☆",
     speed: 3,
     shield: 60
+  }), state_catalog_cards.C("tube", "튜브", 160, "충격 반격 딜러", "메가리그", "없음.", [state_catalog_cards.S("wave", "파도", "B*", "70D.", "enemy", [{
+    type: "damage",
+    amount: 70
+  }], ["damage"], {
+    vfxTheme: "waveRide"
+  }), state_catalog_cards.S("tornadoSplash", "토네이도 스플래시", "BB**", "30×(1~6)D. 단일 공격이며 1~6배 중 하나가 무작위로 정해진다(피해량만 무작위).", "enemy", [{
+    type: "randomScaledDamage",
+    amount: 30,
+    minMultiplier: 1,
+    maxMultiplier: 6
+  }], ["damage"], {
+    vfxTheme: "aquaTornado"
+  }), state_catalog_cards.S("shockwave", "충격파", "B**", "자신의 이전 차례 끝 HP와 지금 HP의 차이만큼 피해. 지금 HP가 그때보다 높거나 같으면 0D. 출전한 뒤 첫 차례 전에는 출전 시점의 HP가 기준.", "enemy", [{
+    type: "hpLossBlast"
+  }], ["damage"], {
+    vfxTheme: "toweringSplash"
+  })], {
+    grade: "2☆",
+    league: "mega",
+    tags: ["water"]
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{

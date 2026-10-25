@@ -432,6 +432,7 @@ export function endTurn(g, t, s, usedSkill) {
         }
       }
       u.turns++;
+      u.turnEndHp = u.hp;
       u.turnSkillCostReduction = 0;
       if (cardHasCapability(u, "horizonFlow") && Number(u.hp) <= Number(u.maxHp) / 2) {
         const units = [...g.teams[t].field, ...g.teams[t].bench].filter(x => x && !x.dead);

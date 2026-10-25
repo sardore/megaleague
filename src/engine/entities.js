@@ -459,6 +459,7 @@ export function makeUnit(id, uid) {
       deckSlotId: null,
       plusStar: false,
       hp: c.maxHp,
+      turnEndHp: c.maxHp,
       maxHp: c.maxHp,
       shield: c.shield || 0,
       baseDefense,
