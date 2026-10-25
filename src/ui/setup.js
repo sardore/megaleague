@@ -279,8 +279,53 @@ export function initializeUiSetup() {
     });
   })();
 }
+/* 편성 타일을 그리는 유일한 경로. 등급 색·별·플러스스타 금테·슬롯 번호·툴팁 슬롯은 모두 여기서 한 번에 정해진다.
+   덱이 바뀌는 모든 경우(카드 선택·플러스스타·폼 전환·침략자·온라인 동기화)가 updateDeckSetup을 거쳐 이 함수로 다시 그린다. */
+function renderDeckTiles() {
+  const ids = state_ui_deck.LeagueFormatOwner.setupPool(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_battle_state.selected, state_ui_deck.plusStarSelection, "P");
+  syncTileGrid(state_ui_battle_state.$("#deckCards"), ids.map(id => {
+    const c = state_catalog_cards.CARDS.find(x => x.id === id);
+    if (!c) return "";
+    const slotIndex = state_ui_battle_state.selected.indexOf(c.id),
+      effectiveCard = state_catalog_cards.EffectiveCardPresentationOwner.resolve(c, null, {
+        deck: state_ui_battle_state.selected,
+        plusStarChoice: state_ui_deck.plusStarSelection,
+        team: "P",
+        slotIndex,
+        surface: "local-composition"
+      }),
+      plusActive = effectiveCard.plusStar,
+      legalForms = c.formGroup ? state_ui_deck.LeagueFormatOwner.eligibleForms(c.formGroup, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : [],
+      nextForm = c.formGroup ? nextLeagueFormId(c.formGroup, c.id, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : null,
+      chosen = state_ui_battle_state.selected.includes(c.id),
+      slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, c.id], state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P"),
+      toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button class="form-toggle" data-form-toggle="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === nextForm)?.name || c.name}">⇄</button>` : "",
+      plus = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button class="plusstar-toggle${plusActive ? " active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "";
+    return `<div class="card compact-card selectable ${characterTileClass(c, effectiveCard, effectiveCard.visualModifiers.glowClass)} ${slotBlocked ? "league-slot-blocked" : ""}"${tileKeyAttr(c)} data-info-card="setup" data-info-surface="local-composition" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${c.id}" data-id="${c.id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" aria-disabled="${slotBlocked}">${characterTileInner(c, effectiveCard, { slotIndex, toggles: `${toggle}${plus}` })}</div>`;
+  }).join(""));
+  state_ui_battle_state.$$('[data-form-toggle]').forEach(button => {
+    button.onclick = event => {
+      event.stopPropagation();
+      const group = button.dataset.formToggle,
+        current = button.closest('[data-card-id]')?.dataset.cardId || setupFormState(group),
+        next = nextLeagueFormId(group, current, state_ui_battle_state.selected);
+      if (!next || next === current || !state_ui_setup.DeckDraftApplication.changeForm(group, next)) return;
+      renderSetup(false);
+    };
+  });
+  state_ui_battle_state.$$("#deckCards .card").forEach(cardEl => {
+    cardEl.onclick = event => {
+      if (event?.target?.closest?.(".form-toggle,.plusstar-toggle")) return;
+      if (cardEl.classList.contains("league-slot-blocked")) return;
+      if (!state_ui_setup.DeckDraftApplication.toggleCard(cardEl.dataset.id)) return;
+      updateDeckSetup();
+    };
+  });
+}
 export function updateDeckSetup() {
   sanitizeSelectedInvaders();
+  state_ui_setup.DeckDraftApplication.reconcileAndPublish();
+  renderDeckTiles();
   const localDeckRoot = document.getElementById("deckCards");
   const localPlusContext = {
     surface: "local-composition",
@@ -332,56 +377,17 @@ export function updateDeckSetup() {
   state_ui_battle_state.$("#deckCount").classList.toggle("invalid", state_ui_battle_state.selected.length > 0 && !complete);
   state_ui_battle_state.$("#startBtn").disabled = !complete;
   syncLeagueSelectionSurface();
-  state_ui_setup.DeckDraftApplication.reconcileAndPublish();
   state_engine_entities.PlusStarBannerPresentationOwner.sync(localDeckRoot, localPlusContext, state_ui_battle_state.selected, state_ui_deck.plusStarSelection);
   syncInvaderPortalState();
 }
 export function renderSetup(reset = true) {
   if (reset) state_ui_setup.DeckDraftApplication.reset();
   normalizeSetupFormsForLeague();
-  const ids = state_ui_deck.LeagueFormatOwner.setupPool(state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_battle_state.selected, state_ui_deck.plusStarSelection, "P");
-  syncTileGrid(state_ui_battle_state.$("#deckCards"), ids.map(id => {
-    const c = state_catalog_cards.CARDS.find(x => x.id === id);
-    if (!c) return "";
-    const slotIndex = state_ui_battle_state.selected.indexOf(c.id),
-      effectiveCard = state_catalog_cards.EffectiveCardPresentationOwner.resolve(c, null, {
-        deck: state_ui_battle_state.selected,
-        plusStarChoice: state_ui_deck.plusStarSelection,
-        team: "P",
-        slotIndex,
-        surface: "local-composition"
-      }),
-      plusActive = effectiveCard.plusStar,
-      legalForms = c.formGroup ? state_ui_deck.LeagueFormatOwner.eligibleForms(c.formGroup, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : [],
-      nextForm = c.formGroup ? nextLeagueFormId(c.formGroup, c.id, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : null,
-      chosen = state_ui_battle_state.selected.includes(c.id),
-      slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, c.id], state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P"),
-      toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button class="form-toggle" data-form-toggle="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === nextForm)?.name || c.name}">⇄</button>` : "",
-      plus = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button class="plusstar-toggle${plusActive ? " active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "";
-    return `<div class="card compact-card selectable ${characterTileClass(c, effectiveCard, effectiveCard.visualModifiers.glowClass)} ${slotBlocked ? "league-slot-blocked" : ""}"${tileKeyAttr(c)} data-info-card="setup" data-info-surface="local-composition" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${c.id}" data-id="${c.id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" aria-disabled="${slotBlocked}">${characterTileInner(c, effectiveCard, { slotIndex, toggles: `${toggle}${plus}` })}</div>`;
-  }).join(""));
-  state_ui_battle_state.$$('[data-form-toggle]').forEach(button => {
-    button.onclick = event => {
-      event.stopPropagation();
-      const group = button.dataset.formToggle,
-        current = button.closest('[data-card-id]')?.dataset.cardId || setupFormState(group),
-        next = nextLeagueFormId(group, current, state_ui_battle_state.selected);
-      if (!next || next === current || !state_ui_setup.DeckDraftApplication.changeForm(group, next)) return;
-      renderSetup(false);
-    };
-  });
-  state_ui_battle_state.$$("#deckCards .card").forEach(cardEl => {
-    cardEl.onclick = event => {
-      if (event?.target?.closest?.(".form-toggle,.plusstar-toggle")) return;
-      if (cardEl.classList.contains("league-slot-blocked")) return;
-      if (!state_ui_setup.DeckDraftApplication.toggleCard(cardEl.dataset.id)) return;
-      updateDeckSetup();
-    };
-  });
   updateDeckSetup();
   mountInvaderPortal();
   updateDeckSetup();
 }
+
 export function deckConflictPenalty(ids) {
   if (!ids.includes("flameflower")) return 0;
   let penalty = 0;
