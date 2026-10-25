@@ -160,9 +160,11 @@
       .card.compact-card .compact-status .tag {
         font-size: 11px;
       }
+      /* 카드 설명은 편성·도감·온라인 대기실처럼 모달 안의 카드에서도 같은 요소로 뜬다.
+         그래서 모든 모달·패널(최대 30000)보다 위, 보스 도입 연출(59000~)보다는 아래의 한 층에 둔다. */
       .card-info-tooltip {
         position: fixed;
-        z-index: 500;
+        z-index: 50000;
         width: min(390px, calc(100vw - 20px));
         max-height: min(74vh, 650px);
         overflow: auto;
