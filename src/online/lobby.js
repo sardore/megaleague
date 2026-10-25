@@ -684,7 +684,7 @@ export function initializeOnlineLobby() {
           const element = document.createElement("div");
           element.tabIndex = 0;
           element.setAttribute("role", "button");
-          const slotBlocked = !state_ui_battle_state.selected.includes(id) && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, id], league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam());
+          const slotBlocked = !state_ui_battle_state.selected.includes(id) && !state_ui_deck.LeagueFormatOwner.admit(state_ui_battle_state.selected, id, league, composition, state_ui_deck.plusStarSelection, onlineLocalTeam()).ok;
           element.className = `card compact-card selectable online-room-card ${state_ui_battle_state.selected.includes(id) ? "selected" : ""} ${slotBlocked ? "league-slot-blocked" : ""}`;
           element.setAttribute("aria-disabled", String(slotBlocked));
           element.dataset.infoCard = "setup";

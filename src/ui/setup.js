@@ -66,8 +66,10 @@ export function initializeUiSetup() {
       if (index >= 0) replaceDeck(state_ui_battle_state.selected.filter((_, at) => at !== index));else {
         if (state_ui_battle_state.selected.length >= capacity) return false;
         if (group && state_ui_battle_state.selected.some(value => state_catalog_cards.CARDS.find(entry => entry.id === value)?.formGroup === group)) return false;
-        if (!state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, id], rules.mode, rules.composition, rules.plusStar, rules.team)) return false;
+        const admission = state_ui_deck.LeagueFormatOwner.admit(state_ui_battle_state.selected, id, rules.mode, rules.composition, rules.plusStar, rules.team);
+        if (!admission.ok) return false;
         state_ui_battle_state.selected.push(id);
+        state_ui_deck.plusStarSelection = admission.plusStar;
       }
       normalizePlusStar();
       return true;
@@ -305,7 +307,7 @@ function renderDeckTiles() {
       legalForms = c.formGroup ? state_ui_deck.LeagueFormatOwner.eligibleForms(c.formGroup, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : [],
       nextForm = c.formGroup ? nextLeagueFormId(c.formGroup, c.id, state_ui_battle_state.selected, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P") : null,
       chosen = state_ui_battle_state.selected.includes(c.id),
-      slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, c.id], state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P"),
+      slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.admit(state_ui_battle_state.selected, c.id, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P").ok,
       toggle = c.formGroup && legalForms.length > 1 && nextForm ? `<button class="form-toggle" data-form-toggle="${c.formGroup}" title="${c.name} → ${state_catalog_cards.CARDS.find(x => x.id === nextForm)?.name || c.name}">⇄</button>` : "",
       plus = state_catalog_cards.PLUS_STAR_ELIGIBLE.has(c.id) ? `<button class="plusstar-toggle${plusActive ? " active" : ""}" data-action="toggle-plusstar" data-plusstar-card="${c.id}" data-plus-star="${c.id}" aria-pressed="${plusActive}">🎆</button>` : "";
     return `<div class="card compact-card selectable ${characterTileClass(c, effectiveCard, effectiveCard.visualModifiers.glowClass)} ${slotBlocked ? "league-slot-blocked" : ""}"${tileKeyAttr(c)} data-info-card="setup" data-info-surface="local-composition" data-info-team="P" data-info-slot-index="${slotIndex}" data-card-id="${c.id}" data-id="${c.id}" data-effective-character-id="${effectiveCard.effectiveCharacterId}" data-effective-plus-star="${effectiveCard.plusStar}" data-effective-deck-slot="${effectiveCard.exactDeckSlot || ""}" aria-disabled="${slotBlocked}">${characterTileInner(c, effectiveCard, { slotIndex, toggles: `${toggle}${plus}` })}</div>`;
@@ -367,7 +369,7 @@ export function updateDeckSetup() {
       group = state_catalog_cards.CARDS.find(c => c.id === actual)?.formGroup,
       chosen = state_ui_battle_state.selected.includes(actual),
       blocked = !chosen && group && state_ui_battle_state.selected.some(v => v !== actual && state_catalog_cards.CARDS.find(c => c.id === v)?.formGroup === group);
-    const slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.partialValid([...state_ui_battle_state.selected, actual], state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P");
+    const slotBlocked = !chosen && !state_ui_deck.LeagueFormatOwner.admit(state_ui_battle_state.selected, actual, state_ui_deck.leagueSelection, state_ui_deck.comprehensiveComposition, state_ui_deck.plusStarSelection, "P").ok;
     x.classList.toggle("selected", chosen);
     x.classList.toggle("form-blocked", !!blocked);
     x.classList.toggle("league-slot-blocked", !!slotBlocked);
