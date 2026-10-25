@@ -563,6 +563,11 @@ export function card(u) {
   const id = typeof u === "string" ? u : u?.card ?? u?.id;
   return state_engine_entities.CARD_REGISTRY.get(id) || state_engine_entities.UNKNOWN_CARD;
 }
+/* 덱 풀에 올리지 않는 런타임 카드(보스·좀비)까지 포함해 id로 카드 정의를 찾는 단일 조회. */
+export function cardDefinition(id) {
+  syncCardRegistry();
+  return state_engine_entities.CARD_REGISTRY.get(id) || null;
+}
 export function skillsOf(ref) {
   const def = card(ref);
   return Array.isArray(def?.skills) ? def.skills : [];

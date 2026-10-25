@@ -676,8 +676,7 @@ export function battleMvp(g, team = g.winner) {
   const stats = pvpTeamStats(g, team);
   return stats.units.slice().sort((a, b) => mvpContribution(b, g) - mvpContribution(a, g))[0] || null;
 }
-export function mvpResultHTML(g, localTeam = "P") {
-  const team = g.winner;
+export function mvpResultHTML(g, localTeam = "P", team = g.winner) {
   const u = battleMvp(g, team);
   if (!u) return "";
   const side = team === localTeam ? "내 진영" : "상대 진영";

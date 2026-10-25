@@ -170,7 +170,7 @@ export function initializeUiOnlineEntry() {
       }
       const root = document.getElementById("modalContent");
       if (!root) return false;
-      root.innerHTML = `<h2>붉은 레이드 동료 탐색</h2><div class="matchmaking-box"><b id="matchmakingStatus" data-online-runtime-status></b><p class="tiny muted">보스 협동 전용 매칭</p><button id="cancelMatchmaking">매칭 취소</button></div>`;
+      root.innerHTML = `<h2>레이드 동료 탐색</h2><div class="matchmaking-box"><b id="matchmakingStatus" data-online-runtime-status></b><p class="tiny muted">레이드 협동 전용 매칭 · 던전 종류는 호스트가 대기실에서 정합니다</p><button id="cancelMatchmaking">매칭 취소</button></div>`;
       document.getElementById("cancelMatchmaking").onclick = () => sessionRuntime.MatchmakingCoordinator.cancel();
       document.getElementById("modal")?.classList.add("open");
       sessionRuntime.projectStatus();

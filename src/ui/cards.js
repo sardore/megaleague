@@ -11,7 +11,8 @@ export const state_ui_cards = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
-import { card, cardHasCapability, isTargetMagnet, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
+import { card, cardDefinition, cardHasCapability, isTargetMagnet, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
+import { zombieCaveBadge, zombieCaveSlotInfo } from "../features/zombie-cave.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
@@ -211,7 +212,7 @@ export function showCardTooltip(anchor, pinned = false) {
   let uid = anchor.dataset.uid || "",
     cardId = anchor.dataset.cardId || (uid && state_ui_battle_state.game ? findUnit(state_ui_battle_state.game, uid)?.card : "") || "",
     u = uid && state_ui_battle_state.game ? findUnit(state_ui_battle_state.game, uid) : null,
-    c = state_catalog_cards.CARDS.find(x => x.id === (u?.card || cardId));
+    c = cardDefinition(u?.card || cardId);
   if (!c) return;
   if (!u) u = state_catalog_cards.EffectiveCardPresentationOwner.syntheticUnitFromAnchor(anchor, c);
   hideCardTooltip(false);
@@ -259,7 +260,7 @@ export function refreshCardTooltip() {
   }
   if (!anchor) return hideCardTooltip();
   let u = state_ui_cards.cardTooltipState.uid && state_ui_battle_state.game ? findUnit(state_ui_battle_state.game, state_ui_cards.cardTooltipState.uid) : null,
-    c = state_catalog_cards.CARDS.find(x => x.id === (u?.card || state_ui_cards.cardTooltipState.cardId));
+    c = cardDefinition(u?.card || state_ui_cards.cardTooltipState.cardId);
   if (!u) u = state_catalog_cards.EffectiveCardPresentationOwner.syntheticUnitFromAnchor(anchor, c);
   state_ui_cards.cardTooltipState.anchor?.classList.remove("card-tooltip-open");
   state_ui_cards.cardTooltipState.anchor = anchor;
@@ -376,6 +377,8 @@ export function unitEffectBadgesHTML(u) {
     const skillName = card(u).skills.find(x => x.id === skillId)?.name || skillId;
     add(`${skillName} 봉인 ${duration}`, "status", `${skillName} 기술봉인 ${duration}턴`);
   }
+  const zombieBadge = zombieCaveBadge(state_ui_battle_state.game, u);
+  if (zombieBadge) add(zombieBadge.text, zombieBadge.kind, zombieBadge.title);
   if (u.hideHits > 0) add(`피해 -30 ×${u.hideHits}`, "guard", `모래숨기: 다음 공격 타격 ${u.hideHits}회 피해 -30`);
   if (u.queuedHeals?.length) add("예약 회복", "pending", `예약 회복 ${u.queuedHeals.map(x => `${combatInt(x.amount)}×${combatInt(x.remaining)}`).join(", ")}`);
   if (u.scheduledAction && !["zigzag", "bloom"].includes(u.scheduledAction.kind)) add("예약 행동", "pending", scheduledInfoHTML(u, typeof state_ui_battle_state.game !== "undefined" && state_ui_battle_state.game ? teamOf(state_ui_battle_state.game, u) : null) || "예약 행동");
@@ -450,10 +453,22 @@ export const DeathPresentationOwner = (() => {
     }
   });
 })();
+/* 빈 슬롯 카드. 좀비굴의 적 칸이면 같은 카드 자리에 다음 입장까지 남은 라운드를 보여 준다. */
+const lastEntranceCount = new Map();
+function emptySlotHTML(team, slot) {
+  const g = state_ui_battle_state.game,
+    info = zombieCaveSlotInfo(g, team, slot);
+  if (!info) return `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
+  const key = `${g.matchId}:${slot}`,
+    ticked = lastEntranceCount.has(key) && lastEntranceCount.get(key) !== info.remaining;
+  lastEntranceCount.set(key, info.remaining);
+  const fill = Math.max(0, Math.min(1, info.remaining / Math.max(1, info.rounds)));
+  return `<div class="card muted zc-entrance ${ticked ? "zc-tick" : ""}" data-zc-remaining="${info.remaining}" style="--zc-fill:${fill}"><h3>다음 좀비 입장</h3><div class="zc-count"><span>${info.remaining}</span></div><p>${info.remaining ? `${info.remaining}라운드 뒤 입장` : "곧 입장"}</p></div>`;
+}
 export function unitHTML(u, team, slot, bench = false, displayTeam = team) {
   const dying = u ? DeathPresentationOwner.observe(state_ui_battle_state.game, u) : null;
-  if (u?.dead && dying == null) return bench ? "" : `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
-  if (!u) return `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
+  if (u?.dead && dying == null) return bench ? "" : emptySlotHTML(team, slot);
+  if (!u) return emptySlotHTML(team, slot);
   const bossRedRole = !!(u.bossRed || state_ui_battle_state.game?.bossRaid && team === "A" && cardHasCapability(u, "fateClock"));
   if (bossRedRole) u.bossRed = true;
   let c = card(u),

@@ -14,8 +14,10 @@ import { endTurn, execute, gatherPotential } from "../engine/execution.js";
 import { reactiveEnergyRule } from "../features/genocider.js";
 import { energyAmountText } from "../ui/battle-state.js";
 import { poolForLeague } from "../ui/deck.js";
+import { zombieSkillAiScore } from "../features/zombie-cave.js";
 export function initializeAiSearch() {
   state_ai_search.AI_SKILL_PROFILE_SCORERS = Object.freeze({
+    zombieCave: zombieSkillAiScore,
     mutualEnergyTrade({
       g,
       u,

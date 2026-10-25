@@ -7,6 +7,7 @@ import { state_catalog_cards } from "../catalog/cards.js";
 import { legalActions, prepareCurrentTurn, unitAt } from "../engine/actions.js";
 import { aliveUnits, costGap, parseCost } from "../engine/energy.js";
 import { RNG, makeUnit, rebindPlusStarChoice, resolvePlusStarChoice, skillDefHasTag, state_engine_entities } from "../engine/entities.js";
+import { zombieCaveSlotInfo } from "../features/zombie-cave.js";
 import { showEnd } from "../online/connection.js";
 import { playVisuals } from "../presentation/animations.js";
 import { battlefieldCardForUid } from "../presentation/coordinates.js";
@@ -509,8 +510,9 @@ export function renderBattleBoard() {
   for (let i = 0; i < state_ui_battle_state.game.order.length; i++) {
     let oi = (state_ui_battle_state.game.turn + i) % state_ui_battle_state.game.order.length,
       [t, s] = state_ui_battle_state.game.order[oi],
-      u = unitAt(state_ui_battle_state.game, t, s);
-    turns.push(`<span class="turntoken ${i ? "" : "now"}">${i ? "다음" : "현재"} ${t === localSide ? "내" : state_ui_battle_state.game.mode === "online" ? "상대" : "AI"}-${s + 1}: ${u && !u.dead ? u.name : "빈 슬롯"}</span>`);
+      u = unitAt(state_ui_battle_state.game, t, s),
+      entrance = u && !u.dead ? null : zombieCaveSlotInfo(state_ui_battle_state.game, t, s);
+    turns.push(`<span class="turntoken ${i ? "" : "now"}">${i ? "다음" : "현재"} ${t === localSide ? "내" : state_ui_battle_state.game.mode === "online" ? "상대" : "AI"}-${s + 1}: ${u && !u.dead ? u.name : entrance ? `입장 ${entrance.remaining}R` : "빈 슬롯"}</span>`);
   }
   state_ui_battle_state.$("#turnStrip").innerHTML = turns.join("");
   state_ui_battle_state.$$(".card").forEach(x => x.classList.remove("active-turn", "targetable"));

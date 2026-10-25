@@ -12,6 +12,8 @@ import { legalActions, other } from "../engine/actions.js";
 import { RNG, card, newGame } from "../engine/entities.js";
 import { endTurn, execute } from "../engine/execution.js";
 import { mvpResultHTML } from "../online/connection.js";
+import { showZombieCaveResult } from "../features/boss-raid.js";
+import { isZombieCave } from "../features/zombie-cave.js";
 import { log } from "../presentation/audio.js";
 import { systems } from "../runtime/systems.js";
 import { startBattle } from "./action-choices.js";
@@ -197,6 +199,7 @@ export function initializeUiResults() {
   })();
 }
 export function showVictoryResult() {
+  if (isZombieCave(state_ui_battle_state.game)) return showZombieCaveResult(state_ui_battle_state.game);
   const mine = pvpTeamStats(state_ui_battle_state.game, "P");
   const enemy = pvpTeamStats(state_ui_battle_state.game, "A");
   const won = state_ui_battle_state.game.winner === "P";

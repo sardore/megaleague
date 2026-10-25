@@ -530,6 +530,7 @@ function specCurrentMatchRecords() {
   return records.filter(rec => !spectatorState.bossOnly || !!rec.bossRaid).sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
 }
 function specMatchLabel(rec) {
+  if (rec.bossRaid && rec.bossId === "zombie-cave") return `좀비굴 · 탐험대 생존 ${rec.pAlive ?? 0}`;
   if (rec.bossRaid) return `보스전 · 붉은 시간의 군단 · 연합 ${rec.pAlive ?? 0} 대 군단 ${rec.aAlive ?? 0}`;
   const league = state_ui_deck.LeagueFormatOwner.definition(rec.league).label;
   return `${league} · ${rec.pAlive ?? 0} 대 ${rec.aAlive ?? 0}`;
@@ -708,8 +709,11 @@ export function specDecorateBattle(data = null) {
   const playerTitle = document.querySelector(".player-side .side-head b");
   const aiTitle = document.querySelector(".ai-side .side-head b");
   if (state_ui_battle_state.game?.bossRaid) {
-    if (playerTitle) playerTitle.textContent = spectatorState.viewSide === "P" ? "레이드 연합 시점" : "붉은 시간 군단 시점";
-    if (aiTitle) aiTitle.textContent = spectatorState.viewSide === "P" ? "붉은 시간 군단" : "레이드 연합";
+    const zombie = state_ui_battle_state.game.bossRaid.kind === "zombie",
+      alliance = zombie ? "탐험대" : "레이드 연합",
+      legion = zombie ? "좀비 떼" : "붉은 시간 군단";
+    if (playerTitle) playerTitle.textContent = spectatorState.viewSide === "P" ? `${alliance} 시점` : `${legion} 시점`;
+    if (aiTitle) aiTitle.textContent = spectatorState.viewSide === "P" ? legion : alliance;
   } else {
     if (playerTitle) playerTitle.textContent = spectatorState.viewSide === "P" ? "플레이어 1 시점" : "플레이어 2 시점";
     if (aiTitle) aiTitle.textContent = spectatorState.viewSide === "P" ? "플레이어 2" : "플레이어 1";
