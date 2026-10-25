@@ -13,7 +13,7 @@ export const state_engine_effects = {
 };
 import { state_catalog_cards } from "../catalog/cards.js";
 import { other, unitAt } from "./actions.js";
-import { activeIruma, activeNoBlack, activeNoRed, afterBodyHpChange, applyCriticalAttack, applyShieldFirstFixedDamage, applyStatus, attackEvasionChance, attackPacketWouldDefeatTarget, blocksCriticalAttack, changeEnergyColor, checkDeath, clearFieldEnergy, clearStatuses, createShield, damageRange, dealDamage, dealDamageSequence, dealProportionalDamage, findUnit, heal, isStatusImmune, nonAttackDamage, queueBloomVisual, queueVisual, removeEnergy, shiftDamage, teamOf, traitsActive, triggerForcedCleansePenalty, state_engine_combat } from "./combat.js";
+import { activeIruma, activeNoBlack, activeNoRed, afterBodyHpChange, applyCriticalAttack, applyShieldFirstFixedDamage, applyStatus, attackEvasionChance, attackPacketWouldDefeatTarget, blocksCriticalAttack, changeEnergyColor, checkDeath, clearAllEnergy, clearFieldEnergy, clearStatuses, createShield, damageRange, dealDamage, dealDamageSequence, dealProportionalDamage, findUnit, heal, isStatusImmune, nonAttackDamage, queueBloomVisual, queueVisual, removeEnergy, shiftDamage, teamOf, traitsActive, triggerForcedCleansePenalty, state_engine_combat } from "./combat.js";
 import { allEnergy, energyStore, gainEnergy, notifyReactiveEnergyMutation, spendReq, status, totalEnergy } from "./energy.js";
 import { RNG, actionFaultHit, card, cardHasCapability, firstSkillByEffect, firstSkillByTag, firstSkillOf, skillDefHasEffect, skillDefHasTag, skillIdByEffectGlobal, state_engine_entities } from "./entities.js";
 import { checkWinner } from "./execution.js";
@@ -286,6 +286,7 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
       sourceUid,
       kind,
       ...(options.decayPerTurn != null ? { decayPerTurn: options.decayPerTurn } : {}),
+      ...(options.decayPhase ? { decayPhase: options.decayPhase } : {}),
       ...(options.healOnDecay ? { healOnDecay: options.healOnDecay } : {}),
       lastHalvedEpoch: u.barrierTurnEpoch || 0
     });
@@ -297,14 +298,16 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
   });
   return got;
 }
-export function decayHpProtectionBarriers(g, u, sim = false) {
+/* phase: "turnStart"(기본) 는 자기 차례 시작에, "turnEnd" 는 자기 차례 종료에 줄어드는 보호막만 처리한다. */
+export function decayHpProtectionBarriers(g, u, sim = false, phase = "turnStart") {
   if (!u.hpProtectionBarriers?.length) return;
   const healed = {};
   let changed = false,
     epoch = u.barrierTurnEpoch || 0;
   for (const x of u.hpProtectionBarriers) {
+    if ((x.decayPhase || "turnStart") !== phase) continue;
     if (x.kind === "elixian" && x.decayPerTurn == null) continue;
-    if ((x.lastHalvedEpoch ?? -1) >= epoch) continue;
+    if (phase === "turnStart" && (x.lastHalvedEpoch ?? -1) >= epoch) continue;
     const before = combatInt(x.amount);
     x.amount = x.decayPerTurn != null ? Math.max(0, before - Number(x.decayPerTurn)) : Math.floor(before / 2);
     if (x.healOnDecay) healed[x.healOnDecay] = (healed[x.healOnDecay] || 0) + (before - combatInt(x.amount));
@@ -312,7 +315,7 @@ export function decayHpProtectionBarriers(g, u, sim = false) {
     changed = true;
   }
   u.hpProtectionBarriers = u.hpProtectionBarriers.filter(x => x.amount > 0.01);
-  if (changed) log(g, `${u.name}: HP 보호막의 차례 시작 감소 적용(총 ${totalHpProtection(u)}).`);
+  if (changed) log(g, `${u.name}: HP 보호막의 차례 ${phase === "turnEnd" ? "종료" : "시작"} 감소 적용(총 ${totalHpProtection(u)}).`);
   // A barrier that converts its decay into healing heals exactly what it lost (damage it absorbed earlier is not refunded).
   for (const [effectId, amount] of Object.entries(healed)) if (amount > 0) heal(g, u, amount, u, { reason: effectId, effectId, sim });
 }
@@ -1425,6 +1428,24 @@ export function effectApply(g, actor, target, e, skill, ctx) {
       return changeEnergyColor(g, target, e.color, false, actor);
     case "removeEnergy":
       return removeEnergy(g, target, e.amount, actor);
+    case "removeAllEnergy":
+      {
+        /* 에너지를 전부 제거한다. 자신은 외부 제거가 아니므로 막힘 없이 비우고, 상대는 일반 제거 경로(프레그먼트 차단 등)를 따른다. */
+        const who = e.target === "self" ? actor : target;
+        if (e.target === "self") return clearAllEnergy(actor);
+        let removed = 0;
+        for (let guard = 0; guard < 64 && who.energy.length; guard++) {
+          const got = removeEnergy(g, who, 99, actor);
+          if (!(got > 0)) break;
+          removed += got;
+        }
+        return removed;
+      }
+    case "hpBarrier":
+      return addHpProtectionBarrier(g, target, Number(e.amount || 0), actor.uid, "standard", {
+        decayPerTurn: e.decayPerTurn,
+        decayPhase: e.decayPhase
+      });
     case "clearFieldEnergy":
       return clearFieldEnergy(g, actor);
     case "cleanse":

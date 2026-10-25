@@ -917,6 +917,29 @@ export function initializeCatalogCards() {
     noShieldAttackBonus: 10,
     league: "mega",
     tags: ["poison"]
+  }), state_catalog_cards.C("sandcastle", "모래성", 140, "에너지 교란·보호막 지원", "메가리그", "없음.", [state_catalog_cards.S("sandWind", "모래바람", "W", "30D. 대상의 에너지를 모두 하얀색으로.", "enemy", [{
+    type: "damage",
+    amount: 30
+  }, {
+    type: "colorAll",
+    color: "W"
+  }], ["damage", "energy"]), state_catalog_cards.S("sandWall", "방벽", "**", "원하는 대상에게 HP 보호막 100(대상의 차례 종료마다 40 감소).", "ally", [{
+    type: "hpBarrier",
+    amount: 100,
+    decayPerTurn: 40,
+    decayPhase: "turnEnd"
+  }], ["shield"]), state_catalog_cards.S("sandQuake", "지진", "WW WorB *", "120D. 대상과 자신의 모든 에너지를 제거.", "enemy", [{
+    type: "damage",
+    amount: 120
+  }, {
+    type: "removeAllEnergy"
+  }, {
+    type: "removeAllEnergy",
+    target: "self"
+  }], ["damage", "energy"])], {
+    grade: "2☆",
+    league: "mega",
+    tags: ["earth"]
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{

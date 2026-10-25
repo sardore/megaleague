@@ -41,6 +41,7 @@ export function initializeUiCards() {
     master: ["🍃"],
     tube: ["🛟"],
     bush: ["🌿"],
+    sandcastle: ["🏰"],
     helmetShark: ["🦈"],
     snakeArmor: ["🐍", "🛡️"],
     phantomMuner: ["🎩", "🃏"],

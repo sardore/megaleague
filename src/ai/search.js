@@ -105,6 +105,7 @@ export function actionHeuristicBase(g, t, s, a) {
     const e = sk.effects.find(x => x.type === "randomScaledDamage");
     sc += Number(e.amount || 0) * (Number(e.minMultiplier ?? 1) + Number(e.maxMultiplier ?? 1)) / 2;
   }
+  if (skillDefHasEffect(sk, "hpBarrier")) sc += 70;
   if (skillDefHasEffect(sk, "orbVolley") && tar) {
     const e = sk.effects.find(x => x.type === "orbVolley");
     sc += damageRange(g, u, tar, {
