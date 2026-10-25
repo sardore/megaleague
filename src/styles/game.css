@@ -6192,7 +6192,10 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 .puzzle-energy-row small{min-width:84px;font-size:11px;opacity:.75}
 .puzzle-energy-row .e{width:16px;height:16px}
 .puzzle-hud-msg{min-height:16px;font-size:12.5px;color:#ff9aa6}
+.puzzle-hud-msg.good{color:#8fe3a8}
 .puzzle-hud-msg:empty{min-height:0}
+.arena{transition:opacity .24s ease}
+.arena.puzzle-fade{opacity:0}
 .puzzle-shake{animation:puzzleShake .42s cubic-bezier(.36,.07,.19,.97)}
 @keyframes puzzleShake{10%,90%{translate:-2px 0}20%,80%{translate:4px 0}30%,50%,70%{translate:-6px 0}40%,60%{translate:6px 0}}
 .puzzle-intro{display:grid;gap:10px;text-align:left}

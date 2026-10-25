@@ -40,12 +40,14 @@ try {
       const iv = setInterval(() => { const n = performance.now(); blocked = Math.max(blocked, n - last); last = n; }, 5);
       for (let level = 1; level <= 5; level++) window.__defs.push(await supply.request(level));
       clearInterval(iv);
-      return { defs: window.__defs.map(d => ({ id: d.id, level: d.level, league: d.league, comp: d.comp, moves: d.moves, bits: d.bits, energy: d.energy.length, hasProof: !!d.proof && !!d.startSig })), blocked };
+      return { defs: window.__defs.map(d => ({ aiBlunder: d.aiBlunder, id: d.id, level: d.level, league: d.league, comp: d.comp, moves: d.moves, bits: d.bits, energy: d.energy.length, hasProof: !!d.proof && !!d.startSig })), blocked };
     });
     assert.equal(new Set(out.defs.map(d => d.id)).size, 5);
     assert.ok(out.defs.every(d => d.hasProof && d.energy >= 8 && d.moves >= 1 && d.bits > 0));
     assert.ok(Math.max(out.defs[3].moves, out.defs[4].moves) > out.defs[0].moves, `difficulty must rise: ${out.defs.map(d => d.moves)}`);
     assert.ok(new Set(out.defs.map(d => d.league + (d.comp || ''))).size >= 3, 'leagues vary');
+    assert.ok(out.defs.filter(d => d.aiBlunder === true).length >= 1, 'traps: AI\'s natural move should often be wrong ' + JSON.stringify(out.defs.map(d => d.aiBlunder)));
+    assert.ok(out.defs.every(d => d.moves >= 2) || out.defs.slice(1).every(d => d.moves >= 2), 'no trivial one-move puzzles after the first');
     assert.ok(out.blocked < 700, `generation must not freeze the page (longest block ${Math.round(out.blocked)}ms)`);
   });
   await check('재현·완전 풀이: 증명대로 두면 패배 없이 이기고, 오답은 거부된다', async page => {
@@ -107,6 +109,55 @@ try {
     assert.ok(r.listUnchanged && r.pos > 0, JSON.stringify(r));
     assert.ok(r.gained.P.length + r.gained.A.length >= 2, JSON.stringify(r));
   });
+  await check('화면 지불: 합법인 기술은 지불 선택창에서 반드시 만들 수 있다(특성으로 W를 색 대신 내는 경우 포함)', async page => {
+    const out = await page.evaluate(() => {
+      const leagues = [['two', null], ['regular', null], ['comprehensive', '2234'], ['comprehensive', '2335'], ['mega', null], ['duel', null]];
+      let checked = 0; const bad = [];
+      for (let gi = 0; gi < 18; gi++) {
+        const [league, comp] = leagues[gi % 6];
+        const r = new probe.RNG('reach-' + gi);
+        const base = probe.generator.makeBase({ seed: 'reach-' + gi, league, comp, p: probe.randomBattleDeck(r, league, comp), a: probe.randomBattleDeck(r, league, comp) });
+        const g = probe.puzzle.buildPuzzleGame(base);
+        let guard = 0;
+        while (!g.winner && guard++ < 400) {
+          const [t, s] = g.order[g.turn];
+          const acts = probe.solver.currentActions(g);
+          if (!acts.length) { probe.endTurn(g, t, s, false); continue; }
+          if (t === 'P' && acts.length > 1) {
+            const u = g.teams.P.field[s];
+            const groups = new Map();
+            for (const a of acts) if (a.type === 'skill') (groups.get(a.skill) || groups.set(a.skill, []).get(a.skill)).push(a);
+            for (const [skill, list] of groups) {
+              const tr0 = probe.energy.transformedSkillReq(g, t, u, probe.paymentCostForAction(u, list[0]));
+              if (!(tr0.req.any > 0 || tr0.req.wb > 0 || tr0.req.rb > 0)) continue;
+              checked++;
+              const store = probe.energy.energyStore(u, list[0].actor || null), n = Math.min(store.length, 12);
+              let ok = false;
+              for (let mask = 1; mask < (1 << n) && !ok; mask++) {
+                const c = { R: 0, W: 0, B: 0 };
+                for (let i = 0; i < n; i++) if (mask & (1 << i)) c[store[i].c] += Number(store[i].a || 0);
+                ok = list.some(a => {
+                  const tr = probe.energy.transformedSkillReq(g, t, u, probe.paymentCostForAction(u, a));
+                  const need = Object.values(tr.req).reduce((x, y) => x + Number(y || 0), 0);
+                  if (Math.abs(c.R + c.W + c.B - need) > .001 || !probe.energy.reqAcceptsCounts(tr.req, c, u)) return false;
+                  const p = a.paymentPlan;
+                  return !(p && (Math.abs(Number(p.R || 0) - c.R) > .001 || Math.abs(Number(p.W || 0) - c.W) > .001 || Math.abs(Number(p.B || 0) - c.B) > .001));
+                });
+              }
+              if (!ok) bad.push({ league, skill, unit: u.name, store: store.map(e => e.c + e.a).join(',') });
+            }
+          }
+          const view = probe.maskedStateFor(g, t); view.puzzle = g.puzzle;
+          const pick = probe.chooseAI(view, t, s, true);
+          let idx = pick ? acts.findIndex(x => probe.solver.actionKeyOf(x) === probe.solver.actionKeyOf(pick)) : -1; if (idx < 0) idx = 0;
+          probe.execute(g, t, s, acts[idx], { __puzzleInternal: true });
+        }
+      }
+      return { checked, bad };
+    });
+    assert.ok(out.checked > 100, 'enough payment situations were examined: ' + out.checked);
+    assert.deepEqual(out.bad, []);
+  });
   await check('화면: 보스전 버튼 없음 · 오답 3번이면 게임 오버 · 정답이면 다음 퍼즐(미리 만들어 둠)', async page => {
     assert.equal(await page.evaluate(() => !!document.getElementById('bossRaidBtn') || [...document.querySelectorAll('button')].some(b => /보스/.test(b.textContent) && b.offsetParent)), false);
     await page.evaluate(() => document.getElementById('puzzleBtn').click());
@@ -146,9 +197,9 @@ try {
       probe.render();
     });
     await page.waitForFunction(() => document.getElementById('actionTitle').textContent === '정답!', null, { timeout: 30000 });
-    await page.waitForFunction(() => [...document.querySelectorAll('#actionButtons button')].some(b => /다음 퍼즐/.test(b.textContent)));
-    await page.evaluate(() => [...document.querySelectorAll('#actionButtons button')].find(b => /다음 퍼즐/.test(b.textContent)).click());
-    await page.waitForFunction(() => /퍼즐 2/.test(document.querySelector('.puzzle-hud-top b')?.textContent || ''), null, { timeout: 180000 });
+    // 클릭 없이 자동으로 다음 퍼즐로 넘어간다
+    await page.waitForFunction(() => /퍼즐 2/.test(document.querySelector('.puzzle-hud-top b')?.textContent || '') && document.querySelectorAll('.puzzle-lives i.on').length === 3, null, { timeout: 180000 });
+    assert.equal(await page.evaluate(() => document.querySelector('.arena').classList.contains('puzzle-fade')), false);
   });
   console.log(`${passed} puzzle checks passed`);
 } finally { await browser.close(); await new Promise(r => server.close(r)); }

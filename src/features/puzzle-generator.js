@@ -9,7 +9,7 @@ import { chooseAI } from "../ai/specialists.js";
 import { maskedStateFor } from "../ai/search.js";
 import { prepareCurrentTurn } from "../engine/actions.js";
 import { execute, endTurn } from "../engine/execution.js";
-import { buildPuzzleGame, puzzleBudget } from "./tactics-puzzle.js";
+import { buildPuzzleGame, puzzleBudget, hasPlayerChoice } from "./tactics-puzzle.js";
 import { TacticsSolver, cloneForSolve, currentActions, applyAction, signature, actionKeyOf, isForcedList, passTurn } from "./tactics-solver.js";
 
 /* 리그 슬롯: 퍼즐마다 다른 리그의 전투가 나오도록 번갈아 고른다. */
@@ -33,9 +33,11 @@ export const PUZZLE_LEAGUE_SLOTS = [{
   comp: null
 }];
 const ENERGY_LENGTH = 24;
-const SCAN_TAIL = 9;
+const SCAN_TAIL = 14;
 const SCAN_CAP = 500;
 export const MAX_MOVES = 6;
+/* 한 수로 끝나는 국면은 퍼즐이 아니다. */
+export const MIN_MOVES = 2;
 const SCAN_MAX_K = 4;
 export { SCAN_MAX_K };
 const PROOF_CAP = 8000;
@@ -44,7 +46,7 @@ export function levelSpec(level) {
   const n = Math.max(1, Math.floor(level));
   return {
     level: n,
-    moves: Math.min(MAX_MOVES, [1, 2, 2, 3, 3, 4, 4, 5, 5][n - 1] ?? MAX_MOVES),
+    moves: Math.min(MAX_MOVES, [2, 2, 3, 3, 4, 4, 5, 5][n - 1] ?? MAX_MOVES),
     minBits: Math.min(2.5, 0.2 + 0.18 * n)
   };
 }
@@ -182,6 +184,7 @@ export async function provePuzzle(def, ctx, cap = PROOF_CAP) {
       const w = [],
         l = [],
         winners = [];
+      let choice = false;
       for (const a of acts) {
         const c = applyAction(g, a);
         if (!c) continue;
@@ -190,9 +193,12 @@ export async function provePuzzle(def, ctx, cap = PROOF_CAP) {
         const ok = solver.wins(c, left - 1);
         if (solver.interrupted) return null;
         (ok ? w : l).push(after);
-        if (ok) winners.push(c);
+        if (ok) {
+          winners.push(c);
+          if (hasPlayerChoice(g, t, g.order[g.turn][1], a)) choice = true;
+        }
       }
-      if (solver.exhausted || !winners.length) return FAIL;
+      if (solver.exhausted || !winners.length || choice) return FAIL;
       return {
         sig,
         rec: {
@@ -255,11 +261,30 @@ export async function provePuzzle(def, ctx, cap = PROOF_CAP) {
     maxGood: stats.maxGood
   };
 }
+/* AI(휴리스틱 선택)가 이 국면에서 둘 수가 정답이 아닌가 — 눈에 띄는 수가 함정인 국면이 좋은 퍼즐이다.
+   판단이 탐색 한도에 걸리면 null(모름). */
+async function aiWouldBlunder(state, d, solver, ctx) {
+  const [t, s] = state.order[state.turn];
+  const view = maskedStateFor(state, t);
+  view.puzzle = state.puzzle;
+  const pick = chooseAI(view, t, s, true);
+  const acts = currentActions(state);
+  const mine = pick && acts.find(x => actionKeyOf(x) === actionKeyOf(pick));
+  if (!mine) return null;
+  solver.maxNodes = solver.nodes + 1500;
+  solver.exhausted = false;
+  const win = await solve(ctx, solver, () => {
+    const c = applyAction(state, mine);
+    return c ? solver.wins(c, d) : false;
+  });
+  return solver.exhausted ? null : !win;
+}
 /* 한 판을 두고 후보 국면을 모은다. 플레이어가 이긴 판만 본다(진 판의 끝 국면에는 강제승이 없다).
    후보: 판을 되살리는 값 + moves(강제승까지의 수). 같은 수의 후보는 판의 끝에 가까운 것 하나만 남긴다. */
 export async function scanGame(game, ctx, {
   maxK = SCAN_MAX_K,
-  stopAt = 0
+  stopAt = 0,
+  wantTrap = false
 } = {}) {
   const base = makeBase({
     seed: game.gameSeed,
@@ -278,14 +303,19 @@ export async function scanGame(game, ctx, {
     });
     const d = await solve(ctx, solver, () => solver.distance(sn.state, maxK));
     ctx.scanNodes = (ctx.scanNodes || 0) + solver.nodes;
-    if (solver.exhausted || !Number.isFinite(d) || d < 1 || found.has(d)) continue;
-    found.set(d, {
+    if (solver.exhausted || !Number.isFinite(d) || d < MIN_MOVES) continue;
+    const cost = solver.nodes;
+    const old = found.get(d);
+    if (old && (old.aiBlunder === true || !wantTrap)) continue; // 이미 쓸 만한 후보가 있다
+    const cand = {
       ...base,
       prelude: res.prelude.slice(0, sn.at),
       moves: d,
-      cost: solver.nodes
-    });
-    if (d === stopAt) break; // 필요한 국면을 찾았으면 더 보지 않는다
+      cost,
+      aiBlunder: await aiWouldBlunder(sn.state, d, solver, ctx)
+    };
+    if (!old || cand.aiBlunder === true) found.set(d, cand);
+    if (d === stopAt && (!wantTrap || cand.aiBlunder === true)) break; // 필요한 국면을 찾았으면 더 보지 않는다
   }
   return [...found.values()];
 }

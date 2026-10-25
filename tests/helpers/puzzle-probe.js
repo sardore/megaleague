@@ -11,6 +11,6 @@ import { execute, endTurn } from '../../src/engine/execution.js';
 import * as generator from '../../src/features/puzzle-generator.js';
 import { PuzzleSupply } from '../../src/features/puzzle-supply.js';
 import { state_ui_battle_state } from '../../src/ui/battle-state.js';
-import { render } from '../../src/ui/payment.js';
+import { render, paymentCostForAction, dispatchPlayerSkill } from '../../src/ui/payment.js';
 import * as puzzleUi from '../../src/ui/puzzle.js';
-Object.assign(window.probe,{render,battleState:state_ui_battle_state,supplyClass:PuzzleSupply,generator,puzzleUi,puzzle,solver,rules,randomBattleDeck,RNG,clone,chooseAI,actionHeuristic,maskedStateFor,legalActions,execute,endTurn});
+Object.assign(window.probe,{paymentCostForAction,dispatchPlayerSkill,render,battleState:state_ui_battle_state,supplyClass:PuzzleSupply,generator,puzzleUi,puzzle,solver,rules,randomBattleDeck,RNG,clone,chooseAI,actionHeuristic,maskedStateFor,legalActions,execute,endTurn});

@@ -13,6 +13,8 @@
 .startup-intro{--T:4.8s;--tw:min(30vw,160px);--th:calc(var(--tw) / .64);--gl:min(22vh,190px);--mound-h:min(31vw,175px);position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:hidden;background:#06030c;pointer-events:auto;opacity:1;transition:opacity .55s ease}
 .startup-intro.ending{opacity:0}
 .startup-intro[aria-hidden="true"]{pointer-events:none!important}
+/* SVG 내부 마크업을 불러오는 동안은 모든 연출 타임라인을 세워 둔다. 같이 출발해야 손(펼침/주먹)이 어긋나 겹쳐 보이지 않는다. */
+.startup-intro:not(.intro-ready),.startup-intro:not(.intro-ready) *,.startup-intro:not(.intro-ready) *::before,.startup-intro:not(.intro-ready) *::after{animation-play-state:paused!important}
 .startup-defs{position:absolute;width:0;height:0}
 .startup-scene{position:absolute;inset:0;overflow:hidden}
 .intro-sky{position:absolute;inset:0;background:radial-gradient(ellipse 90% 70% at 50% 35%,#2b1250 0,#14082a 45%,#06030c 80%);opacity:0;animation:intro-fade-in .8s ease-out forwards}
