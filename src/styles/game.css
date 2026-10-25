@@ -6175,3 +6175,27 @@ input,textarea,[contenteditable],.online-chat-message{-webkit-user-select:text;u
 
 /* 드래곤 분류 표시: 설명창 머리말에 작게 */
 .card-info-sub .dragon-mark{display:inline-block;padding:0 6px;border-radius:999px;font-size:.72em;font-weight:800;line-height:1.5;color:#ffd9a8;background:linear-gradient(135deg,rgba(255,150,70,.28),rgba(190,70,40,.22));border:1px solid rgba(255,170,100,.42);vertical-align:1px}
+
+/* ───── 전술 퍼즐 ───── */
+.puzzle-hud{display:grid;gap:8px;margin:0 0 10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,214,120,.45);background:linear-gradient(180deg,rgba(54,40,12,.88),rgba(26,20,10,.92));color:#ffe9b8;box-shadow:0 6px 22px rgba(0,0,0,.35)}
+.puzzle-hud[hidden]{display:none}
+.puzzle-hud-top,.puzzle-hud-goal{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.puzzle-hud-top b{font-size:15px}
+.puzzle-hud-top small{opacity:.65;font-weight:600}
+.puzzle-league{margin-right:auto;padding:2px 9px;border-radius:999px;font-size:11px;border:1px solid rgba(255,214,120,.4);color:#ffd88a}
+.puzzle-lives{display:inline-flex;gap:5px}
+.puzzle-lives i{width:14px;height:14px;background:#4a3a3a;clip-path:polygon(50% 92%,6% 40%,6% 22%,22% 6%,40% 6%,50% 18%,60% 6%,78% 6%,94% 22%,94% 40%);transition:background .25s,transform .25s}
+.puzzle-lives i.on{background:#ff5b6e;filter:drop-shadow(0 0 4px rgba(255,91,110,.7))}
+.puzzle-hud-goal b{font-size:14px;letter-spacing:.2px}
+.puzzle-hud-energy{display:grid;gap:5px}
+.puzzle-energy-row{display:flex;align-items:center;gap:5px}
+.puzzle-energy-row small{min-width:84px;font-size:11px;opacity:.75}
+.puzzle-energy-row .e{width:16px;height:16px}
+.puzzle-hud-msg{min-height:16px;font-size:12.5px;color:#ff9aa6}
+.puzzle-hud-msg:empty{min-height:0}
+.puzzle-shake{animation:puzzleShake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes puzzleShake{10%,90%{translate:-2px 0}20%,80%{translate:4px 0}30%,50%,70%{translate:-6px 0}40%,60%{translate:6px 0}}
+.puzzle-intro{display:grid;gap:10px;text-align:left}
+.puzzle-intro ul{margin:0;padding-left:18px;display:grid;gap:5px;font-size:14px}
+.puzzle-best{color:#ffd88a}
+@media (prefers-reduced-motion:reduce){.puzzle-shake{animation:none}}

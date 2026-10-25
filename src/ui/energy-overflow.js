@@ -68,7 +68,7 @@ export function initializeUiEnergyOverflow() {
     },
     interceptFinalize(action) {
       const [t] = state_ui_battle_state.game?.order?.[state_ui_battle_state.game.turn] || [];
-      if (!action || action.energyOverflowResolved || !playerControlsTeam(state_ui_battle_state.game, t) || actionSkillHasEffect(action, "eternaHeal")) return {
+      if (!action || state_ui_battle_state.game?.puzzle || action.energyOverflowResolved || !playerControlsTeam(state_ui_battle_state.game, t) || actionSkillHasEffect(action, "eternaHeal")) return {
         handled: false
       };
       const event = auditNextOverflow(action, []);

@@ -29,6 +29,8 @@ import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
 import { state_ui_results } from "../ui/results.js";
 import { validFormDeck } from "../ui/setup.js";
+/* 보스전 진입 버튼 표시 여부. 전술 퍼즐이 그 자리를 쓰므로 숨긴다(보스전 기능은 그대로 둔다). */
+const BOSS_RAID_ENTRY_VISIBLE = false;
 export function initializeFeaturesBossRaid() {
   BOSS_RAID_VERSION = "red-timeora-raid-r8";
   BOSS_LOBBY_PROTOCOL = "mega-red-timeora-raid-lobby-r8";
@@ -396,7 +398,8 @@ export function initializeFeaturesBossRaid() {
     matchmakingUiAllowed: () => bossMatchUiAllowed
   };
   Object.freeze(systems.__redTimeoraBossRaid);
-  installBossButton();
+  /* 보스전 진입 버튼은 숨긴다(전술 퍼즐이 그 자리를 쓴다). 보스전 기능 자체는 그대로 남겨 둔다. */
+  if (BOSS_RAID_ENTRY_VISIBLE) installBossButton();
 
   /* R37: 공용 모달 닫기로 보스 수색을 숨길 때 네트워크까지 즉시 폐기한다. */
   document.getElementById("closeModal")?.addEventListener("click", event => {

@@ -1,3 +1,4 @@
+import { isPuzzleGame, peekPuzzleColor } from "./puzzle-rules.js";
 import { eternaLocksTeam } from "../app/controls.js";
 import { listRaidSkillActions } from "../features/boss-raid.js";
 import { listClockSkillActions, listMemoryActions, timeCurrentSuppressionDomain, timeFieldTimeoras, timeFieldUnits, timeRecordTurnStart } from "../features/timeora.js";
@@ -13,7 +14,7 @@ export const state_engine_actions = {
 };
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { heal, queueVisual, traitsActive } from "./combat.js";
-import { collectTargetEnergyEntries, ensureScheduledActionIdentity, decayHpProtectionBarriers, processQueuedHeal, scheduledExecutionId } from "./effects.js";
+import { collectTargetEnergyEntries, ensureScheduledActionIdentity, naturalColors, decayHpProtectionBarriers, processQueuedHeal, scheduledExecutionId } from "./effects.js";
 import { allEnergy, allPaymentPlans, canPay, canPayAction, canPayFrom, canSwitch, energyStore, status, switchCost, switchCostText, totalEnergy, transformedSkillReq, state_engine_energy } from "./energy.js";
 import { battleActionConstraintsMet, card, cardHasCapability, firstSkillByEffect, resolveSkillTargets, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "./entities.js";
 import { log } from "../presentation/audio.js";
@@ -326,6 +327,7 @@ export function legalActions(g, t, s) {
     if (!status(actor, "freeze") && !status(actor, "skillSeal")) {
       actions.push(...listCostVariantActions(g, t, s), ...listEnergyInteractionActions(g, t, s), ...listDeepSeaActions(g, t, s), ...listSummonSkillActions(g, t, s), ...listStrikeActions(g, t, s), ...listResonanceActions(g, t, s), ...listReactiveEnergyActions(g, t, s), ...listClockSkillActions(g, t, s), ...listMemoryActions(g, t, s), ...listRaidSkillActions(g, t, s));
     }
+    if (isPuzzleGame(g)) actions = puzzleGatherActions(g, t, actor, actions);
     return actions.filter(a => {
       if (!battleActionConstraintsMet(g, t, s, a)) return false;
       if (!rosterActionAllowed(g, t, s, actor, a)) return false;
@@ -338,6 +340,26 @@ export function legalActions(g, t, s) {
   } finally {
     state_engine_actions.timeTraitGame = previous;
   }
+}
+/* 퍼즐: 모으기는 최대 에너지를 넘기면 제시하지 않고, 나올 색(사전배열의 다음 색)을 문구에 보여준다. */
+function puzzleGatherActions(g, t, actor, actions) {
+  return actions.filter(a => {
+    if (a.type !== "gather") return true;
+    const amt = status(actor, "slow") ? 0.5 : 1;
+    return totalEnergy(actor, a.actor || null) + amt <= (card(actor).maxEnergy || 4) + 1e-6;
+  }).map(a => {
+    if (a.type !== "gather") return a;
+    const amt = status(actor, "slow") ? 0.5 : 1,
+      store = energyStore(actor, a.actor || null),
+      half = amt === 0.5 ? store.find(e => e.a === 0.5) : null,
+      pick = half ? {
+        color: half.c
+      } : peekPuzzleColor(g, naturalColors(g, t, actor, amt, a.actor || null, "natural-gather"));
+    return pick ? {
+      ...a,
+      label: `${a.label} · ${pick.color}`
+    } : a;
+  });
 }
 export function basicTargets(g, t, s, u, sk) {
   return resolveSkillTargets(g, t, s, u, sk);
