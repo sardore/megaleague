@@ -10,7 +10,7 @@ export const state_engine_combat = {
 };
 import { state_runtime_entities } from "../runtime/entities.js";
 import { other, state_engine_actions } from "./actions.js";
-import { allEnergy, normalizeEnergy, notifyReactiveEnergyMutation, requestTraitEnergy, setEnergyBatch, status, totalEnergy } from "./energy.js";
+import { allEnergy, energyStores, normalizeEnergy, notifyReactiveEnergyMutation, requestTraitEnergy, setEnergyBatch, status, totalEnergy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, firstSkillByTag, skillDefHasEffect, skillDefHasRuntimeKind, state_engine_entities } from "./entities.js";
 import { checkWinner } from "./execution.js";
 import { elixianHealAmount, syncAromaCombatFlags } from "../features/elixian.js";
@@ -510,7 +510,7 @@ export function afterBodyHpChange(g, u, oldHp) {
   }
 }
 export function removeOneFieldEnergy(g, u) {
-  let stores = cardHasCapability(u, "dualActor") ? [u.beastEnergy, u.riderEnergy] : [u.energy],
+  let stores = energyStores(u),
     left = 1,
     removed = 0;
   for (const store of stores) for (let i = store.length - 1; i >= 0 && left > 1e-6; i--) {
@@ -1099,26 +1099,28 @@ export function changeEnergyColor(g, u, color, all = false, source = null) {
         break __changeEnergyColorCore;
       }
     }
-    if (!u.energy.length) {
+    const entries = energyStores(u).flat();
+    if (!entries.length) {
       __result = 0;
       break __changeEnergyColorCore;
     }
     let changed = 0;
     if (all) {
-      u.energy.forEach(e => {
+      entries.forEach(e => {
         if (e.c !== color) {
           e.c = color;
           changed += e.a;
         }
       });
     } else {
-      let e = u.energy.find(e => e.c !== color);
+      let e = entries.find(e => e.c !== color);
       if (e) {
         changed = e.a;
         e.c = color;
       }
     }
-    normalizeEnergy(u);
+    for (const actor of ["beast", "rider"]) if (cardHasCapability(u, "dualActor")) normalizeEnergy(u, actor);
+    if (!cardHasCapability(u, "dualActor")) normalizeEnergy(u);
     if (source) source.energyDisrupt += changed;
     log(g, `${u.name} 에너지 ${energyAmountText(changed)}개 분량이 ${color}로 변경.`);
     notifyReactiveEnergyMutation(g, u, true, "에너지 색 변경");
@@ -1140,16 +1142,17 @@ export function removeEnergy(g, u, amount, source = null) {
         break __removeEnergyCore;
       }
     }
-    if (!u.energy.length) {
+    const store = energyStores(u).find(st => st.length);
+    if (!store) {
       __result = 0;
       break __removeEnergyCore;
     }
-    let i = u.energy.findIndex(e => e.a === 0.5);
+    let i = store.findIndex(e => e.a === 0.5);
     if (i < 0) i = 0;
-    let e = u.energy[i],
+    let e = store[i],
       x = Math.min(e.a, amount);
     e.a -= x;
-    if (e.a < 0.01) u.energy.splice(i, 1);
+    if (e.a < 0.01) store.splice(i, 1);
     if (source) source.energyDisrupt += x;
     log(g, `${u.name} 에너지 ${energyAmountText(x)}개 분량 제거.`);
     notifyReactiveEnergyMutation(g, u, false, "에너지 제거");

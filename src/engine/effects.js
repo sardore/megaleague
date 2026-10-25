@@ -14,7 +14,7 @@ export const state_engine_effects = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { other, unitAt } from "./actions.js";
 import { activeIruma, activeNoBlack, activeNoRed, afterBodyHpChange, applyCriticalAttack, applyShieldFirstFixedDamage, applyStatus, attackEvasionChance, attackPacketWouldDefeatTarget, blocksCriticalAttack, changeEnergyColor, checkDeath, clearAllEnergy, clearFieldEnergy, clearStatuses, createShield, damageRange, dealDamage, dealDamageSequence, dealProportionalDamage, findUnit, heal, isStatusImmune, nonAttackDamage, queueBloomVisual, queueVisual, removeEnergy, shiftDamage, teamOf, traitsActive, triggerForcedCleansePenalty, state_engine_combat } from "./combat.js";
-import { allEnergy, energyStore, gainEnergy, notifyReactiveEnergyMutation, spendReq, status, totalEnergy } from "./energy.js";
+import { allEnergy, energyStore, energyStores, gainEnergy, notifyReactiveEnergyMutation, spendReq, status, totalEnergy } from "./energy.js";
 import { RNG, actionFaultHit, card, cardHasCapability, firstSkillByEffect, firstSkillByTag, firstSkillOf, skillDefHasEffect, skillDefHasTag, skillIdByEffectGlobal, state_engine_entities } from "./entities.js";
 import { checkWinner } from "./execution.js";
 import { dmAppendMemoryCost, dmIsDragonCard, dmMemoryBaseCosts } from "../features/dragon-memory.js";
@@ -1431,7 +1431,7 @@ export function effectApply(g, actor, target, e, skill, ctx) {
         const who = e.target === "self" ? actor : target;
         if (e.target === "self") return clearAllEnergy(actor);
         let removed = 0;
-        for (let guard = 0; guard < 64 && who.energy.length; guard++) {
+        for (let guard = 0; guard < 64 && energyStores(who).some(st => st.length); guard++) {
           const got = removeEnergy(g, who, 99, actor);
           if (!(got > 0)) break;
           removed += got;

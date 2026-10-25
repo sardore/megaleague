@@ -24,6 +24,10 @@ export function energyStore(u, actor = null) {
   if (typeof state_runtime_entities.EnergyEngine !== "undefined") for (const entry of __result || []) state_runtime_entities.EnergyEngine.ensureEntry(entry, u?.entityId || u?.uid || "entity");
   return __result;
 }
+/* 유닛이 가진 모든 에너지 저장소. 이중 행위자(야수/기수)는 두 저장소, 그 외는 하나. */
+export function energyStores(u) {
+  return cardHasCapability(u, "dualActor") ? [u.beastEnergy || (u.beastEnergy = []), u.riderEnergy || (u.riderEnergy = [])] : [u.energy || (u.energy = [])];
+}
 export function totalEnergy(u, actor = null) {
   return energyStore(u, actor).reduce((a, e) => a + e.a, 0);
 }
