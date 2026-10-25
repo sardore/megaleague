@@ -286,7 +286,6 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
       sourceUid,
       kind,
       ...(options.decayPerTurn != null ? { decayPerTurn: options.decayPerTurn } : {}),
-      ...(options.decayPhase ? { decayPhase: options.decayPhase } : {}),
       ...(options.healOnDecay ? { healOnDecay: options.healOnDecay } : {}),
       lastHalvedEpoch: u.barrierTurnEpoch || 0
     });
@@ -298,16 +297,14 @@ export function addHpProtectionBarrier(g, u, amount, sourceUid, kindOverride = n
   });
   return got;
 }
-/* phase: "turnStart"(기본) 는 자기 차례 시작에, "turnEnd" 는 자기 차례 종료에 줄어드는 보호막만 처리한다. */
-export function decayHpProtectionBarriers(g, u, sim = false, phase = "turnStart") {
+export function decayHpProtectionBarriers(g, u, sim = false) {
   if (!u.hpProtectionBarriers?.length) return;
   const healed = {};
   let changed = false,
     epoch = u.barrierTurnEpoch || 0;
   for (const x of u.hpProtectionBarriers) {
-    if ((x.decayPhase || "turnStart") !== phase) continue;
     if (x.kind === "elixian" && x.decayPerTurn == null) continue;
-    if (phase === "turnStart" && (x.lastHalvedEpoch ?? -1) >= epoch) continue;
+    if ((x.lastHalvedEpoch ?? -1) >= epoch) continue;
     const before = combatInt(x.amount);
     x.amount = x.decayPerTurn != null ? Math.max(0, before - Number(x.decayPerTurn)) : Math.floor(before / 2);
     if (x.healOnDecay) healed[x.healOnDecay] = (healed[x.healOnDecay] || 0) + (before - combatInt(x.amount));
@@ -315,7 +312,7 @@ export function decayHpProtectionBarriers(g, u, sim = false, phase = "turnStart"
     changed = true;
   }
   u.hpProtectionBarriers = u.hpProtectionBarriers.filter(x => x.amount > 0.01);
-  if (changed) log(g, `${u.name}: HP 보호막의 차례 ${phase === "turnEnd" ? "종료" : "시작"} 감소 적용(총 ${totalHpProtection(u)}).`);
+  if (changed) log(g, `${u.name}: HP 보호막의 차례 시작 감소 적용(총 ${totalHpProtection(u)}).`);
   // A barrier that converts its decay into healing heals exactly what it lost (damage it absorbed earlier is not refunded).
   for (const [effectId, amount] of Object.entries(healed)) if (amount > 0) heal(g, u, amount, u, { reason: effectId, effectId, sim });
 }
@@ -1443,8 +1440,7 @@ export function effectApply(g, actor, target, e, skill, ctx) {
       }
     case "hpBarrier":
       return addHpProtectionBarrier(g, target, Number(e.amount || 0), actor.uid, "standard", {
-        decayPerTurn: e.decayPerTurn,
-        decayPhase: e.decayPhase
+        decayPerTurn: e.decayPerTurn
       });
     case "clearFieldEnergy":
       return clearFieldEnergy(g, actor);
