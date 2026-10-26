@@ -121,7 +121,7 @@ function defineZombies() {
   zombie('zc_ghoul', '구울', 120, '포식·성장', '없음. 먹을수록 강해진다.', [
     self('zc_feast', '시체포식', '**', '자신 HP 50 회복, 공격 +10.', [{ type: 'selfHeal', amount: 50 }, { type: 'attackMod', target: 'self', amount: 10 }], ['heal', 'buff']),
     hit('zc_rend', '찢기', 'R**', '70D.', [{ type: 'damage', amount: 70 }]),
-    self('zc_rise', '일어나라', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
+    self('zc_rise', '일어나라', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다). 자신 HP 60 회복, 공격 +10.', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }, { type: 'selfHeal', amount: 60 }, { type: 'attackMod', target: 'self', amount: 10 }], ['status', 'heal', 'buff'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
     self('zc_gorge2', '대식', 'B***', '자신 HP 80 회복, 공격 +20.', [{ type: 'selfHeal', amount: 80 }, { type: 'attackMod', target: 'self', amount: 20 }], ['heal', 'buff'])
   ], { grade: '3☆' }, { from: 7, weight: 5 });
 
@@ -157,7 +157,7 @@ function defineZombies() {
 
   zombie('zc_necro', '네크로맨서', 130, '방벽·회복 봉인', '없음. 죽음을 다루는 자.', [
     self('zc_wardead', '사자의 방벽', '**', '필드의 좀비 전원에게 HP 보호막 60(턴마다 20 감소).', [{ type: 'zBarrier', amount: 60, decay: 20 }], ['shield', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'barrier' } }),
-    self('zc_march', '죽은 자의 행진', 'B***', '필드의 좀비 전원 언데드 2턴.', [{ type: 'zStatus', scope: 'field', status: 'undead', duration: 2 }], ['status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
+    self('zc_march', '죽은 자의 행진', 'B***', '필드의 좀비 전원 언데드 2턴, 공격 +20.', [{ type: 'zStatus', scope: 'field', status: 'undead', duration: 2 }, { type: 'zRally', attack: 20 }], ['status', 'buff', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
     hit('zc_touch', '죽음의 손길', '**', '70D. 회복봉인 3턴.', [{ type: 'damage', amount: 70 }, { type: 'status', status: 'healSeal', duration: 3 }], ['damage', 'status']),
     self('zc_raise', '대규모 부활의식', 'BB**', '필드의 좀비 전원 HP 보호막 100(턴마다 20 감소).', [{ type: 'zBarrier', amount: 100, decay: 20 }], ['shield', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'barrier' } })
   ], { grade: '3☆' }, { from: 13, weight: 4 });
@@ -165,7 +165,7 @@ function defineZombies() {
   zombie('zc_juggernaut', '거인', 320, '초중량 광역', '방어 25로 시작한다.', [
     hit('zc_crush', '분쇄', 'R***', '140D.', [{ type: 'damage', amount: 140 }]),
     area('zc_tremor', '땅울림', 'R**', '적 전체 60D.', [{ type: 'zFieldHit', amount: 60 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
-    self('zc_unyield', '불굴', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
+    self('zc_unyield', '불굴', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다). 자신 방어 +10(최대 50), HP 보호막 90(턴마다 30 감소).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }, { type: 'selfDefense', amount: 10, max: 50 }, { type: 'hpBarrier', amount: 90, decayPerTurn: 30 }], ['status', 'shield', 'buff'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
     area('zc_quake', '대지진', 'RR**', '적 전체 80D.', [{ type: 'zFieldHit', amount: 80 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
   ], { baseDefense: 30, grade: '4☆', speed: -1 }, { from: 14, weight: 4 });
 
