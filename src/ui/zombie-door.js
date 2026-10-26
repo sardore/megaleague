@@ -43,6 +43,6 @@ export function zombieDoorHTML(g, info) {
     elapsed = Date.now() - openedAt.get(key);
   }
   const region = info.option ? zombieRegionInfo(info.option.region) : null;
-  const portal = info.open && region ? `<button type="button" class="zc-portal ${info.option.region}" data-boss-reward="${info.index}" data-boss-reward-serial="${info.serial}"><span class="zc-portal-art"></span><span class="zc-portal-name">${region.name}</span><span class="zc-portal-foes">${region.zombies.slice(0, 3).join(' · ')}</span></button>` : '';
+  const portal = info.open && region ? `<button type="button" class="zc-portal ${info.option.region}"${g.mode === 'spectator' ? ' disabled' : ''} data-boss-reward="${info.index}" data-boss-reward-serial="${info.serial}"><span class="zc-portal-art"></span><span class="zc-portal-name">${region.name}</span><span class="zc-portal-foes">${region.zombies.slice(0, 3).join(' · ')}</span></button>` : '';
   return `<div class="card zc-door-cell ${info.open ? 'open' : 'closed'}" style="--e:-${elapsed}ms">${DOOR_SVG}<span class="zc-dust a"></span><span class="zc-dust b"></span>${portal}</div>`;
 }

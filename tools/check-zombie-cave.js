@@ -278,5 +278,19 @@ try{
   });
   assert.equal(r.poor,'gather',JSON.stringify(r));assert.equal(r.rich,'zc_frenzy',JSON.stringify(r));assert.equal(r.dying,'zc_claws',JSON.stringify(r));
  });
+ await check('spectators see the same cave doors read-only: the snapshot round-trips and clicking a door changes nothing',async page=>{
+  const r=await page.evaluate(async()=>{
+   const R=window.__redTimeoraBossRaid,g=zombieFixture('spec');g.matchId='spec1';g.bossRaid.cave.zoneSize=2;
+   for(const i of [0,1])probe.combatRules.nonAttackDamage(g,g.teams.A.field[i],9999,'t');
+   g.pendingTraitChoices.shift();
+   const rev=R.revive(R.serialize(g));rev.mode='spectator';rev.spectatorBossRaid=true;rev.matchId='spec1';
+   probe.battle.game=rev;document.querySelector('#setup').classList.remove('active');document.querySelector('#game').classList.add('active');probe.render();
+   const portals=document.querySelectorAll('.zc-portal'),disabled=[...portals].every(b=>b.disabled);
+   const before=JSON.stringify([rev.bossRaid.cave.depth,rev.pendingTraitChoices.length]);portals[0]?.click();
+   await new Promise(r=>setTimeout(r,600));
+   return{portals:portals.length,disabled,same:before===JSON.stringify([rev.bossRaid.cave.depth,rev.pendingTraitChoices.length]),modal:document.querySelector('#modal').classList.contains('open')};
+  });
+  assert.deepEqual(r,{portals:2,disabled:true,same:true,modal:false});
+ });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);
