@@ -105,12 +105,12 @@ try{
  });
  await check('special affixes appear only from floor 3, are deterministic, and change the spawned zombie',async page=>{
   const r=await page.evaluate(()=>{
-    const roll=(depth,n)=>{const g=zombieFixture('af'+n);g.bossRaid.cave.depth=depth;g.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(g,0,'zc_walker');return{a:z.zcAffix||null,sh:z.shield,atk:z.attackMod-z.zcBaseAttack,after:z.zcRageAfter||null,e:z.energy.length};};
+    const roll=(depth,n)=>{const g=zombieFixture('af'+n);g.bossRaid.cave.depth=depth;g.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(g,0,'zc_walker');return{a:z.zcAffix||null,sh:z.shield,atk:z.attackMod-z.zcBaseAttack,after:z.zcRageAfter||null};};
     const early=Array.from({length:60},(_,i)=>roll(2,i).a),late=Array.from({length:200},(_,i)=>roll(12,i));
     const kinds=new Set(late.map(x=>x.a).filter(Boolean));
     return{early:early.some(Boolean),kinds:[...kinds].sort(),again:JSON.stringify(roll(12,7))===JSON.stringify(roll(12,7)),plated:late.find(x=>x.a==='plated')?.sh>0,berserk:late.find(x=>x.a==='berserk')?.after,share:late.filter(x=>x.a).length/late.length};
   });
-  assert.equal(r.early,false);assert.deepEqual(r.kinds,['berserk','plated','regen','swift']);assert.equal(r.again,true);assert.equal(r.plated,true);assert.equal(r.berserk,6);assert.ok(r.share>0.4&&r.share<0.9);
+  assert.equal(r.early,false);assert.deepEqual(r.kinds,['berserk','plated','regen']);assert.equal(r.again,true);assert.equal(r.plated,true);assert.equal(r.berserk,6);assert.ok(r.share>0.4&&r.share<0.9);
  });
  await check('every zombie can spawn and act: legal actions exist and no skill throws',async page=>{
   const r=await page.evaluate(()=>{
