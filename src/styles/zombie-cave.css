@@ -108,3 +108,5 @@
 
 /* 결과 */
 .zombie-cave-result .victory-title { color: #9bf0a9; text-shadow: 0 0 22px rgba(79, 210, 106, .6); }
+
+.unit-effect-badge.zombie-affix { border-color: #e0b84a; color: #fff0c0; background: rgba(60, 44, 8, .92); }

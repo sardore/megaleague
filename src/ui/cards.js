@@ -12,7 +12,7 @@ import { state_catalog_cards } from "../catalog/cards.js";
 import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
 import { card, cardDefinition, cardHasCapability, isTargetMagnet, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
-import { zombieCaveBadge, zombieCaveSlotInfo } from "../features/zombie-cave.js";
+import { zombieCaveAffixBadge, zombieCaveBadge, zombieCaveSlotInfo } from "../features/zombie-cave.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
@@ -379,6 +379,8 @@ export function unitEffectBadgesHTML(u) {
   }
   const zombieBadge = zombieCaveBadge(state_ui_battle_state.game, u);
   if (zombieBadge) add(zombieBadge.text, zombieBadge.kind, zombieBadge.title);
+  const affixBadge = zombieCaveAffixBadge(state_ui_battle_state.game, u);
+  if (affixBadge) add(affixBadge.text, affixBadge.kind, affixBadge.title);
   if (u.hideHits > 0) add(`피해 -30 ×${u.hideHits}`, "guard", `모래숨기: 다음 공격 타격 ${u.hideHits}회 피해 -30`);
   if (u.queuedHeals?.length) add("예약 회복", "pending", `예약 회복 ${u.queuedHeals.map(x => `${combatInt(x.amount)}×${combatInt(x.remaining)}`).join(", ")}`);
   if (u.scheduledAction && !["zigzag", "bloom"].includes(u.scheduledAction.kind)) add("예약 행동", "pending", scheduledInfoHTML(u, typeof state_ui_battle_state.game !== "undefined" && state_ui_battle_state.game ? teamOf(state_ui_battle_state.game, u) : null) || "예약 행동");

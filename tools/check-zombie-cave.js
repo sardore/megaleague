@@ -33,7 +33,7 @@ try{
     const n=g.teams.A.field[0];
     return{due,info1,stillEmpty,spawned:!!n&&n!==z&&!n.dead,timer:g.bossRaid.cave.timers[0],otherUntouched:g.teams.A.field[1].card,winner:g.winner||null,graveyard:g.teams.A.graveyard.length};
   });
-  assert.equal(r.due,5);assert.deepEqual(r.info1,{remaining:3,rounds:3});assert.equal(r.stillEmpty,true);assert.equal(r.spawned,true);
+  assert.equal(r.due,4);assert.deepEqual(r.info1,{remaining:2,rounds:2});assert.equal(r.stillEmpty,true);assert.equal(r.spawned,true);
   assert.equal(r.timer,null);assert.equal(r.winner,null);assert.equal(r.graveyard,1);
  });
  await check('the winner is decided only when the party is wiped, never when the field is empty of zombies',async page=>{
@@ -103,6 +103,15 @@ try{
   });
   assert.equal(r.same,true);assert.equal(r.earlyWeller,false);assert.equal(r.lateWeller,true);assert.ok(r.kinds>=14,'late floors must be varied');assert.equal(r.stacked,false);
  });
+ await check('special affixes appear only from floor 3, are deterministic, and change the spawned zombie',async page=>{
+  const r=await page.evaluate(()=>{
+    const roll=(depth,n)=>{const g=zombieFixture('af'+n);g.bossRaid.cave.depth=depth;g.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(g,0,'zc_walker');return{a:z.zcAffix||null,sh:z.shield,atk:z.attackMod-z.zcBaseAttack,after:z.zcRageAfter||null,e:z.energy.length};};
+    const early=Array.from({length:60},(_,i)=>roll(2,i).a),late=Array.from({length:200},(_,i)=>roll(12,i));
+    const kinds=new Set(late.map(x=>x.a).filter(Boolean));
+    return{early:early.some(Boolean),kinds:[...kinds].sort(),again:JSON.stringify(roll(12,7))===JSON.stringify(roll(12,7)),plated:late.find(x=>x.a==='plated')?.sh>0,berserk:late.find(x=>x.a==='berserk')?.after,share:late.filter(x=>x.a).length/late.length};
+  });
+  assert.equal(r.early,false);assert.deepEqual(r.kinds,['berserk','plated','regen','swift']);assert.equal(r.again,true);assert.equal(r.plated,true);assert.equal(r.berserk,6);assert.ok(r.share>0.4&&r.share<0.9);
+ });
  await check('every zombie can spawn and act: legal actions exist and no skill throws',async page=>{
   const r=await page.evaluate(()=>{
     const ids=probe.zc.zombieCaveCards().map(c=>c.id).concat('weller'),bad=[];
@@ -119,7 +128,7 @@ try{
     }
     return{count:ids.length,bad};
   });
-  assert.deepEqual(r.bad,[]);assert.ok(r.count>=17);
+  assert.deepEqual(r.bad,[]);assert.ok(r.count>=21);
  });
  await check('cave state survives the online projection round trip',async page=>{
   const r=await page.evaluate(()=>{
@@ -128,7 +137,7 @@ try{
     const copy=R.revive(R.serialize(g));
     return{cave:JSON.stringify(copy.bossRaid.cave)===JSON.stringify(g.bossRaid.cave),kind:copy.bossRaid.kind,turns:copy.teams.A.field[1].turns,slot:probe.zc.zombieCaveSlotInfo(copy,'A',0)};
   });
-  assert.equal(r.cave,true);assert.equal(r.kind,'zombie');assert.equal(r.turns,11);assert.deepEqual(r.slot,{remaining:3,rounds:3});
+  assert.equal(r.cave,true);assert.equal(r.kind,'zombie');assert.equal(r.turns,11);assert.deepEqual(r.slot,{remaining:2,rounds:2});
  });
  await check('a player-side reserved action (Sweetna sequence) runs automatically in the cave instead of freezing the turn',async page=>{
   const r=await page.evaluate(async()=>{
@@ -157,7 +166,7 @@ try{
     g.round+=1;probe.render();const second=document.querySelector('.zc-entrance');
     return{n1,n2:second?.querySelector('.zc-count span')?.textContent,ticked:second?.classList.contains('zc-tick'),inSlot,count:document.querySelectorAll('.zc-entrance').length,badge:!!document.querySelector('.unit-effect-badge.zombie-clock')};
   });
-  assert.deepEqual(r,{n1:'3',n2:'2',ticked:true,inSlot:true,count:1,badge:true});
+  assert.deepEqual(r,{n1:'2',n2:'1',ticked:true,inSlot:true,count:1,badge:true});
  });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);
