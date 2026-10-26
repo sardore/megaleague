@@ -29,7 +29,8 @@ import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
 import { state_ui_results } from "../ui/results.js";
 import { validFormDeck } from "../ui/setup.js";
-import { ZOMBIE_CAVE, ZOMBIE_NODE_TAGS, ZOMBIE_REGIONS, isZombieCave, zombieCaveCalmField, zombieCaveDelayEntrances, zombieCaveEnterNode, zombieCaveMapView, zombieCaveSetup, zombieCaveUnitDefeated, zombieRegionInfo } from "./zombie-cave.js";
+import { ZOMBIE_CAVE, ZOMBIE_REGIONS, isZombieCave, zombieCaveCalmField, zombieCaveDelayEntrances, zombieCaveEnterNode, zombieCaveMapView, zombieCaveSetup, zombieCaveUnitDefeated, zombieRegionInfo } from "./zombie-cave.js";
+import { zombieMapHTML, zombieMapPick } from "../ui/zombie-map.js";
 export function initializeFeaturesBossRaid() {
   BOSS_RAID_VERSION = "red-timeora-raid-r8";
   BOSS_LOBBY_PROTOCOL = "mega-red-timeora-raid-lobby-r8";
@@ -342,7 +343,7 @@ export function initializeFeaturesBossRaid() {
   }];
   if (!systems.__megaBossRewardDelegationR44) {
     document.addEventListener("click", bossHandleRewardClick, true);
-    document.addEventListener("click", bossHandleNodePick);
+    document.addEventListener("click", zombieMapPick);
     systems.__megaBossRewardDelegationR44 = true;
   }
   state_ui_action_panel.ActionRenderEngine.registerRoute("boss-raid", 300, () => !!state_ui_battle_state.game?.bossRaid, ctx => renderBossActions(ctx));
@@ -1014,27 +1015,19 @@ function bossRollNodes(g) {
     row = view.rows[0];
   return {
     map: view,
-    options: view.reach.map(lane => ({
-      id: "node",
-      node: true,
-      lane,
-      region: row[lane].region,
-      tag: row[lane].tag,
-      rarity: "common",
-      name: `${ZOMBIE_REGIONS[row[lane].region].name} · ${ZOMBIE_NODE_TAGS[row[lane].tag].name}`,
-      desc: ZOMBIE_NODE_TAGS[row[lane].tag].desc
-    }))
+    options: view.reach.map(lane => {
+      const info = zombieRegionInfo(row[lane].region);
+      return {
+        id: "node",
+        node: true,
+        lane,
+        region: row[lane].region,
+        rarity: "common",
+        name: info.name,
+        desc: info.blurb
+      };
+    })
   };
-}
-/* 정예 구역 보상: 반드시 희귀 이상 하나를 섞는다. */
-function bossRollEliteRewards(g) {
-  const out = bossRollRewards(g);
-  if (out.some(r => r.rarity === "rare" || r.rarity === "legendary")) return out;
-  const rares = BOSS_REWARDS.filter(r => r.rarity === "rare" && r.kinds.includes(raidKindOf(g)) && !out.some(x => x.id === r.id));
-  if (rares.length) out[out.length - 1] = {
-    ...rares[Math.floor(g.rng.next() * rares.length)]
-  };
-  return out;
 }
 function bossPushRewardChoice(g, floor, options, extra = {}) {
   g.pendingTraitChoices ||= [];
@@ -1133,17 +1126,8 @@ function bossApplyReward(g, reward, chooserRole) {
     });
     for (const u of field) bossGainOne(g, u);
   } else if (reward.node) {
-    const cave = g.bossRaid.cave;
     zombieCaveEnterNode(g, reward);
-    if (reward.tag === "supply") bossPushRewardChoice(g, cave.depth, bossRollRewards(g));else if (reward.tag === "elite") bossPushRewardChoice(g, cave.depth, bossRollEliteRewards(g), {
-      elite: true
-    });else if (reward.tag === "camp") {
-      for (const u of alive) heal(g, u, 50, null, {
-        reason: "boss-reward",
-        effectId: "nodeCamp"
-      });
-      for (const u of field) bossGainOne(g, u);
-    } else if (reward.tag === "forge") for (const u of alive) setAttack(g, u, 10);
+    bossPushRewardChoice(g, g.bossRaid.cave.depth, bossRollRewards(g));
   } else if (reward.id === "caveTorch") zombieCaveCalmField(g);else if (reward.id === "caveBarricade") zombieCaveDelayEntrances(g, 2);else if (reward.id === "summonTimeora") {
     const u = makeUnit("timeora", bossRandomId("reward-timeora"));
     u.name = "지원 타임오러";
@@ -1182,57 +1166,10 @@ const BOSS_REWARD_ICONS = Object.freeze({
   revive: "M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z",
   summonTimeora: "M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7z",
   caveTorch: "M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z",
-  caveBarricade: "M3 6h18M3 12h18M3 18h18M7 4v16M17 4v16",
-  tagFight: "M4 4l16 16M20 4 4 20M12 12h.01",
-  tagSupply: "M3 11h18v9H3zM4 11a8 6 0 0 1 16 0M12 14v3",
-  tagCamp: "M3 20 12 4l9 16zM12 4v16M9 20l3-6 3 6",
-  tagElite: "M12 3a7 7 0 0 0-7 7c0 2.5 1 4 2.5 5V19h9v-4c1.5-1 2.5-2.5 2.5-5a7 7 0 0 0-7-7zM9.5 11h.01M14.5 11h.01M10 19v-2M14 19v-2",
-  tagForge: "M14.5 3H21v6.5L9 21.5 2.5 15zM6 14l4 4M3 21l3-3"
+  caveBarricade: "M3 6h18M3 12h18M3 18h18M7 4v16M17 4v16"
 });
 function bossRewardIcon(id) {
   return `<svg class="boss-reward-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${BOSS_REWARD_ICONS[id] || BOSS_REWARD_ICONS.summonTimeora}"/></svg>`;
-}
-/* 지도: 아래가 지금, 위로 갈수록 앞날. 고를 수 있는 갈래만 버튼이고 나머지는 미리 보기다. 고른 뒤 "이 길로" 로 확정한다. */
-function bossNodeIcon(tag) {
-  return bossRewardIcon(`tag${tag[0].toUpperCase()}${tag.slice(1)}`);
-}
-function bossNodeHTML(q, kind) {
-  const m = q.map,
-    ROW = 78,
-    rowsTop = [...m.rows.keys()].reverse(),
-    x = lane => 50 + 100 * lane,
-    y = k => 40 + ROW * (3 - k),
-    youY = 40 + ROW * 4;
-  const lines = [];
-  lines.push(...m.reach.map(to => `<line class="zc-edge go" x1="${x(m.from)}" y1="${youY}" x2="${x(to)}" y2="${y(0)}"/>`));
-  m.edges.forEach((row, k) => row.forEach((tos, i) => tos.forEach(to => lines.push(`<line class="zc-edge${k === 0 && m.reach.includes(i) ? " near" : ""}" x1="${x(i)}" y1="${y(k)}" x2="${x(to)}" y2="${y(k + 1)}"/>`))));
-  const optIndex = lane => q.options.findIndex(o => o.lane === lane);
-  const rows = rowsTop.map(k => `<div class="zc-maprow" style="--k:${k}">${m.rows[k].map(n => {
-    const info = ZOMBIE_REGIONS[n.region],
-      i = k === 0 ? optIndex(n.lane) : -1,
-      cls = `zc-mapnode ${n.tag}`,
-      body = `<span class="zc-nodegem" style="--c:${info.rgb}">${bossNodeIcon(n.tag)}</span><span class="zc-nodelabel">${info.name}</span>`;
-    return i >= 0 ? `<button type="button" class="${cls} reach" style="--i:${n.lane}" data-zc-pick="${i}">${body}</button>` : `<span class="${cls}${k === 0 ? " blocked" : " dim"}">${body}</span>`;
-  }).join("")}</div>`).join("");
-  const infos = q.options.map((o, i) => {
-    const r = zombieRegionInfo(o.region);
-    return `<div class="zc-info" data-zc-info="${i}" hidden style="--c:${r.rgb}"><b>${r.name} · ${ZOMBIE_NODE_TAGS[o.tag].name}</b><span>${r.blurb}</span><span class="zc-foes">등장 ${r.zombies.join(" · ")}</span><span>${o.desc}</span></div>`;
-  }).join("");
-  const trail = m.trail.map(n => `<i class="zc-trail-dot" style="--c:${ZOMBIE_REGIONS[n.region].rgb}" title="${ZOMBIE_REGIONS[n.region].name}"></i>`).join("");
-  return `<div class="boss-reward-shell ${kind} node-pick"><div class="boss-reward-floor"><span>지하</span><b>${q.floor}</b><span>층 도달</span></div><h2 class="boss-reward-title">갈 길을 고르세요</h2><p class="boss-reward-hint" data-boss-reward-status>이어진 길 중 하나를 고른 뒤 확정합니다. 지역마다 나오는 좀비가 다릅니다.</p><div class="zc-map"><svg class="zc-edges" viewBox="0 0 300 ${youY + 40}" preserveAspectRatio="none" aria-hidden="true">${lines.join("")}</svg>${rows}<div class="zc-maprow zc-you"><span class="zc-youdot" style="--x:${m.from}"></span></div></div>${trail ? `<div class="zc-trail">${trail}</div>` : ""}<div class="zc-infobox"><span class="zc-info-empty">길을 눌러 정보를 확인하세요.</span>${infos}</div><button type="button" class="zc-go" data-zc-go disabled>이 길로 간다</button></div>`;
-}
-function bossHandleNodePick(event) {
-  const pick = event.target?.closest?.("[data-zc-pick]");
-  if (!pick) return;
-  const shell = pick.closest(".node-pick");
-  shell.querySelectorAll("[data-zc-pick]").forEach(b => b.classList.toggle("sel", b === pick));
-  shell.querySelectorAll("[data-zc-info]").forEach(el => el.hidden = el.dataset.zcInfo !== pick.dataset.zcPick);
-  const empty = shell.querySelector(".zc-info-empty");
-  if (empty) empty.hidden = true;
-  const go = shell.querySelector("[data-zc-go]");
-  go.dataset.bossReward = pick.dataset.zcPick;
-  go.dataset.bossRewardSerial = String(state_ui_battle_state.game?.pendingTraitChoices?.[0]?.serial || 0);
-  go.disabled = false;
 }
 function bossRewardHTML(q) {
   const labels = {
@@ -1242,7 +1179,7 @@ function bossRewardHTML(q) {
     legendary: "전설"
   };
   const kind = raidKindOf(state_ui_battle_state.game);
-  if (q.node) return bossNodeHTML(q, kind);
+  if (q.node) return zombieMapHTML(q, kind);
   const head = q.floor ? `<div class="boss-reward-floor"><span>지하</span><b>${q.floor}</b><span>층 도달</span></div><h2 class="boss-reward-title">보상 선택</h2>` : `<h2 class="boss-reward-title">${q.title || "붉은 타임오러 처치 보상"}</h2>`;
   return `<div class="boss-reward-shell ${kind}">${head}<p class="boss-reward-hint" data-boss-reward-status>세 보상 중 하나를 선택하세요. 강한 보상일수록 등장 확률이 낮습니다.</p><div class="boss-reward-grid">${q.options.map((r, i) => `<button type="button" class="boss-reward-card ${r.rarity}" style="--i:${i}" data-boss-reward="${i}"><span class="boss-reward-gem">${bossRewardIcon(r.id)}</span><span class="boss-reward-rarity">${labels[r.rarity] || r.rarity}</span><span class="boss-reward-name">${r.name}</span><span class="boss-reward-desc">${r.desc}</span></button>`).join("")}</div></div>`;
 }
@@ -1490,6 +1427,7 @@ export function renderRaidBattleStatus() {
   document.body.classList.toggle("boss-raid-active", !!state_ui_battle_state.game?.bossRaid);
   const caveGame = isZombieCave(state_ui_battle_state.game) ? state_ui_battle_state.game : null;
   document.body.classList.toggle("zombie-cave-active", !!caveGame);
+  if (caveGame?.bossRaid.cave.region) document.body.dataset.zcRegion = caveGame.bossRaid.cave.region;else delete document.body.dataset.zcRegion;
   document.body.style.setProperty("--zc-depth", caveGame ? String(Math.min(1, (caveGame.bossRaid.cave.depth - 1) / 20)) : "0");
   document.body.style.setProperty("--zc-hue", `${ZOMBIE_REGIONS[caveGame?.bossRaid.cave.region]?.hue || 0}deg`);
   document.querySelectorAll(".slot.boss-active-slot").forEach(x => x.classList.remove("boss-active-slot"));

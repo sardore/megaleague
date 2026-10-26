@@ -1036,6 +1036,7 @@ export function effectApply(g, actor, target, e, skill, ctx) {
     case 'zStatReset':
     case 'zRally':
     case 'zBarrier':
+    case 'zStatus':
       return applyZombieEffect(g, actor, target, e, skill, ctx);
     case "mysticBurst":
       return executeMysticBurst(g, actor, target, skill, ctx);

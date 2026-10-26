@@ -43,6 +43,8 @@ export function zombieCaveState(g) {
 /* ---------------------------------------------------------------- 카드 정의 */
 
 const ZOMBIE_TABLE = [];
+const PLAYABLE_ROW = 'zc_playable';
+const PLAYABLE_PREFIX = 'zp:';
 const ZOMBIE_CARDS = [];
 
 /* 입장 표: from(첫 등장 층), weight(뽑힐 비중). weight는 깊이를 받아 층마다 달라질 수 있다. */
@@ -83,7 +85,8 @@ function defineZombies() {
 
   zombie('zc_rotter', '부패자', 110, '독 살포', '없음. 닿은 곳이 썩어 든다.', [
     hit('zc_rotspit', '썩은침', '*', '20D. 독 3턴.', [{ type: 'damage', amount: 20 }, { type: 'status', status: 'poison', duration: 3 }], ['damage', 'status']),
-    hit('zc_meltdown', '녹아내림', '**', '대상 현재 HP의 20% 피해. 방어와 피해 난수를 적용하지 않는다.', [{ type: 'proportionalDamage', basis: 'current', ratio: 0.2 }], ['damage', 'proportional'])
+    hit('zc_meltdown', '녹아내림', '**', '대상 현재 HP의 20% 피해. 방어와 피해 난수를 적용하지 않는다.', [{ type: 'proportionalDamage', basis: 'current', ratio: 0.2 }], ['damage', 'proportional']),
+    hit('zc_rotbreath', '썩은숨', '*', '10D. 대상 언데드 2턴.', [{ type: 'damage', amount: 10 }, { type: 'status', status: 'undead', duration: 2 }], ['damage', 'status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadFoe' } })
   ], {}, { from: 3, weight: 7 });
 
   zombie('zc_shield', '방패 좀비', 100, '방벽 근접', '실드 60으로 시작한다.', [
@@ -104,7 +107,8 @@ function defineZombies() {
 
   zombie('zc_ghoul', '구울', 120, '포식·성장', '없음. 먹을수록 강해진다.', [
     self('zc_feast', '시체포식', '*', '자신 HP 30 회복, 공격 +10.', [{ type: 'selfHeal', amount: 30 }, { type: 'attackMod', target: 'self', amount: 10 }], ['heal', 'buff']),
-    hit('zc_rend', '찢기', '**', '50D.', [{ type: 'damage', amount: 50 }])
+    hit('zc_rend', '찢기', '**', '50D.', [{ type: 'damage', amount: 50 }]),
+    self('zc_rise', '일어나라', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } })
   ], { grade: '3☆' }, { from: 7, weight: 5 });
 
   zombie('zc_bloater', '자폭 좀비', 80, '죽음의 폭발', '죽으면 폭발해 적 필드 전체에 40 피해를 준다.', [
@@ -114,7 +118,7 @@ function defineZombies() {
 
   zombie('zc_wight', '망각의 사제', 110, '능력치 초기화', '없음. 쌓아 올린 힘을 지운다.', [
     hit('zc_oblivion', '망각', '**', '20D. 대상의 공격·방어 상승분을 전부 초기화.', [{ type: 'damage', amount: 20 }, { type: 'zStatReset', scope: 'target' }], ['damage', 'debuff'], { aiProfile: { kind: 'zombieCave', mode: 'reset' } }),
-    hit('zc_curse', '저주', '*', '대상 공격 -10.', [{ type: 'attackMod', amount: -10 }], ['debuff'])
+    hit('zc_mark', '사자의 낙인', '*', '대상 언데드 3턴(회복이 피해로 바뀐다).', [{ type: 'status', status: 'undead', duration: 3 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadFoe' } })
   ], { grade: '3☆' }, { from: 9, weight: 5 });
 
   zombie('zc_carrier', '보균자', 90, '에너지 오염', '없음. 에너지를 갉아먹는다.', [
@@ -134,12 +138,14 @@ function defineZombies() {
 
   zombie('zc_necro', '네크로맨서', 130, '방벽·회복 봉인', '없음. 죽음을 다루는 자.', [
     self('zc_wardead', '사자의 방벽', '**', '필드의 좀비 전원에게 HP 보호막 60(턴마다 20 감소).', [{ type: 'zBarrier', amount: 60, decay: 20 }], ['shield', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'barrier' } }),
+    self('zc_march', '죽은 자의 행진', '***', '필드의 좀비 전원 언데드 2턴.', [{ type: 'zStatus', scope: 'field', status: 'undead', duration: 2 }], ['status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
     hit('zc_touch', '죽음의 손길', '**', '40D. 회복봉인 3턴.', [{ type: 'damage', amount: 40 }, { type: 'status', status: 'healSeal', duration: 3 }], ['damage', 'status'])
   ], { grade: '3☆' }, { from: 13, weight: 4 });
 
   zombie('zc_juggernaut', '거인', 320, '초중량 광역', '방어 25로 시작한다.', [
     hit('zc_crush', '분쇄', '***', '140D.', [{ type: 'damage', amount: 140 }]),
-    area('zc_tremor', '땅울림', '**', '적 전체 40D.', [{ type: 'zFieldHit', amount: 40 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
+    area('zc_tremor', '땅울림', '**', '적 전체 40D.', [{ type: 'zFieldHit', amount: 40 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
+    self('zc_unyield', '불굴', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } })
   ], { baseDefense: 30, grade: '4☆', speed: -1 }, { from: 14, weight: 4 });
 
   zombie('zc_hexer', '침묵의 현자', 120, '광역 능력치 초기화', '없음. 전장 전체의 힘을 지운다.', [
@@ -164,10 +170,12 @@ function defineZombies() {
 
   zombie('zc_plaguelord', '역병의 왕', 150, '광역 중독', '없음. 숨결이 곧 역병이다.', [
     area('zc_blight', '대역병', '**', '적 전체 20D. 독 3턴.', [{ type: 'zFieldHit', amount: 20, status: 'poison', duration: 3 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
-    hit('zc_festerbite', '부패의 이빨', '**', '50D. 독 2턴, 회복봉인 2턴.', [{ type: 'damage', amount: 50 }, { type: 'status', status: 'poison', duration: 2 }, { type: 'status', status: 'healSeal', duration: 2 }], ['damage', 'status'])
+    hit('zc_festerbite', '부패의 이빨', '**', '50D. 독 2턴, 언데드 2턴.', [{ type: 'damage', amount: 50 }, { type: 'status', status: 'poison', duration: 2 }, { type: 'status', status: 'undead', duration: 2 }], ['damage', 'status'])
   ], { grade: '4☆' }, { from: 12, weight: 4 });
 
   /* 웰러는 이미 있는 카드를 그대로 쓴다. 후반 층에서만 나오고, 깊을수록 자주 나온다. */
+  /* 플레이어블 캐릭터가 좀비가 되어 나온다. 어떤 캐릭터인지는 입장 때 정한다. */
+  ZOMBIE_TABLE.push({ id: PLAYABLE_ROW, from: 2, weight: depth => Math.min(14, 3 + depth * 0.6) });
   ZOMBIE_TABLE.push({ id: 'weller', from: 15, weight: depth => Math.min(12, 5 + (depth - 15) * 0.5) });
 
   const emoji = {
@@ -198,14 +206,6 @@ export const ZOMBIE_REGIONS = Object.freeze({
   slaughter: { name: '도살장', hue: 240, rgb: '255,96,104', blurb: '피 냄새를 쫓는 사냥꾼과 거구들.', ids: ['zc_butcher', 'zc_brute', 'zc_stalker', 'zc_runner', 'zc_hound'] },
   lab: { name: '연구소', hue: 160, rgb: '190,124,255', blurb: '실험체의 전기와 광역 기술.', ids: ['zc_shocker', 'zc_hexer', 'zc_howler', 'zc_juggernaut', 'zc_bloater'] }
 });
-/* 노드 종류. 효과는 boss-raid.js의 보상 처리가 맡는다. */
-export const ZOMBIE_NODE_TAGS = Object.freeze({
-  fight: { name: '소탕', weight: 5, desc: '지역의 좀비와 싸운다.' },
-  supply: { name: '보급', weight: 2, desc: '보급품 보상 3개 중 하나를 고른다.' },
-  camp: { name: '야영', weight: 2, desc: '생존 아군 전체 HP 50 회복, 필드 아군에게 에너지 1개씩.' },
-  elite: { name: '정예', weight: 2, desc: '이 층의 좀비가 전부 특수 강화를 단다. 희귀 이상이 포함된 보상 3택 1.' },
-  forge: { name: '대장간', weight: 1, desc: '생존 아군 전체 공격 +10. 능력치 초기화에 지워질 수 있다.' }
-});
 export function zombieRegionInfo(key) {
   const r = ZOMBIE_REGIONS[key];
   if (!r) return null;
@@ -213,29 +213,31 @@ export function zombieRegionInfo(key) {
   return { ...r, zombies: names };
 }
 const mapRng = (g, key) => new RNG(`${g.seed}:zc-map:${key}`);
-/* 한 층의 세 갈래. 시드와 층 번호만으로 정해져서 미리 보여 줄 수 있고 온라인에서도 같다. */
+/* 이웃 지형: 지도에서는 맞닿은 지형으로만 이어진다. 묘지-하수도-도살장-연구소-폐병원-묘지 순환. */
+const REGION_RING = ['graveyard', 'sewer', 'slaughter', 'lab', 'hospital'];
+const regionNeighbors = key => {
+  const i = REGION_RING.indexOf(key);
+  return [REGION_RING[(i + 4) % 5], REGION_RING[(i + 1) % 5]];
+};
+const regionsLinked = (a, b) => a === b || regionNeighbors(a).includes(b);
+/* floor층의 세 갈래 지형. 같은 갈래는 바로 앞 층의 지형을 그대로 잇거나 이웃 지형으로 서서히 바뀐다.
+   시드와 층 번호만으로 정해져서 미리 보여 줄 수 있고 온라인에서도 같다. */
 export function zombieCaveMapRow(g, floor) {
-  const rng = mapRng(g, `row:${floor}`),
-    regions = Object.keys(ZOMBIE_REGIONS),
-    tags = Object.keys(ZOMBIE_NODE_TAGS),
-    total = tags.reduce((n, k) => n + ZOMBIE_NODE_TAGS[k].weight, 0);
-  return [0, 1, 2].map(lane => {
-    const region = regions.splice(Math.floor(rng.next() * regions.length), 1)[0];
-    let roll = rng.next() * total,
-      tag = tags.at(-1);
-    for (const k of tags) {
-      roll -= ZOMBIE_NODE_TAGS[k].weight;
-      if (roll <= 0) {
-        tag = k;
-        break;
-      }
-    }
-    return { lane, region, tag };
-  });
+  let row = null;
+  const first = mapRng(g, 'start'),
+    pool = [...REGION_RING];
+  row = [0, 1, 2].map(lane => pool.splice(Math.floor(first.next() * pool.length), 1)[0]);
+  for (let f = 2; f <= floor; f++) {
+    const rng = mapRng(g, `row:${f}`);
+    row = row.map(region => rng.next() < 0.55 ? region : regionNeighbors(region)[rng.next() < 0.5 ? 0 : 1]);
+  }
+  return row.map((region, lane) => ({ lane, region }));
 }
-/* from 갈래에서 floor층의 어느 갈래로 갈 수 있나. 곧장 앞은 항상, 옆길은 일부만. */
+/* from 갈래에서 floor층의 어느 갈래로 갈 수 있나. 곧장 앞은 항상, 옆길은 지형이 이어질 때만. */
 export function zombieCaveReach(g, floor, from) {
-  return [0, 1, 2].filter(to => to === from || Math.abs(to - from) === 1 && mapRng(g, `edge:${floor}:${from}:${to}`).next() < 0.6);
+  const prev = zombieCaveMapRow(g, floor - 1),
+    next = zombieCaveMapRow(g, floor);
+  return [0, 1, 2].filter(to => to === from || Math.abs(to - from) === 1 && regionsLinked(prev[from].region, next[to].region));
 }
 /* 지도 화면용 요약: 지금 고를 층부터 앞으로 4층. edges[k][i]는 k번째 줄 i갈래에서 다음 줄로 이어지는 갈래들. */
 export function zombieCaveMapView(g) {
@@ -245,20 +247,20 @@ export function zombieCaveMapView(g) {
   return {
     floor,
     from: cave.lane,
+    here: cave.region || zombieCaveMapRow(g, Math.max(1, floor - 1))[cave.lane].region,
     reach: zombieCaveReach(g, floor, cave.lane),
     rows,
     edges: [0, 1, 2].map(k => [0, 1, 2].map(i => zombieCaveReach(g, floor + k + 1, i))),
     trail: [...(cave.trail || [])]
   };
 }
-/* 고른 노드로 들어선다. 지역과 갈래를 기억하고, 정예면 이 층 좀비를 모두 강화한다. */
+/* 고른 지형으로 들어선다. */
 export function zombieCaveEnterNode(g, node) {
   const cave = g.bossRaid.cave;
   cave.region = node.region;
   cave.lane = node.lane;
-  cave.trail = [...(cave.trail || []), { region: node.region, tag: node.tag, lane: node.lane }].slice(-10);
-  cave.elite = node.tag === 'elite';
-  log(g, `${ZOMBIE_REGIONS[node.region].name} 진입 · ${ZOMBIE_NODE_TAGS[node.tag].name}.`, 'turn');
+  cave.trail = [...(cave.trail || []), { region: node.region, lane: node.lane }].slice(-10);
+  log(g, `${ZOMBIE_REGIONS[node.region].name} 진입.`, 'turn');
 }
 
 /* ---------------------------------------------------------------- 던전 상태 */
@@ -279,7 +281,7 @@ export function zombieCaveSetup(g) {
   g.revealed.A = [];
   g.bossRaid.kind = Z_KIND;
   g.bossRaid.bossId = 'zombie-cave';
-  g.bossRaid.cave = { depth: 1, kills: 0, serial: 0, timers: A.field.map(() => null), bestDepth: 1, elite: false, trail: [], region: null, lane: 1 };
+  g.bossRaid.cave = { depth: 1, kills: 0, serial: 0, timers: A.field.map(() => null), bestDepth: 1, trail: [], region: null, lane: 1 };
   g.matchType = '좀비굴';
   spawnZombie(g, 0, 'zc_walker');
   spawnZombie(g, 1, 'zc_walker');
@@ -290,6 +292,12 @@ function tableWeight(row, depth) {
   const w = typeof row.weight === 'function' ? row.weight(depth) : row.weight;
   /* 초반 잡졸은 깊어질수록 완만하게 줄인다. */
   return row.id === 'zc_walker' ? Math.max(3, w - depth / 3) : w;
+}
+
+/* 좀비가 될 수 있는 플레이어블: 이미 좀비이거나 시간 계열·이차원 침입자는 뺀다. 깊을수록 높은 등급이 섞인다. */
+const playableGate = depth => depth < 6 ? 2 : depth < 10 ? 3 : depth < 14 ? 3.5 : depth < 20 ? 4 : 4.5;
+function playablePool(depth) {
+  return state_catalog_cards.CARDS.filter(c => !c.tags?.includes('zombie') && !c.tags?.includes('transdimensional-invader') && c.id !== 'timeora' && c.id !== 'red_timeora' && Number.parseFloat(String(c.grade)) <= playableGate(depth));
 }
 
 /* 지역의 대표 좀비는 조금 일찍 나온다. */
@@ -305,24 +313,35 @@ export function pickZombieId(g) {
   const rows = ZOMBIE_TABLE.filter(row => depth >= unlockDepth(row, cave.region)).map(row => {
     let w = tableWeight(row, depth);
     const region = ZOMBIE_REGIONS[cave.region];
-    if (region && row.id.startsWith('zc_')) w *= region.ids.includes(row.id) ? 3 : 0.35;
+    if (region && row.id.startsWith('zc_') && row.id !== PLAYABLE_ROW) w *= region.ids.includes(row.id) ? 3 : 0.35;
     if (onField.includes(row.id)) w *= 0.35;
     if (resetOnField && (row.id === 'zc_wight' || row.id === 'zc_hexer')) w = 0;
     return { id: row.id, w: Math.max(0, w) };
   }).filter(row => row.w > 0);
-  let roll = rng.next() * rows.reduce((n, row) => n + row.w, 0);
+  let roll = rng.next() * rows.reduce((n, row) => n + row.w, 0),
+    picked = rows.at(-1).id;
   for (const row of rows) {
     roll -= row.w;
-    if (roll <= 0) return row.id;
+    if (roll <= 0) {
+      picked = row.id;
+      break;
+    }
   }
-  return rows.at(-1).id;
+  if (picked !== PLAYABLE_ROW) return picked;
+  const pool = playablePool(depth).filter(c => !onField.includes(c.id));
+  return PLAYABLE_PREFIX + (pool.length ? rng.pick(pool).id : 'zc_walker');
 }
 
 function makeZombie(g, id) {
   const cave = g.bossRaid.cave,
     depth = cave.depth,
-    z = makeUnit(id, `zc${++cave.serial}`),
+    zombified = id.startsWith(PLAYABLE_PREFIX),
+    z = makeUnit(zombified ? id.slice(PLAYABLE_PREFIX.length) : id, `zc${++cave.serial}`),
     hp = Math.max(10, Math.round(card(z).maxHp * ZOMBIE_CAVE.hpScale(depth) / 10) * 10);
+  if (zombified) {
+    z.zombified = true;
+    z.name = `좀비 ${z.name}`;
+  }
   z.maxHp = hp;
   z.hp = hp;
   z.turnEndHp = hp;
@@ -343,8 +362,7 @@ const AFFIXES = Object.freeze({
 function applyAffix(g, z, depth) {
   const rng = new RNG(`${g.seed}:zc-affix:${z.uid}`),
     roll = rng.next();
-  /* 정예 구역: 이 층에서 입장하는 좀비는 전부 특수 강화를 단다. */
-  if (!g.bossRaid.cave.elite && roll >= ZOMBIE_CAVE.affixChance(depth)) return;
+  if (roll >= ZOMBIE_CAVE.affixChance(depth)) return;
   const key = rng.pick(Object.keys(AFFIXES));
   z.zcAffix = key;
   if (key === 'plated') z.shield = Number(z.shield || 0) + 10 * Math.round((30 + 4 * depth) / 10);
@@ -412,7 +430,6 @@ export function zombieCaveUnitDefeated(g, u) {
   const floor = zombieCaveFloorForKills(cave.kills);
   if (floor > cave.depth && aliveUnits(g.teams.P).length) {
     cave.depth = floor;
-    cave.elite = false;
     cave.bestDepth = Math.max(cave.bestDepth || 1, floor);
     log(g, `지하 ${floor}층 도달 · 처치 ${cave.kills}.`, 'turn');
     return true;
@@ -502,6 +519,11 @@ export function applyZombieEffect(g, actor, target, e, skill, ctx = {}) {
       for (const ally of ownField(g, t)) setAttack(g, ally, e.attack);
       return e.attack;
     }
+    case 'zStatus': {
+      const who = e.scope === 'field' ? ownField(g, t) : [actor];
+      for (const z of who) applyStatus(g, z, e.status, e.duration, actor);
+      return who.length;
+    }
     case 'zBarrier': {
       let total = 0;
       for (const ally of ownField(g, t)) total += addHpProtectionBarrier(g, ally, e.amount, actor.uid, 'standard', { decayPerTurn: e.decay });
@@ -532,6 +554,14 @@ export function zombieSkillAiScore({ g, u, tar, skill, profile }) {
       const fresh = friends.filter(z => Number(z.attackMod || 0) - Number(z.zcBaseAttack || 0) < 36).length;
       return fresh * 28 - 10;
     }
+    case 'undeadSelf': {
+      const fx = skill.effects.find(x => x.type === 'zStatus') || {},
+        who = fx.scope === 'field' ? friends : [u],
+        weak = who.filter(z => !(z.statuses?.undead > 0) && z.hp < z.maxHp * 0.55);
+      return weak.length * 90 - 30;
+    }
+    case 'undeadFoe':
+      return tar && !(tar.statuses?.undead > 0) ? 45 : -300;
     case 'barrier': {
       const bare = friends.filter(z => !(z.hpProtectionBarriers || []).length).length;
       return bare * 45 - 10;
