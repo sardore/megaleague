@@ -6,13 +6,11 @@ export const state_ui_invaders = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { systems } from "../runtime/systems.js";
 import { state_ui_battle_state } from "./battle-state.js";
-import { pictogramHTML, state_ui_cards } from "./cards.js";
+import { pictogramHTML } from "./cards.js";
 import { state_ui_deck } from "./deck.js";
 import { renderSetup, updateDeckSetup, state_ui_setup } from "./setup.js";
 import { characterTileClass, characterTileInner, morphTile, syncTileGrid, tileStarsHTML } from "./tiles.js";
 export function initializeUiInvaders() {
-  /* 제노사이더 시즌 인트로 · 초차원 포탈 · 전용 연출 보강 */
-  state_ui_cards.CARD_EMOJI_MAP.genocider = ["💣", "☠️"];
   for (let i = state_ui_deck.MEGA_SETUP_IDS.length - 1; i >= 0; i--) if (isInvaderCardId(state_ui_deck.MEGA_SETUP_IDS[i])) state_ui_deck.MEGA_SETUP_IDS.splice(i, 1);
   /**
    * 모든 덱 선택 화면이 공유하는 초차원 포탈 뷰.
@@ -166,8 +164,6 @@ export function initializeUiInvaders() {
     });
   })();
   if (state_ui_battle_state.$("#setup")?.classList.contains("active")) renderSetup(false);
-
-  /* ================= 온라인 대기실·침략자 포탈·동전 단일화 최종 보강 ================= */
 }
 export function isInvaderCardId(id) {
   const c = state_catalog_cards.CARDS.find(x => x.id === id);

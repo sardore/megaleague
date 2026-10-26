@@ -37,8 +37,6 @@ export function initializeFeaturesElixian() {
   });
   registerCardDefinition(state_features_elixian.ELIXIAN_CARD);
   state_ui_cards.CARD_EMOJI_MAP.elixian = ["🦋", "💗"];
-
-  /* 드래곤메모리 실행 경로와 효과 알림 대상 추적 최종 패치 */
 }
 export function elixianHealAmount(g, target, base) {
   let amount = Math.max(0, Math.round(Number(base) || 0)),

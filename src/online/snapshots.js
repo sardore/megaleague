@@ -311,6 +311,4 @@ export function applyAuthoritativeOnlineState(msg) {
 }
 export function initializeOnlineSnapshots() {
   for (const type of ["actionRequest", "commandAck", "authoritativeState", "stateRequest", "syncProbe"]) registerOnlineConnectionRoute(type, "online-action-admission", state_online_commands.OnlineActionAdmissionOwner.receive, 70);
-
-  /* ===================== 타임오러 4.5☆ / 운명의 시계 / 드래곤메모리 리워크 ===================== */
 }

@@ -1059,4 +1059,3 @@ export function openOnlineInvaderPortal() {
   renderOnlineInvaderPortal();
   document.getElementById("modal").classList.add("open");
 }
-/* ================= 온라인 자동매칭 실행 경로 근본 정리 r6 ================= */

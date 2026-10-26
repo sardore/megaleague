@@ -152,8 +152,6 @@ export function initializePresentationIntroductions() {
       showCardTooltip(el, true);
     }, true);
   })();
-
-  /* 타임오러 연속 특성·AI·온라인 상태 검증 보강 */
 }
 export function timeSyncContinuousTraitStates(g, reason = "운명의 시계 상태 갱신") {
   if (!g) return;

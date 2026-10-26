@@ -40,8 +40,6 @@ export function initializeFeaturesFoxious() {
     R: "W"
   };
   registerOnlineConnectionRoute("coinToss", "online-coin", handleOnlineCoinTossPacket, 40);
-
-  /* 엘릭시안 16th 4☆ + 드래곤메모리/복사 판정 보강 */
 }
 export function rawReqFromCost(cost) {
   const tokens = costTokens(cost),
