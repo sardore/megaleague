@@ -1244,6 +1244,15 @@ export function effectApply(g, actor, target, e, skill, ctx) {
         const dealt = dealDamage(g, actor, target, e, skill, ctx.sim);
         /* 반동: 실제로 가한 피해량의 일정 비율을 자신도 받는다(고정 피해). */
         if (e.recoilFraction > 0 && dealt > 0 && !actor.dead) nonAttackDamage(g, actor, Math.round(dealt * e.recoilFraction), `${skill.name} 반동`);
+        /* 흡수: 실제로 가한 피해량의 일정 비율을 10단위로 자신이 회복한다(피어나는생명과 같은 규칙). */
+        if (e.absorbFraction > 0 && dealt > 0 && !actor.dead) {
+          const got = heal(g, actor, Math.max(0, Math.round(dealt * e.absorbFraction / 10) * 10), actor, {
+            reason: "absorb-strike",
+            effectId: skill?.id || e.type,
+            sim: ctx.sim
+          });
+          log(g, `${actor.name}: ${skill.name} 흡수 · 실질 피해 ${dealt} → HP ${got} 회복.`, "heal");
+        }
         return dealt;
       }
     case "proportionalDamage":
@@ -1320,6 +1329,30 @@ export function effectApply(g, actor, target, e, skill, ctx) {
         });
         log(g, `${actor.name}: 추가 에너지 ${energyAmountText(amount)} 투입 → HP ${healed} 회복.`);
         return healed;
+      }
+    case "holyLight":
+      {
+        /* 상태이상을 모두 풀어 준 뒤, 추가로 투입한 W 에너지의 양 × perWhite 피해. */
+        const explicit = Array.isArray(ctx.extraEnergyPlan) ? ctx.extraEnergyPlan : null,
+          paid = explicit ? spendReq(actor, {
+            R: 0,
+            W: explicit.reduce((n, item) => n + (item?.c === "W" ? Number(item.a || 0) : 0), 0),
+            B: 0,
+            any: 0,
+            wb: 0
+          }) : spendReq(actor, {
+            R: 0,
+            W: Number(ctx.action?.extraEnergyAmount || 0),
+            B: 0,
+            any: 0,
+            wb: 0
+          }),
+          white = paid.reduce((sum, item) => sum + (item.c === "W" ? Number(item.a || 0) : 0), 0);
+        clearStatuses(g, target, actor);
+        log(g, `${actor.name}: 추가 W ${energyAmountText(white)} 투입.`);
+        return white > 0 && !target.dead ? dealDamage(g, actor, target, {
+          amount: Math.round(white * Number(e.perWhite || 0))
+        }, skill, ctx.sim) : 0;
       }
     case "selectedEnergyTransfer":
       return transferSelectedTargetEnergy(g, actor, target, ctx.action?.interactionPlan, e.count || 1);

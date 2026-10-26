@@ -50,6 +50,7 @@ export function initializeUiCards() {
     phantomMuner: ["🎩", "🃏"],
     magSnail: ["♨️", "🐌"],
     thornJellyfish: ["⚡", "🫧"],
+    sunflower: ["🌻"],
     megaWing: ["💨", "🪽"],
     sweetna: ["🍬"],
     iruma: ["🌼", "🌱"],

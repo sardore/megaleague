@@ -795,6 +795,20 @@ export function initializeCatalogCards() {
   })], {
     grade: "2☆",
     shield: 30
+  }), state_catalog_cards.C("sunflower", "해바라기", 110, "흡수 딜러", "메가리그", "없음.", [state_catalog_cards.S("parasiteBloom", "기생초", "W*", "60D. 준 피해량의 50%를 흡수(10단위).", "enemy", [{
+    type: "damage",
+    amount: 60,
+    absorbFraction: 0.5
+  }], ["damage", "heal"], {
+    vfxTheme: "bloodSuck"
+  }), state_catalog_cards.S("holyLight", "성스러운빛", "*+", "대상의 상태이상을 모두 해제한 뒤, 추가로 투입한 W 에너지 1개당 50D.", "enemy", [{
+    type: "holyLight",
+    perWhite: 50
+  }], ["damage", "status", "variableCost"], {
+    extraAnyEnergy: true,
+    extraEnergyColor: "W"
+  })], {
+    grade: "2☆"
   }), state_catalog_cards.C("megaWing", "메가윙", 60, "초고속 약탈 딜러", "메가리그", "없음.", [state_catalog_cards.S("megaGlide", "메가글라이드", "WW", "80D. 실드가 있을 때만 사용. 대상의 원하는 에너지 하나를 골라 강탈.", "enemy", [{
     type: "damage",
     amount: 80
