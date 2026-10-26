@@ -1542,8 +1542,7 @@ function showBossDeckPicker(count = 4, online = false) {
         visible = button.closest("[data-boss-card]")?.dataset.bossCard,
         next = otherFormId(visible);
       if (!next) return;
-      BossLobbyApplication.changeForm(group, next, count, online);
-      showBossDeckPicker(count, online);
+      if (BossLobbyApplication.changeForm(group, next, count, online)) draw();
     });
     const bossPlusContext = {
       surface: online ? "boss-coop-lobby" : "boss-composition",
