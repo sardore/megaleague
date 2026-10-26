@@ -268,5 +268,15 @@ try{
   });
   assert.equal(r.dmg>0,true);assert.equal(r.healed,Math.round(r.dmg*0.5/10)*10);assert.equal(r.cured,0);assert.equal(r.holy>0,true,JSON.stringify(r));
  });
+ await check('zombies stop spamming cheap skills: they save energy for a heavy skill or fire it, unless they are about to die',async page=>{
+  const r=await page.evaluate(()=>{
+   const g=zombieFixture('thrift');probe.battle.game=g;
+   g.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(g,0,'zc_runner');
+   const pick=(energy,hp)=>{z.energy=energy.map((c,i)=>({c,a:1,energyId:'e'+i}));z.hp=hp;const acts=Megaleague.legalActions(g,'A',0);const a=Megaleague.chooseAI(g,'A',0,true);return a?(a.type==='skill'?a.skill:a.type):null;};
+   const full=z.maxHp;
+   return{poor:pick(['R'],full),rich:pick(['R','R','R'],full),dying:pick(['R'],Math.floor(full*0.3))};
+  });
+  assert.equal(r.poor,'gather',JSON.stringify(r));assert.equal(r.rich,'zc_frenzy',JSON.stringify(r));assert.equal(r.dying,'zc_claws',JSON.stringify(r));
+ });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);
