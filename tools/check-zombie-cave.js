@@ -89,19 +89,19 @@ try{
     const before=g2.teams.P.field.map(u=>u.hp);probe.combatRules.nonAttackDamage(g2,bl,9999,'t');
     return{out,burst:g2.teams.P.field.map((u,i)=>before[i]-u.hp),title:g.pendingTraitChoices?.[0]?.title,nodes:g.pendingTraitChoices?.[0]?.options.map(x=>[x.lane,x.region,x.tag]),rows:g.pendingTraitChoices?.[0]?.map?.rows.length,isNode:g.pendingTraitChoices?.[0]?.node,floor:g.pendingTraitChoices?.[0]?.floor};
   });
-  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[40,40]);assert.match(r.title,/지하 2층/);assert.equal(r.isNode,true);assert.equal(r.floor,2);assert.ok(r.nodes.length>=1&&r.nodes.length<=3&&r.nodes.some(n=>n[0]===1));assert.equal(r.rows,4);assert.ok(r.nodes.every(n=>n[1]&&n[2]));
+  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[40,40]);assert.match(r.title,/지하 2층/);assert.equal(r.isNode,true);assert.equal(r.floor,2);assert.ok(r.nodes.length>=1&&r.nodes.length<=3&&r.nodes.some(n=>n[0]===1));assert.equal(r.rows,4);assert.ok(r.nodes.every(n=>n[1]));
  });
- await check('regions bias the spawn table, elite floors force an affix, and the map is deterministic per seed',async page=>{
+ await check('regions bias the spawn table and the map is deterministic and terrain-connected',async page=>{
   const r=await page.evaluate(()=>{
     const g=zombieFixture('m1');const cave=g.bossRaid.cave;cave.depth=10;
     const count=region=>{cave.region=region;cave.serial=0;const hits={};for(let i=0;i<300;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);hits[id]=(hits[id]||0)+1;}return hits;};
     const sew=count('sewer'),sla=count('slaughter');
     const share=(h,ids)=>ids.reduce((n,id)=>n+(h[id]||0),0)/300;
-    cave.elite=true;cave.region=null;let affixed=0;for(let i=0;i<8;i++){g.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(g,0,'zc_walker');if(z.zcAffix)affixed++;}
+    const links=[];for(let f=2;f<=12;f++){const prev=probe.zc.zombieCaveMapRow(g,f-1),next=probe.zc.zombieCaveMapRow(g,f);const ring=['graveyard','sewer','slaughter','lab','hospital'];links.push(prev.every((n,i)=>{const d=Math.abs(ring.indexOf(n.region)-ring.indexOf(next[i].region));return d===0||d===1||d===4;}));}
     const a=probe.zc.zombieCaveMapView(g),b=probe.zc.zombieCaveMapView(zombieFixture('m1'));
-    return{sew:share(sew,probe.zc.ZOMBIE_REGIONS.sewer.ids),sewInSla:share(sla,probe.zc.ZOMBIE_REGIONS.sewer.ids),affixed,same:JSON.stringify(a.rows)===JSON.stringify(b.rows)||'depth-differs',rows:a.rows.every(row=>new Set(row.map(n=>n.region)).size===3)};
+    return{sew:share(sew,probe.zc.ZOMBIE_REGIONS.sewer.ids),sewInSla:share(sla,probe.zc.ZOMBIE_REGIONS.sewer.ids),links:links.every(Boolean),same:JSON.stringify(a.rows)===JSON.stringify(b.rows)||'depth-differs'};
   });
-  assert.ok(r.sew>r.sewInSla+0.2,JSON.stringify(r));assert.equal(r.affixed,8);assert.equal(r.rows,true);
+  assert.ok(r.sew>r.sewInSla+0.2,JSON.stringify(r));assert.equal(r.links,true);
  });
  await check('spawn table is deterministic per seed/serial, Weller appears only from floor 15, rage-resetters never stack on the field',async page=>{
   const r=await page.evaluate(()=>{

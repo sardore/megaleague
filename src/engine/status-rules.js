@@ -1,7 +1,7 @@
 import { card } from './entities.js';
 
 export function isZombie(unit) {
-  return !!unit && card(unit).tags?.includes('zombie');
+  return !!unit && (!!unit.zombified || !!card(unit).tags?.includes('zombie'));
 }
 export function undeadPreventsDeath(unit) {
   return isZombie(unit) && Number(unit.statuses?.undead || 0) > 0;
