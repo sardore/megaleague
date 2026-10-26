@@ -1,6 +1,8 @@
 import { raidCardForUnit, formatRaidCardTooltip } from "../features/boss-raid.js";
 import { characterSpriteHTML } from "./character-sprites.js";
 import { TimerManager } from "../runtime/timers.js";
+import { render } from "./payment.js";
+import { zombieDoorHTML } from "./zombie-door.js";
 import { undeadAuraHTML } from '../presentation/weller.js';
 
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
@@ -12,7 +14,7 @@ import { state_catalog_cards } from "../catalog/cards.js";
 import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
 import { card, cardDefinition, cardHasCapability, isTargetMagnet, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
-import { zombieCaveAffixBadge, zombieCaveBadge, zombieCaveSlotInfo } from "../features/zombie-cave.js";
+import { zombieCaveAffixBadge, zombieCaveBadge, zombieCaveSlotInfo, zombieCaveDoorInfo } from "../features/zombie-cave.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
 import { shieldLayerHTML } from "../features/foxious.js";
 import { reactiveEnergyAmount } from "../features/genocider.js";
@@ -449,7 +451,11 @@ export const DeathPresentationOwner = (() => {
         firstDead.delete(u.uid);
         return null;
       }
-      if (!firstDead.has(u.uid)) firstDead.set(u.uid, seenAlive.has(u.uid) ? now : -Infinity);
+      if (!firstDead.has(u.uid)) {
+        firstDead.set(u.uid, seenAlive.has(u.uid) ? now : -Infinity);
+        /* 연출이 끝나면 한 번 더 그려서 빈 칸(입장 카운트다운·문)이 제때 나타나게 한다. */
+        if (seenAlive.has(u.uid)) setTimeout(() => { if (state_ui_battle_state.game === g) render(); }, DEATH_FADE_MS + 40);
+      }
       const t = firstDead.get(u.uid);
       return t === -Infinity || now - t >= DEATH_FADE_MS ? null : now - t;
     }
@@ -459,7 +465,9 @@ export const DeathPresentationOwner = (() => {
 const lastEntranceCount = new Map();
 function emptySlotHTML(team, slot) {
   const g = state_ui_battle_state.game,
-    info = zombieCaveSlotInfo(g, team, slot);
+    door = zombieCaveDoorInfo(g, team, slot),
+    info = door ? null : zombieCaveSlotInfo(g, team, slot);
+  if (door) return zombieDoorHTML(g, door);
   if (!info) return `<div class="card muted"><h3>빈 슬롯</h3><p>이 슬롯의 차례는 계속 순환합니다.</p></div>`;
   const key = `${g.matchId}:${slot}`,
     ticked = lastEntranceCount.has(key) && lastEntranceCount.get(key) !== info.remaining;

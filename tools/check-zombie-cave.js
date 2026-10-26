@@ -80,36 +80,64 @@ try{
   });
   assert.deepEqual(r.single,[0,40]);assert.deepEqual(r.field,[[0,0],[0,0]]);
  });
- await check('every third kill descends a floor and queues a reward choice; death burst hurts the whole party',async page=>{
+ await check('clearing a zone turns the two enemy slots into doors; choosing one starts a much harder zone; death burst hurts the whole party',async page=>{
   const r=await page.evaluate(()=>{
-    const g=zombieFixture();const out=[];
-    for(let i=0;i<3;i++){const z=g.teams.A.field[i%2];if(!z||z.dead){g.round+=9;probe.execution.checkWinner(g);}
-      probe.combatRules.nonAttackDamage(g,g.teams.A.field[i%2],9999,'t');out.push([g.bossRaid.cave.kills,g.bossRaid.cave.depth,g.pendingTraitChoices?.length||0]);}
+    const g=zombieFixture('z1');const cave=g.bossRaid.cave;cave.zoneSize=3;
+    const kill=i=>probe.combatRules.nonAttackDamage(g,g.teams.A.field[i],9999,'t');
+    kill(0);const mid={cleared:cave.cleared,pending:g.pendingTraitChoices.length,timer:cave.timers[0]!=null};
+    g.round+=9;probe.execution.checkWinner(g);const refill=g.teams.A.field[0];const third=refill&&!refill.dead;
+    kill(1);if(third)kill(0);else{g.round+=9;probe.execution.checkWinner(g);kill(0);}
+    const left=g.teams.A.field.filter(u=>u&&!u.dead).length;
+    const after={cleared:cave.cleared,spawned:cave.spawned,size:cave.zoneSize,left,kinds:g.pendingTraitChoices.map(q=>q.door?'door':'reward'),timers:cave.timers.every(t=>t==null)};
+    const door=g.pendingTraitChoices.find(q=>q.door);
+    g.round+=20;probe.execution.checkWinner(g);const stillEmpty=g.teams.A.field.every(u=>!u||u.dead);
+    const regions=door.options.map(o=>o.region);
+    const hp0=probe.zc.zombieCaveHpScale?1:null;
+    probe.zc.zombieCaveEnterZone(g,regions[0]);
     const g2=zombieFixture('b',['mole','boar','mantis','mushroom']);g2.teams.A.field[0].dead=true;const bl=probe.zc.spawnZombie(g2,0,'zc_bloater');
     const before=g2.teams.P.field.map(u=>u.hp);probe.combatRules.nonAttackDamage(g2,bl,9999,'t');
-    return{out,burst:g2.teams.P.field.map((u,i)=>before[i]-u.hp),title:g.pendingTraitChoices?.[0]?.title,nodes:g.pendingTraitChoices?.[0]?.options.map(x=>[x.lane,x.region,x.tag]),rows:g.pendingTraitChoices?.[0]?.map?.rows.length,isNode:g.pendingTraitChoices?.[0]?.node,floor:g.pendingTraitChoices?.[0]?.floor};
+    return{mid,after,stillEmpty,regions,entered:{depth:cave.depth,region:cave.region,size:cave.zoneSize,spawned:cave.spawned,cleared:cave.cleared,field:g.teams.A.field.map(u=>u&&!u.dead)},hpScale:probe.zc.ZOMBIE_CAVE.hpScale(2),atkScale:probe.zc.ZOMBIE_CAVE.attackScale(2),burst:g2.teams.P.field.map((u,i)=>before[i]-u.hp),floor:door.floor};
   });
-  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[40,40]);assert.match(r.title,/지하 2층/);assert.equal(r.isNode,true);assert.equal(r.floor,2);assert.ok(r.nodes.length>=1&&r.nodes.length<=3&&r.nodes.some(n=>n[0]===1));assert.equal(r.rows,4);assert.ok(r.nodes.every(n=>n[1]));
+  assert.equal(r.mid.cleared,false);assert.equal(r.mid.pending,0);assert.equal(r.mid.timer,true);
+  assert.equal(r.after.cleared,true);assert.equal(r.after.spawned,3);assert.equal(r.after.left,0);assert.deepEqual(r.after.kinds,['reward','door']);assert.equal(r.after.timers,true);assert.equal(r.stillEmpty,true);
+  assert.equal(r.regions.length,2);assert.notEqual(r.regions[0],r.regions[1]);
+  assert.deepEqual(r.entered,{depth:2,region:r.regions[0],size:5,spawned:2,cleared:false,field:[true,true]});
+  assert.ok(r.hpScale>=1.2&&r.atkScale>=10);assert.deepEqual(r.burst,[40,40]);
  });
- await check('regions bias the spawn table and the map is deterministic and terrain-connected',async page=>{
+ await check('doors lead only to the current terrain or a neighbouring one and are deterministic per seed',async page=>{
   const r=await page.evaluate(()=>{
-    const g=zombieFixture('m1');const cave=g.bossRaid.cave;cave.depth=10;
-    const count=region=>{cave.region=region;cave.serial=0;const hits={};for(let i=0;i<300;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);hits[id]=(hits[id]||0)+1;}return hits;};
+    const ring=['graveyard','sewer','slaughter','lab','hospital'],linked=(a,b)=>{const d=Math.abs(ring.indexOf(a)-ring.indexOf(b));return d===0||d===1||d===4;};
+    let ok=true,same=true;
+    for(let n=0;n<40;n++){const g=zombieFixture('d'+n);const cave=g.bossRaid.cave;cave.depth=1+n%7;cave.region=ring[n%5];const a=probe.zc.zombieCaveDoorRegions(g),b=probe.zc.zombieCaveDoorRegions(g);if(!a.every(x=>linked(cave.region,x))||a[0]===a[1])ok=false;if(a.join()!==b.join())same=false;}
+    return{ok,same};
+  });
+  assert.equal(r.ok,true);assert.equal(r.same,true);
+ });
+ await check('regions bias the spawn table',async page=>{
+  const r=await page.evaluate(()=>{
+    const g=zombieFixture('m1');const cave=g.bossRaid.cave;cave.depth=5;
+    const count=region=>{cave.region=region;const hits={};for(let i=0;i<300;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);hits[id]=(hits[id]||0)+1;}return hits;};
     const sew=count('sewer'),sla=count('slaughter');
     const share=(h,ids)=>ids.reduce((n,id)=>n+(h[id]||0),0)/300;
-    const links=[];for(let f=2;f<=12;f++){const prev=probe.zc.zombieCaveMapRow(g,f-1),next=probe.zc.zombieCaveMapRow(g,f);const ring=['graveyard','sewer','slaughter','lab','hospital'];links.push(prev.every((n,i)=>{const d=Math.abs(ring.indexOf(n.region)-ring.indexOf(next[i].region));return d===0||d===1||d===4;}));}
-    const a=probe.zc.zombieCaveMapView(g),b=probe.zc.zombieCaveMapView(zombieFixture('m1'));
-    return{sew:share(sew,probe.zc.ZOMBIE_REGIONS.sewer.ids),sewInSla:share(sla,probe.zc.ZOMBIE_REGIONS.sewer.ids),links:links.every(Boolean),same:JSON.stringify(a.rows)===JSON.stringify(b.rows)||'depth-differs'};
+    return{sew:share(sew,probe.zc.ZOMBIE_REGIONS.sewer.ids),sewInSla:share(sla,probe.zc.ZOMBIE_REGIONS.sewer.ids)};
   });
-  assert.ok(r.sew>r.sewInSla+0.2,JSON.stringify(r));assert.equal(r.links,true);
+  assert.ok(r.sew>r.sewInSla+0.2,JSON.stringify(r));
  });
- await check('spawn table is deterministic per seed/serial, Weller appears only from floor 15, rage-resetters never stack on the field',async page=>{
+ await check('deeper zones field more zombies and make dangerous kinds more likely',async page=>{
+  const r=await page.evaluate(()=>{
+    const Z=probe.zc.ZOMBIE_CAVE;const g=zombieFixture('dg');const cave=g.bossRaid.cave;
+    const danger=depth=>{cave.depth=depth;cave.region=null;let n=0;for(let i=0;i<500;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);if(['zc_juggernaut','zc_plaguelord','zc_hexer','zc_necro','zc_butcher','weller'].includes(id)||id.startsWith('zp:'))n++;}return n/500;};
+    return{s:[1,3,6,12].map(Z.zoneSize),early:danger(2),late:danger(9)};
+  });
+  assert.deepEqual(r.s,[4,6,9,12]);assert.ok(r.late>r.early+0.15,JSON.stringify(r));
+ });
+ await check('spawn table is deterministic per seed/serial, Weller appears only from zone 8, rage-resetters never stack on the field',async page=>{
   const r=await page.evaluate(()=>{
     const pick=(depth,serial,seed='s')=>{const g=zombieFixture(seed);g.bossRaid.cave.depth=depth;g.bossRaid.cave.serial=serial;return probe.zc.pickZombieId(g);};
     const same=[0,1,2,3,4].every(n=>pick(8,n)===pick(8,n));
     const early=new Set(),late=new Set();
-    for(let n=0;n<400;n++){early.add(pick(14,n,'a'+n));late.add(pick(20,n,'b'+n));}
-    const g=zombieFixture('r');g.bossRaid.cave.depth=20;g.teams.A.field[0].card='zc_wight';
+    for(let n=0;n<400;n++){early.add(pick(7,n,'a'+n));late.add(pick(10,n,'b'+n));}
+    const g=zombieFixture('r');g.bossRaid.cave.depth=10;g.teams.A.field[0].card='zc_wight';
     let stacked=false;for(let n=0;n<200;n++){g.bossRaid.cave.serial=n;const id=probe.zc.pickZombieId(g);if(id==='zc_wight'||id==='zc_hexer')stacked=true;}
     return{same,earlyWeller:early.has('weller'),lateWeller:late.has('weller'),kinds:late.size,stacked};
   });
