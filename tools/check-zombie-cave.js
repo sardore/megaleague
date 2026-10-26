@@ -131,12 +131,12 @@ try{
   });
   assert.deepEqual(r.s,[4,6,9,12]);assert.ok(r.late>r.early+0.15,JSON.stringify(r));
  });
- await check('spawn table is deterministic per seed/serial, Weller appears only from zone 8, rage-resetters never stack on the field',async page=>{
+ await check('spawn table is deterministic per seed/serial, Weller appears only from zone 6, rage-resetters never stack on the field',async page=>{
   const r=await page.evaluate(()=>{
     const pick=(depth,serial,seed='s')=>{const g=zombieFixture(seed);g.bossRaid.cave.depth=depth;g.bossRaid.cave.serial=serial;return probe.zc.pickZombieId(g);};
     const same=[0,1,2,3,4].every(n=>pick(8,n)===pick(8,n));
     const early=new Set(),late=new Set();
-    for(let n=0;n<400;n++){early.add(pick(7,n,'a'+n));late.add(pick(10,n,'b'+n));}
+    for(let n=0;n<400;n++){early.add(pick(5,n,'a'+n));late.add(pick(10,n,'b'+n));}
     const g=zombieFixture('r');g.bossRaid.cave.depth=10;g.teams.A.field[0].card='zc_wight';
     let stacked=false;for(let n=0;n<200;n++){g.bossRaid.cave.serial=n;const id=probe.zc.pickZombieId(g);if(id==='zc_wight'||id==='zc_hexer')stacked=true;}
     return{same,earlyWeller:early.has('weller'),lateWeller:late.has('weller'),kinds:late.size,stacked};
@@ -218,8 +218,8 @@ try{
    let own=0,other=0,boss45=0;
    for(let i=0;i<600;i++){cave.serial=i;cave.region='sewer';const id=probe.zc.pickZombieId(g);if(!id.startsWith('zp:'))continue;const cid=id.slice(3);if(regions.sewer.playables.includes(cid))own++;else other++;if(['huve','awakenedIruma'].includes(cid))boss45++;}
    const run=(depth)=>{const h=zombieFixture('boss'+depth);const c=h.bossRaid.cave;c.depth=depth;c.region='slaughter';c.zoneSize=4;c.spawned=3;h.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(h,0);return{card:z.card,boss:!!z.zcBoss,hp:z.maxHp,base:probe.catalog.CARDS.find(x=>x.id===z.card)?.maxHp};};
-   const early=run(9),late=run(12);
-   return{unassigned,bad,themed:own>other,boss45,earlyBoss:early.boss,lateBoss:late.boss,lateCard:late.card,lateDouble:late.hp>=Math.round(late.base*2*(1+0.2*11)/10)*10-10};
+   const early=run(5),late=run(12);
+   return{unassigned,bad,themed:own>other,boss45,earlyBoss:early.boss,lateBoss:late.boss,lateCard:late.card,lateDouble:late.hp>=Math.round(late.base*2*(1+0.3*11)/10)*10-10};
   });
   assert.deepEqual(r,{unassigned:[],bad:[],themed:true,boss45:0,earlyBoss:false,lateBoss:true,lateCard:'huve',lateDouble:true});
  });
@@ -242,11 +242,11 @@ try{
    const make=(boon)=>{const g=zombieFixture('boon-'+boon);const c=g.bossRaid.cave;c.depth=8;c.cleared=true;g.teams.A.field.forEach(u=>{u.dead=true;});if(boon)probe.zc.zombieCaveAddBoon(g,boon);probe.zc.zombieCaveEnterZone(g,'sewer');return{g,c};};
    const t=make('torch'),plain=make('');
    const torchZ=t.g.teams.A.field.filter(u=>u&&!u.dead);
-   const b=make('barricade');const z=b.g.teams.A.field[0];b.g.round=3;probe.combatRules.nonAttackDamage(b.g,z,9999,'t');
+   const b=make('barricade');const z=b.g.teams.A.field[0];b.g.round=3;z.shield=0;z.hp=1;probe.combatRules.nonAttackDamage(b.g,z,9999,'t');
    const slot=probe.zc.zombieCaveSlotInfo(b.g,'A',0);
-   const next=make('');const nz=next.g.teams.A.field[0];next.g.round=3;probe.combatRules.nonAttackDamage(next.g,nz,9999,'t');
+   const next=make('');const nz=next.g.teams.A.field[0];next.g.round=3;nz.shield=0;nz.hp=1;probe.combatRules.nonAttackDamage(next.g,nz,9999,'t');
    const lateShare=depth=>{let late=0,n=0;for(let i=0;i<300;i++){const g=zombieFixture('door'+i);const c=g.bossRaid.cave;c.depth=depth;c.region='sewer';for(const k of probe.zc.zombieCaveDoorRegions(g)){n++;if(probe.zc.ZOMBIE_REGIONS[k].phase==='late')late++;}}return late/n;};
-   return{torchRage:torchZ.every(u=>u.zcRageAfter===Z.rageAfterTurns+4),torchNoAffix:torchZ.every(u=>!u.zcAffix),plainRage:plain.g.teams.A.field.every(u=>!u||!u.zcRageAfter||u.zcRageAfter!==Z.rageAfterTurns+4),barricade:slot.rounds-probe.zc.ZOMBIE_CAVE.respawnRounds(8),boonsSpent:t.c.nextBoons.torch===0&&t.c.boons.torch===1,shallowLate:lateShare(1),deepLate:lateShare(14)};
+   return{torchRage:torchZ.every(u=>u.zcRageAfter===Z.rageAfterTurns+4),torchNoAffix:torchZ.every(u=>!u.zcAffix),plainRage:plain.g.teams.A.field.every(u=>!u||!u.zcRageAfter||u.zcRageAfter!==Z.rageAfterTurns+4),barricade:slot?.rounds-probe.zc.ZOMBIE_CAVE.respawnRounds(8),boonsSpent:t.c.nextBoons.torch===0&&t.c.boons.torch===1,shallowLate:lateShare(1),deepLate:lateShare(14)};
   });
   const J=JSON.stringify(r);assert.equal(r.torchRage,true,J);assert.equal(r.torchNoAffix,true,J);assert.equal(r.barricade,2,J);assert.equal(r.boonsSpent,true,J);assert.ok(r.deepLate>r.shallowLate+0.2,JSON.stringify(r));
  });
