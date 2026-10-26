@@ -25,10 +25,6 @@ export function initializeAiSpecialists() {
 
   /* 타임오러는 초기 덱 목록 렌더 이후 등록되므로 현재 선택창을 한 번 갱신한다. */
   if (document.querySelector('#setup')?.classList.contains('active')) renderSetup(false);
-
-  /* 선택형 코스트(RorB/WorB 등)는 문자 선택이 아니라 실제 에너지 토큰으로 결제한다. */
-
-  /* ===== 온라인 탭 복귀 복구·채팅·동전 면 구분·폭시어스 리워크 ===== */
 }
 export function actionHeuristic(g, t, s, a) {
   const oldTimeGame = state_engine_actions.timeTraitGame;

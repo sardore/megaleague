@@ -20,7 +20,6 @@ import { state_ui_deck } from "../ui/deck.js";
 import { dispatchPlayerSkill } from "../ui/payment.js";
 import { state_ui_targeting } from "../ui/targeting.js";
 export function initializeFeaturesDragonMemory() {
-  /* 드래곤메모리 실행 경로와 효과 알림 대상 추적 최종 패치 */
   systems.DEBUG_BATTLE_EVENTS = false;
   state_features_dragon_memory.dmActionSerial = 0;
   state_features_dragon_memory.dmEffectSerial = 0;
@@ -29,12 +28,6 @@ export function initializeFeaturesDragonMemory() {
   state_features_dragon_memory.dmExecutingActionIds = new Set();
   state_features_dragon_memory.dmShownEffectEventIds = new Set();
   state_ui_action_panel.ActionRenderEngine.registerDecorator("dragon-memory", 500, ctx => decorateDragonMemoryActions(ctx?.viewModel));
-
-  /* 대상 선택 후에도 반드시 플레이어가 에너지 아이콘을 직접 골라 결제한다. */
-
-  /* 실행 직전 인스턴스·대상·결제·중복 여부를 검증한다. */
-
-  /* 화면에 내부 오류 문자열을 노출하지 않는다. */
 
   document.querySelector("#closeModal")?.addEventListener("click", () => {
     if (state_features_dragon_memory.dmPendingFlow && !state_features_dragon_memory.dmPendingFlow.executing) {
@@ -46,11 +39,6 @@ export function initializeFeaturesDragonMemory() {
       });
     }
   });
-
-  /* ================================================================
-     제노사이더 17th 4☆ · 엘릭시안 상시 회복증폭 제거 · 온라인 자동 매칭/탈주
-     현재 파일의 기존 구조를 유지한 확장 패치
-     ================================================================ */
 }
 export function dmDebug(label, payload = {}) {
   if (!systems.DEBUG_BATTLE_EVENTS) return;
@@ -88,12 +76,6 @@ export function dmFieldEntity(g, uid) {
   }
   return null;
 }
-
-/* 카드 인스턴스 DOM에 고유 entityId와 전용 팝업 레이어를 부여한다. */
-
-/* 이름·슬롯·현재 턴 추측을 완전히 제거한다. */
-
-/* 로그로 수신자를 재추측하지 않고 실제 상태 변경 함수에서 직접 이벤트를 만든다. */
 
 /* 카드 데이터의 dragon 태그만 사용한다. 폭시어스는 기존 드래곤 분류를 데이터에 명시한다. */
 export function dmIsDragonCard(c) {

@@ -724,7 +724,6 @@ export function specDecorateBattle(data = null) {
   if (title) title.textContent = state_ui_battle_state.game?.winner ? "경기 종료" : "관전 중";
   const hint = document.getElementById("actionHint");
   if (hint) hint.textContent = "읽기 전용 관전 · 상단 시점 버튼으로 양 진영을 전환할 수 있으며 채팅은 사용할 수 있습니다.";
-  /* action-panel visibility is committed only by ActionPanelConvergenceOwner. */
 }
 function specApplySnapshot(data) {
   const first = !document.body.classList.contains("spectator-mode") || state_ui_battle_state.game?.mode !== "spectator";

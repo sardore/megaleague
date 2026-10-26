@@ -46,14 +46,12 @@ export function initializeFeaturesGenocider() {
     tags: ["transdimensional-invader"]
   });
   registerCardDefinition(state_features_genocider.GENOCIDER_CARD);
-  state_ui_cards.CARD_EMOJI_MAP.genocider = ["◼", "✦"];
+  state_ui_cards.CARD_EMOJI_MAP.genocider = ["💣", "☠️"];
 
   /* R49 generic reactive-energy trait lifecycle.
      A card opts in only through card.reactiveEnergyMaxHp; mutation owners never know card ids. */
   state_features_genocider.reactiveEnergyCurrentGame = null;
   state_ui_action_panel.ActionRenderEngine.registerDecorator("genocider", 400, () => decorateGenociderActions());
-
-  /* ===================== legacy matchmaking application compatibility ===================== */
 }
 export function allReactiveEnergyUnits(g) {
   if (!g?.teams) return [];

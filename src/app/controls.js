@@ -50,11 +50,6 @@ export function initializeAppControls() {
   state_ui_battle_state.$$('[data-nav]').forEach(x => x.onclick = () => state_ui_results.NavigationApplication.request(x.dataset.nav));
   installCardTooltipInteractions();
   setLeague("mega");
-  /* Invite-link auto join is owned once by canonical OnlineRuntime after initialization. */
-  /* ─────────────────────────────────────────────────────────────
-     10th~12th 4☆: 이터너 · 톡시어스 · 아비게이트
-     기존 엔진 위에 얹는 확장 계층. 새 전투 시스템은 만들지 않는다.
-  ───────────────────────────────────────────────────────────── */
 }
 export function setBattleLogOpen(open) {
   const logBox = state_ui_battle_state.$("#log"),

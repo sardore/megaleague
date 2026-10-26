@@ -674,4 +674,3 @@ export function startOnlineRoomBattleOnce() {
     return false;
   }
 }
-/* ================= 온라인 턴 권위 동기화·재전송 근본 보강 r7 ================= */

@@ -343,9 +343,6 @@ export function legalActions(g, t, s) {
     state_engine_actions.timeTraitGame = previous;
   }
 }
-export function basicTargets(g, t, s, u, sk) {
-  return resolveSkillTargets(g, t, s, u, sk);
-}
 export function listCostVariantActions(g, t, s) {
   let a = [],
     u = unitAt(g, t, s);

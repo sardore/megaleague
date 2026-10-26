@@ -1609,4 +1609,3 @@ export function effectApply(g, actor, target, e, skill, ctx) {
       }
   }
 }
-/* Phase 9: result pipelines keep post-processing iterative instead of nesting public owners. */

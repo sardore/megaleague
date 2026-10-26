@@ -508,4 +508,3 @@ export function onlineSafeSend(packet) {
 export function onlineCurrentMatchId() {
   return String(state_ui_deck.p2p?.matchId || state_ui_battle_state.game?.matchId || state_ui_deck.p2p?.roomCode || "online");
 }
-// 온라인도 로컬과 동일한 리그/등급 구성 owner를 사용한다.
