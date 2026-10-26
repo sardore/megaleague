@@ -205,11 +205,11 @@ export function zombieCaveCards() {
 
 /* 지역: 입장하는 좀비의 구성과 배경 색이 달라진다. */
 export const ZOMBIE_REGIONS = Object.freeze({
-  graveyard: { name: '공동묘지', hue: 0, rgb: '143,227,106', blurb: '묻힌 자들이 깨어난다. 식시귀와 사제가 많다.', ids: ['zc_walker', 'zc_ghoul', 'zc_wight', 'zc_necro', 'zc_hound'] },
-  sewer: { name: '하수도', hue: 300, rgb: '196,206,70', blurb: '독과 역병이 고여 있다. 중독과 폭발을 조심.', ids: ['zc_rotter', 'zc_spitter', 'zc_plaguelord', 'zc_carrier', 'zc_bloater'] },
-  hospital: { name: '폐병원', hue: 100, rgb: '96,176,255', blurb: '회복과 마비가 뒤섞인 병동.', ids: ['zc_leech', 'zc_ghoul', 'zc_shocker', 'zc_necro', 'zc_hexer'] },
-  slaughter: { name: '도살장', hue: 240, rgb: '255,96,104', blurb: '피 냄새를 쫓는 사냥꾼과 거구들.', ids: ['zc_butcher', 'zc_brute', 'zc_stalker', 'zc_runner', 'zc_hound'] },
-  lab: { name: '연구소', hue: 160, rgb: '190,124,255', blurb: '실험체의 전기와 광역 기술.', ids: ['zc_shocker', 'zc_hexer', 'zc_howler', 'zc_juggernaut', 'zc_bloater'] }
+  graveyard: { name: '공동묘지', hue: 0, rgb: '143,227,106', blurb: '묻힌 자들이 깨어난다. 식시귀와 사제가 많다.', ids: ['zc_walker', 'zc_ghoul', 'zc_wight', 'zc_necro', 'zc_hound'], playables: ['hermit','mole','mushroom','sandcastle','bush','phantomMuner','heroncaptain','yggdrasil','iceknight','dragonfish'] },
+  sewer: { name: '하수도', hue: 300, rgb: '196,206,70', blurb: '독과 역병이 고여 있다. 중독과 폭발을 조심.', ids: ['zc_rotter', 'zc_spitter', 'zc_plaguelord', 'zc_carrier', 'zc_bloater'], playables: ['snail','frog','axshrimp','snakeArmor','tube','jetski','aquamarine','thornJellyfish','helmetShark','sweetna','toxious','shuvi','abigate','eterna'] },
+  hospital: { name: '폐병원', hue: 100, rgb: '96,176,255', blurb: '회복과 마비가 뒤섞인 병동.', ids: ['zc_leech', 'zc_ghoul', 'zc_shocker', 'zc_necro', 'zc_hexer'], playables: ['bee','tail','iruma','flameflower','silvrae','turtle','elixian','horizintal','lunari','angel'] },
+  slaughter: { name: '도살장', hue: 240, rgb: '255,96,104', blurb: '피 냄새를 쫓는 사냥꾼과 거구들.', ids: ['zc_butcher', 'zc_brute', 'zc_stalker', 'zc_runner', 'zc_hound'], playables: ['boar','mantis','fang','hawk','bkeno','wayli','ruby','huve','grange','galewing','megaWing','kingprawn'] },
+  lab: { name: '연구소', hue: 160, rgb: '190,124,255', blurb: '실험체의 전기와 광역 기술.', ids: ['zc_shocker', 'zc_hexer', 'zc_howler', 'zc_juggernaut', 'zc_bloater'], playables: ['chameleon','cloud','ember','circuit','magSnail','foxious','jungles','master','awakenedIruma','stareel','flappis'] }
 });
 export function zombieRegionInfo(key) {
   const r = ZOMBIE_REGIONS[key];
@@ -260,10 +260,21 @@ function tableWeight(row, depth) {
   return w * (1 + (Math.max(1, row.from) - 1) / 15 * (depth - 1) * 0.5);
 }
 
-/* 좀비가 될 수 있는 플레이어블: 이미 좀비이거나 시간 계열·이차원 침입자는 뺀다. 깊을수록 높은 등급이 섞인다. */
+/* 좀비가 될 수 있는 플레이어블: 이미 좀비이거나 시간 계열·이차원 침입자는 뺀다. 깊을수록 높은 등급이 섞인다.
+   4.5☆는 일반 입장에 섞이지 않고, 문턱 깊이부터 지역의 마지막 적(보스)으로만 나온다. */
 const playableGate = depth => depth < 3 ? 2 : depth < 5 ? 3 : depth < 7 ? 3.5 : depth < 10 ? 4 : 4.5;
-function playablePool(depth) {
-  return state_catalog_cards.CARDS.filter(c => !c.tags?.includes('zombie') && !c.tags?.includes('transdimensional-invader') && c.id !== 'timeora' && c.id !== 'red_timeora' && Number.parseFloat(String(c.grade)) <= playableGate(depth));
+const BOSS_GRADE = 4.5;
+const gradeOf = c => Number.parseFloat(String(c.grade));
+const playableBase = () => state_catalog_cards.CARDS.filter(c => !c.tags?.includes('zombie') && !c.tags?.includes('transdimensional-invader') && c.id !== 'timeora' && c.id !== 'red_timeora');
+const playablePool = depth => playableBase().filter(c => gradeOf(c) <= playableGate(depth) && gradeOf(c) < BOSS_GRADE);
+/* 지역 테마: 지역에 배정된 캐릭터는 3배, 나머지는 0.35배로 뽑힌다. */
+const playableRegionWeight = (c, region) => !region ? 1 : region.playables.includes(c.id) ? 3 : 0.35;
+const bossReady = depth => playableGate(depth) >= BOSS_GRADE;
+function pickBossCard(g, cave) {
+  const rng = new RNG(`${g.seed}:zc-boss:${cave.serial}`),
+    all = playableBase().filter(c => gradeOf(c) >= BOSS_GRADE),
+    themed = all.filter(c => ZOMBIE_REGIONS[cave.region]?.playables.includes(c.id));
+  return rng.pick(themed.length ? themed : all);
 }
 
 /* 지역의 대표 좀비는 조금 일찍 나온다. */
@@ -294,16 +305,22 @@ export function pickZombieId(g) {
     }
   }
   if (picked !== PLAYABLE_ROW) return picked;
-  const pool = playablePool(depth).filter(c => !onField.includes(c.id));
-  return PLAYABLE_PREFIX + (pool.length ? rng.pick(pool).id : 'zc_walker');
+  const pool = playablePool(depth).filter(c => !onField.includes(c.id)).map(c => ({ c, w: playableRegionWeight(c, ZOMBIE_REGIONS[cave.region]) }));
+  if (!pool.length) return 'zc_walker';
+  let pr = rng.next() * pool.reduce((n, e) => n + e.w, 0);
+  for (const e of pool) {
+    pr -= e.w;
+    if (pr <= 0) return PLAYABLE_PREFIX + e.c.id;
+  }
+  return PLAYABLE_PREFIX + pool.at(-1).c.id;
 }
 
-function makeZombie(g, id) {
+function makeZombie(g, id, boss = false) {
   const cave = g.bossRaid.cave,
     depth = cave.depth,
     zombified = id.startsWith(PLAYABLE_PREFIX),
     z = makeUnit(zombified ? id.slice(PLAYABLE_PREFIX.length) : id, `zc${++cave.serial}`),
-    hp = Math.max(10, Math.round(card(z).maxHp * ZOMBIE_CAVE.hpScale(depth) / 10) * 10);
+    hp = Math.max(10, Math.round(card(z).maxHp * ZOMBIE_CAVE.hpScale(depth) * (boss ? 2 : 1) / 10) * 10);
   if (zombified) {
     z.zombified = true;
     z.name = `좀비 ${z.name}`;
@@ -315,7 +332,8 @@ function makeZombie(g, id) {
   z.zcBaseAttack = z.attackMod;
   z.zcRage = 0;
   z.spawnDepth = depth;
-  applyAffix(g, z, depth);
+  if (boss) z.zcBoss = true;
+  else applyAffix(g, z, depth);
   return z;
 }
 
@@ -345,8 +363,9 @@ export function spawnZombie(g, slot, forcedId = null) {
     occupant = field[slot];
   if (occupant && !occupant.dead) return null;
   if (occupant?.dead) g.teams.A.graveyard.push(occupant);
-  const id = forcedId || pickZombieId(g),
-    z = makeZombie(g, id);
+  const boss = !forcedId && bossReady(cave.depth) && cave.spawned === cave.zoneSize - 1,
+    id = forcedId || (boss ? PLAYABLE_PREFIX + pickBossCard(g, cave).id : pickZombieId(g)),
+    z = makeZombie(g, id, boss);
   field[slot] = z;
   cave.timers[slot] = null;
   cave.spawned++;
@@ -455,6 +474,7 @@ export function zombieCaveDelayEntrances(g, rounds) {
 /* 카드 위에 보여 줄 생존·격노 뱃지. */
 const rageAfterOf = u => Number(u?.zcRageAfter || ZOMBIE_CAVE.rageAfterTurns);
 export function zombieCaveAffixBadge(g, u) {
+  if (isZombieCave(g) && u?.zcBoss && !u.dead) return { text: '보스', kind: 'zombie-affix', title: '이 지역의 마지막 적. HP가 두 배다.' };
   const info = AFFIXES[u?.zcAffix];
   if (!isZombieCave(g) || !info || u.dead) return null;
   return { text: info.name, kind: 'zombie-affix', title: `${info.name}: ${info.title}` };
