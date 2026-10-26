@@ -442,15 +442,34 @@ export class RNG {
     return a[Math.floor(this.next() * a.length)];
   }
 }
+/* 전투 중 "한 번만" 쓰는 기술·문턱의 사용 기록. 유닛을 만들 때와 좀비굴 층 이동 회복이 같은 정의를 쓴다. */
+export function freshOnceUseState(c) {
+  const state = {
+    yggThresholdArmed: !!c.thresholdEnergy,
+    firstGuardUsesRemaining: firstSkillByRuntimeKind(c, "openingGuard") ? 1 : 0,
+    usedOnce: {}
+  };
+  if (c.thresholdEnergy) state.lifeThresholdUses = 0;
+  if (firstSkillByEffect(c, "foxStrike")) {
+    state.strikeSingleColor = null;
+    state.strikeUses = 0;
+  }
+  if (firstSkillByTag(c, "copy")) {
+    state.memoryStrikeSingleColor = null;
+    state.memoryStrikeUses = 0;
+    state.memoryUsed = false;
+    state.memoryUses = 0;
+  }
+  if (firstSkillByEffect(c, "junglesVineWhip")) state.vineWhipFirstUsed = false;
+  const recall = firstSkillByEffect(c, "timeRecall");
+  if (c.timeControl && recall) state.usedOnce[recall.id] = false;
+  return state;
+}
 export function makeUnit(id, uid) {
   let __result;
   __makeUnitCore: {
     const c = card(id),
-      baseDefense = c.baseDefense ?? 0,
-      openingGuardSkill = firstSkillByRuntimeKind(c, "openingGuard"),
-      strikeSkill = firstSkillByEffect(c, "foxStrike"),
-      copySkill = firstSkillByTag(c, "copy"),
-      recallSkill = firstSkillByEffect(c, "timeRecall");
+      baseDefense = c.baseDefense ?? 0;
     const u = {
       uid,
       entityId: uid,
@@ -486,9 +505,6 @@ export function makeUnit(id, uid) {
       fullInvulnerableUntilOwnTurn: false,
       queuedSkillCostReduction: 0,
       turnSkillCostReduction: 0,
-      yggThresholdArmed: !!c.thresholdEnergy,
-      firstGuardUsesRemaining: openingGuardSkill ? 1 : 0,
-      usedOnce: {},
       dead: false,
       lastAction: null,
       lastTarget: null,
@@ -506,21 +522,11 @@ export function makeUnit(id, uid) {
       energyDisrupt: 0,
       switches: 0
     };
-    if (strikeSkill) {
-      u.strikeSingleColor = null;
-      u.strikeUses = 0;
-    }
-    if (copySkill) {
-      u.memoryStrikeSingleColor = null;
-      u.memoryStrikeUses = 0;
-      u.memoryUsed = false;
-      u.memoryUses = 0;
-    }
+    Object.assign(u, freshOnceUseState(c));
     if (c.timeControl) {
       u.timeHourDeg = 0;
       u.timeMinuteDeg = 90;
       u.timeRecallHistory = [];
-      if (recallSkill) u.usedOnce[recallSkill.id] = false;
     }
     {
       __result = u;

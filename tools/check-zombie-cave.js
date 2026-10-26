@@ -223,5 +223,18 @@ try{
   });
   assert.deepEqual(r,{unassigned:[],bad:[],themed:true,boss45:0,earlyBoss:false,lateBoss:true,lateCard:'huve',lateDouble:true});
  });
+ await check('crossing a floor restores everything except HP: statuses, seals, stat debuffs and once-per-battle skills',async page=>{
+  const r=await page.evaluate(()=>{
+   const g=zombieFixture('restore',['silvrae','mole','boar','mantis']);
+   const [a,b]=g.teams.P.field;
+   a.firstGuardUsesRemaining=0;a.hp=77;a.statuses={poison:2};a.skillSeals={x:2};a.attackMod=-30;a.energy=['R','R'];
+   b.statuses={burn:1};b.hp=40;
+   g.teams.P.bench[0].dead=true;g.teams.P.bench[0].hp=0;
+   probe.zc.zombieCaveEnterZone(g,'sewer');
+   const dead=g.teams.P.bench[0];
+   return{guard:a.firstGuardUsesRemaining,hpA:a.hp,hpB:b.hp,stA:Object.keys(a.statuses).length+Object.keys(a.skillSeals).length,stB:Object.keys(b.statuses).length,atk:a.attackMod,energy:a.energy.length,deadStays:dead.dead&&dead.hp===0};
+  });
+  assert.deepEqual(r,{guard:1,hpA:77,hpB:40,stA:0,stB:0,atk:0,energy:2,deadStays:true});
+ });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);
