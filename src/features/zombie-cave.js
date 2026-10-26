@@ -421,7 +421,7 @@ export function zombieCaveUnitDefeated(g, u) {
 }
 
 /* 층을 넘을 때 아군을 HP만 빼고 전부 되돌린다: 상태이상·기술봉인·깎인 공방, 한 번만 쓰는 기술의 사용 기록.
-   에너지, HP, 보호막, 쓰러진 아군은 그대로다. */
+   보호막은 카드의 기본값까지 다시 채운다(더 많이 쌓여 있으면 그대로). 에너지, HP, 쓰러진 아군은 그대로다. */
 export function zombieCaveRestoreParty(g) {
   for (const u of aliveUnits(g.teams.P)) {
     const hadStatus = Object.keys(u.statuses || {}).length + Object.keys(u.skillSeals || {}).length > 0;
@@ -431,10 +431,11 @@ export function zombieCaveRestoreParty(g) {
     if (Number(u.attackMod) < 0) setAttack(g, u, -Number(u.attackMod));
     if (Number(u.defenseMod) < 0) setDefense(g, u, -Number(u.defenseMod));
     Object.assign(u, freshOnceUseState(card(u)));
+    u.shield = Math.max(Number(u.shield || 0), Number(card(u).shield || 0));
     if (hadStatus) queueCombatNotice(g, u, '상태 회복', 'cure');
     queueCombatNotice(g, u, '기술 재충전', 'cure');
   }
-  log(g, '층을 넘으며 HP를 제외한 상태와 한 번만 쓰는 기술이 회복됨.', 'turn');
+  log(g, '층을 넘으며 HP를 제외한 상태, 보호막, 한 번만 쓰는 기술이 회복됨.', 'turn');
 }
 
 /* 문을 골라 새 지역에 들어선다: 깊이가 오르고, 정해진 마리 수가 새로 채워지며 두 칸에 좀비가 입장한다. */

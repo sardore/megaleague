@@ -225,16 +225,16 @@ try{
  });
  await check('crossing a floor restores everything except HP: statuses, seals, stat debuffs and once-per-battle skills',async page=>{
   const r=await page.evaluate(()=>{
-   const g=zombieFixture('restore',['silvrae','mole','boar','mantis']);
+   const g=zombieFixture('restore',['silvrae','mushroom','boar','mantis']);
    const [a,b]=g.teams.P.field;
    a.firstGuardUsesRemaining=0;a.hp=77;a.statuses={poison:2};a.skillSeals={x:2};a.attackMod=-30;a.energy=['R','R'];
-   b.statuses={burn:1};b.hp=40;
+   b.statuses={burn:1};b.hp=40;b.shield=0;const full=probe.catalog.CARDS.find(c=>c.id==='mushroom').shield||0;a.shield=500;
    g.teams.P.bench[0].dead=true;g.teams.P.bench[0].hp=0;
    probe.zc.zombieCaveEnterZone(g,'sewer');
    const dead=g.teams.P.bench[0];
-   return{guard:a.firstGuardUsesRemaining,hpA:a.hp,hpB:b.hp,stA:Object.keys(a.statuses).length+Object.keys(a.skillSeals).length,stB:Object.keys(b.statuses).length,atk:a.attackMod,energy:a.energy.length,deadStays:dead.dead&&dead.hp===0};
+   return{guard:a.firstGuardUsesRemaining,hpA:a.hp,hpB:b.hp,stA:Object.keys(a.statuses).length+Object.keys(a.skillSeals).length,stB:Object.keys(b.statuses).length,atk:a.attackMod,energy:a.energy.length,deadStays:dead.dead&&dead.hp===0,shieldB:b.shield===full&&full>0,shieldKeep:a.shield===500};
   });
-  assert.deepEqual(r,{guard:1,hpA:77,hpB:40,stA:0,stB:0,atk:0,energy:2,deadStays:true});
+  assert.deepEqual(r,{guard:1,hpA:77,hpB:40,stA:0,stB:0,atk:0,energy:2,deadStays:true,shieldB:true,shieldKeep:true});
  });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);
