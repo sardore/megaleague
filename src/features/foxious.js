@@ -29,7 +29,7 @@ export function initializeFeaturesFoxious() {
     shield: 180,
     speed: 1,
     releaseOrder: 15,
-    tags: [],
+    tags: ["dragon"],
     traits: []
   });
   registerCardDefinition(state_features_foxious.FOXIOUS_CARD);

@@ -5,10 +5,8 @@ export const state_features_dragon_memory = {
   dmPendingFlow: undefined,
   dmCurrentActionContext: undefined,
   dmExecutingActionIds: undefined,
-  dmShownEffectEventIds: undefined,
-  dmFoxCard: undefined
+  dmShownEffectEventIds: undefined
 };
-import { state_catalog_cards } from "../catalog/cards.js";
 import { unitAt } from "../engine/actions.js";
 import { memoryOptions } from "../engine/effects.js";
 import { canPayAction, status, transformedSkillReq } from "../engine/energy.js";
@@ -30,8 +28,6 @@ export function initializeFeaturesDragonMemory() {
   state_features_dragon_memory.dmCurrentActionContext = null;
   state_features_dragon_memory.dmExecutingActionIds = new Set();
   state_features_dragon_memory.dmShownEffectEventIds = new Set();
-  state_features_dragon_memory.dmFoxCard = state_catalog_cards.CARDS.find(c => c.id === "foxious");
-  if (state_features_dragon_memory.dmFoxCard && !state_features_dragon_memory.dmFoxCard.tags.includes("dragon")) state_features_dragon_memory.dmFoxCard.tags.push("dragon");
   state_ui_action_panel.ActionRenderEngine.registerDecorator("dragon-memory", 500, ctx => decorateDragonMemoryActions(ctx?.viewModel));
 
   /* 대상 선택 후에도 반드시 플레이어가 에너지 아이콘을 직접 골라 결제한다. */

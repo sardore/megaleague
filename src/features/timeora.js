@@ -5,7 +5,6 @@ import { TimerManager } from "../runtime/timers.js";
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_features_timeora = {
   TIMEORA_CARD: undefined,
-  silvraeTimeoraMemoryCard: undefined,
   timeInputLocked: undefined,
   timeInputLockBusyOwned: undefined,
   timeVisualChain: undefined,
@@ -53,11 +52,6 @@ export function initializeFeaturesTimeora() {
   });
   registerCardDefinition(state_features_timeora.TIMEORA_CARD);
   state_ui_cards.CARD_EMOJI_MAP.timeora = ["⏳️"];
-  state_features_timeora.silvraeTimeoraMemoryCard = state_catalog_cards.CARDS.find(c => c.id === "silvrae");
-  if (state_features_timeora.silvraeTimeoraMemoryCard) {
-    const memorySkill = state_features_timeora.silvraeTimeoraMemoryCard.skills.find(s => skillDefHasTag(s, "copy"));
-    if (memorySkill) memorySkill.desc = "전투 중 1회. 아직 출전하지 않은 후열 드래곤의 첫 번째 기술을 원본과 같은 코스트·대상·효과로 복사한다.";
-  }
 
   // timeTraitGame declared with core turn state above.
   state_features_timeora.timeInputLocked = false;

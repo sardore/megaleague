@@ -4,8 +4,7 @@ export const state_features_genocider = {
   GENO_CLIENT_VERSION: undefined,
   GENOCIDER_BASE_HP: undefined,
   GENOCIDER_CARD: undefined,
-  reactiveEnergyCurrentGame: undefined,
-  elixianCardNerf: undefined
+  reactiveEnergyCurrentGame: undefined
 };
 import { state_catalog_cards } from "../catalog/cards.js";
 import { enemyTargets, prepareCurrentTurn, unitAt } from "../engine/actions.js";
@@ -53,12 +52,6 @@ export function initializeFeaturesGenocider() {
      A card opts in only through card.reactiveEnergyMaxHp; mutation owners never know card ids. */
   state_features_genocider.reactiveEnergyCurrentGame = null;
   state_ui_action_panel.ActionRenderEngine.registerDecorator("genocider", 400, () => decorateGenociderActions());
-  state_features_genocider.elixianCardNerf = state_catalog_cards.CARDS.find(c => c.id === "elixian");
-  if (state_features_genocider.elixianCardNerf) {
-    state_features_genocider.elixianCardNerf.trait = "잔향: 사망하면 같은 슬롯의 다음 출전 아군이 자기 차례 시작마다 HP 10을 영구 회복한다.";
-    state_features_genocider.elixianCardNerf.traits = [state_features_genocider.elixianCardNerf.trait];
-    state_features_genocider.elixianCardNerf.healAmplification = 0;
-  }
 
   /* ===================== legacy matchmaking application compatibility ===================== */
 }

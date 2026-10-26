@@ -367,7 +367,7 @@ export function initializeCatalogCards() {
     amount: 70
   }], ["damage", "dynamicCost"], {
     runtimeKind: "dynamicDefenseSmash"
-  }), state_catalog_cards.S("dragonMemory", "드래곤메모리", "", "자기 덱에 편성된 🐉 드래곤 카드의 첫 번째 기술을 Cost * 추가하여 복사한다.", "copyDragon", [], ["copy"], {
+  }), state_catalog_cards.S("dragonMemory", "드래곤메모리", "", "전투 중 1회. 아직 출전하지 않은 후열 드래곤의 첫 번째 기술을 원본과 같은 코스트·대상·효과로 복사한다.", "copyDragon", [], ["copy"], {
     interaction: {
       kind: "copyDragonSkill"
     },
