@@ -249,7 +249,8 @@ export function listStandardActions(g, t, s) {
       if (!canPayAction(g, t, u, canonicalCost)) continue;
       if (sk.extraAnyEnergy) {
         const baseNeed = transformedSkillReq(g, t, u, canonicalCost).tokens.length;
-        const maxExtra = Math.max(0, Math.floor((totalEnergy(u) - baseNeed) * 2 + 1e-6) / 2);
+        const colored = sk.extraEnergyColor ? energyStore(u).reduce((n, e) => n + (e.c === sk.extraEnergyColor ? Number(e.a || 0) : 0), 0) : Infinity,
+          maxExtra = Math.max(0, Math.floor(Math.min(colored, totalEnergy(u) - baseNeed) * 2 + 1e-6) / 2);
         for (const target of resolveSkillTargets(g, t, s, u, sk)) for (let extra = 0; extra <= maxExtra + 1e-6; extra += 0.5) a.push({
           type: "skill",
           skill: sk.id,

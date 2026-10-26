@@ -126,7 +126,7 @@ try{
  await check('deeper zones field more zombies and make dangerous kinds more likely',async page=>{
   const r=await page.evaluate(()=>{
     const Z=probe.zc.ZOMBIE_CAVE;const g=zombieFixture('dg');const cave=g.bossRaid.cave;
-    const danger=depth=>{cave.depth=depth;cave.region=null;let n=0;for(let i=0;i<500;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);if(['zc_juggernaut','zc_plaguelord','zc_hexer','zc_necro','zc_butcher','weller'].includes(id)||id.startsWith('zp:'))n++;}return n/500;};
+    const danger=depth=>{cave.depth=depth;cave.region=null;let n=0;for(let i=0;i<500;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);if(['zc_juggernaut','zc_plaguelord','zc_hexer','zc_necro','zc_butcher','weller'].includes(id)||(id.startsWith('zp:')&&Number.parseFloat(probe.catalog.CARDS.find(c=>c.id===id.slice(3)).grade)>=3.5))n++;}return n/500;};
     return{s:[1,3,6,12].map(Z.zoneSize),early:danger(2),late:danger(9)};
   });
   assert.deepEqual(r.s,[4,6,9,12]);assert.ok(r.late>r.early+0.15,JSON.stringify(r));
@@ -235,6 +235,38 @@ try{
    return{guard:a.firstGuardUsesRemaining,hpA:a.hp,hpB:b.hp,stA:Object.keys(a.statuses).length+Object.keys(a.skillSeals).length,stB:Object.keys(b.statuses).length,atk:a.attackMod,energy:a.energy.length,deadStays:dead.dead&&dead.hp===0,shieldB:b.shield===full&&full>0,shieldKeep:a.shield===500};
   });
   assert.deepEqual(r,{guard:1,hpA:77,hpB:40,stA:0,stB:0,atk:0,energy:2,deadStays:true,shieldB:true,shieldKeep:true});
+ });
+ await check('torch and barricade rewards apply to the next zone instead of an empty field; door odds favour early regions when shallow and late regions when deep',async page=>{
+  const r=await page.evaluate(()=>{
+   const Z=probe.zc.ZOMBIE_CAVE;
+   const make=(boon)=>{const g=zombieFixture('boon-'+boon);const c=g.bossRaid.cave;c.depth=8;c.cleared=true;g.teams.A.field.forEach(u=>{u.dead=true;});if(boon)probe.zc.zombieCaveAddBoon(g,boon);probe.zc.zombieCaveEnterZone(g,'sewer');return{g,c};};
+   const t=make('torch'),plain=make('');
+   const torchZ=t.g.teams.A.field.filter(u=>u&&!u.dead);
+   const b=make('barricade');const z=b.g.teams.A.field[0];b.g.round=3;probe.combatRules.nonAttackDamage(b.g,z,9999,'t');
+   const slot=probe.zc.zombieCaveSlotInfo(b.g,'A',0);
+   const next=make('');const nz=next.g.teams.A.field[0];next.g.round=3;probe.combatRules.nonAttackDamage(next.g,nz,9999,'t');
+   const lateShare=depth=>{let late=0,n=0;for(let i=0;i<300;i++){const g=zombieFixture('door'+i);const c=g.bossRaid.cave;c.depth=depth;c.region='sewer';for(const k of probe.zc.zombieCaveDoorRegions(g)){n++;if(probe.zc.ZOMBIE_REGIONS[k].phase==='late')late++;}}return late/n;};
+   return{torchRage:torchZ.every(u=>u.zcRageAfter===Z.rageAfterTurns+4),torchNoAffix:torchZ.every(u=>!u.zcAffix),plainRage:plain.g.teams.A.field.every(u=>!u||!u.zcRageAfter||u.zcRageAfter!==Z.rageAfterTurns+4),barricade:slot.rounds-probe.zc.ZOMBIE_CAVE.respawnRounds(8),boonsSpent:t.c.nextBoons.torch===0&&t.c.boons.torch===1,shallowLate:lateShare(1),deepLate:lateShare(14)};
+  });
+  const J=JSON.stringify(r);assert.equal(r.torchRage,true,J);assert.equal(r.torchNoAffix,true,J);assert.equal(r.barricade,2,J);assert.equal(r.boonsSpent,true,J);assert.ok(r.deepLate>r.shallowLate+0.2,JSON.stringify(r));
+ });
+ await check('Sunflower: Parasite Bloom absorbs half the real damage; Holy Light cures every status and only extra W energy adds damage',async page=>{
+  const r=await page.evaluate(()=>{
+   const g=zombieFixture('sun',['sunflower','mole','boar','mantis']);probe.battle.game=g;
+   const u=g.teams.P.field[0],foe=g.teams.A.field[0];
+   foe.hp=foe.maxHp=500;u.hp=40;u.energy=[{c:'W',a:1,energyId:'a'},{c:'R',a:1,energyId:'b'}];
+   const bloom=Megaleague.legalActions(g,'P',0).find(a=>a.type==='skill'&&a.skill==='parasiteBloom');
+   const hp0=u.hp,foe0=foe.hp;Megaleague.execute(g,'P',0,bloom);
+   const dmg=foe0-foe.hp,healed=u.hp-hp0;
+   foe.statuses={poison:2,slow:2};u.energy=[{c:'W',a:1,energyId:'c'},{c:'W',a:1,energyId:'d'},{c:'R',a:1,energyId:'e'}];
+   const lights=Megaleague.legalActions(g,'P',0).filter(a=>a.type==='skill'&&a.skill==='holyLight');
+   const maxExtra=Math.max(...lights.map(a=>a.extraEnergyAmount));
+   const pick=lights.find(a=>a.extraEnergyAmount===2);
+   const f1=foe.hp;
+   Megaleague.execute(g,'P',0,{...pick,extraEnergyPlan:[{c:'W',a:1},{c:'W',a:1}],paymentPlan:{R:1,W:0,B:0}});
+   return{dmg,healed,maxExtra,cured:Object.keys(foe.statuses).length,holy:f1-foe.hp};
+  });
+  assert.equal(r.dmg>0,true);assert.equal(r.healed,Math.round(r.dmg*0.5/10)*10);assert.equal(r.cured,0);assert.equal(r.holy>0,true,JSON.stringify(r));
  });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);

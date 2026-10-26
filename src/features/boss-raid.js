@@ -29,7 +29,7 @@ import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
 import { state_ui_results } from "../ui/results.js";
 import { validFormDeck } from "../ui/setup.js";
-import { ZOMBIE_CAVE, ZOMBIE_REGIONS, isZombieCave, zombieCaveCalmField, zombieCaveDelayEntrances, zombieCaveDoorRegions, zombieCaveEnterZone, zombieCaveSetup, zombieCaveUnitDefeated, zombieRegionInfo } from "./zombie-cave.js";
+import { ZOMBIE_CAVE, ZOMBIE_REGIONS, isZombieCave, zombieCaveAddBoon, zombieCaveDoorRegions, zombieCaveEnterZone, zombieCaveSetup, zombieCaveUnitDefeated, zombieRegionInfo } from "./zombie-cave.js";
 export function initializeFeaturesBossRaid() {
   BOSS_RAID_VERSION = "red-timeora-raid-r8";
   BOSS_LOBBY_PROTOCOL = "mega-red-timeora-raid-lobby-r8";
@@ -331,14 +331,14 @@ export function initializeFeaturesBossRaid() {
     rarity: "uncommon",
     weight: 16,
     name: "횃불 보급",
-    desc: "필드 좀비의 격노와 생존 턴을 처음으로 되돌림."
+    desc: "다음 지역의 좀비는 특수 강화 없이 입장하고, 격노가 4턴 늦게 시작."
   }, {
     id: "caveBarricade",
     kinds: ["zombie"],
     rarity: "uncommon",
     weight: 14,
     name: "바리케이드",
-    desc: "모든 빈 칸의 좀비 입장을 2라운드 늦춤."
+    desc: "다음 지역에서 쓰러진 좀비의 재입장이 2라운드 늦어짐."
   }];
   if (!systems.__megaBossRewardDelegationR44) {
     document.addEventListener("click", bossHandleRewardClick, true);
@@ -1119,7 +1119,7 @@ function bossApplyReward(g, reward, chooserRole) {
     for (const u of field) bossGainOne(g, u);
   } else if (reward.door) {
     zombieCaveEnterZone(g, reward.region);
-  } else if (reward.id === "caveTorch") zombieCaveCalmField(g);else if (reward.id === "caveBarricade") zombieCaveDelayEntrances(g, 2);else if (reward.id === "summonTimeora") {
+  } else if (reward.id === "caveTorch") zombieCaveAddBoon(g, "torch");else if (reward.id === "caveBarricade") zombieCaveAddBoon(g, "barricade");else if (reward.id === "summonTimeora") {
     const u = makeUnit("timeora", bossRandomId("reward-timeora"));
     u.name = "지원 타임오러";
     u.bossOwner = g.bossRaid.online ? chooserRole || "host" : "solo";

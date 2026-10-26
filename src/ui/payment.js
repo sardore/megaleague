@@ -241,13 +241,15 @@ export function openExtraAnyEnergy(actions, plan) {
   let [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
     u = unitAt(state_ui_battle_state.game, t, s),
     base = actions[0],
+    extraSkill = skillOf(u, base.skill),
+    onlyColor = extraSkill?.extraEnergyColor || null,
     entries = residualEnergyEntries(u, base.actor || null, plan || {
       R: 0,
       W: 0,
       B: 0
-    }),
+    }).filter(e => !onlyColor || e.c === onlyColor),
     picked = new Set();
-  state_ui_battle_state.$("#modalContent").innerHTML = `<h2>${skillOf(u, base.skill)?.name || "기술"} · 추가 에너지</h2><p>기본 코스트와 별도로 투입할 에너지를 선택하세요.</p><div class="energy variable-extra-energy"></div><div id="variableExtraPreview" class="effect-box"></div><button id="variableExtraConfirm" class="primary">사용 확정</button>`;
+  state_ui_battle_state.$("#modalContent").innerHTML = `<h2>${extraSkill?.name || "기술"} · 추가 에너지</h2><p>기본 코스트와 별도로 투입할 ${onlyColor ? `${onlyColor} ` : ""}에너지를 선택하세요.</p><div class="energy variable-extra-energy"></div><div id="variableExtraPreview" class="effect-box"></div><button id="variableExtraConfirm" class="primary">사용 확정</button>`;
   const box = state_ui_battle_state.$("#modalContent .variable-extra-energy"),
     preview = state_ui_battle_state.$("#variableExtraPreview"),
     confirm = state_ui_battle_state.$("#variableExtraConfirm");
@@ -255,7 +257,8 @@ export function openExtraAnyEnergy(actions, plan) {
   const refresh = () => {
     const amount = selectedAmount(),
       match = actions.find(a => Math.abs(Number(a.extraEnergyAmount || 0) - amount) < 1e-6);
-    preview.textContent = `추가 ${energyAmountText(amount)}E · 예상 회복 ${combatInt(amount * 30)}HP`;
+    const perWhite = extraSkill?.effects?.find(x => x.type === "holyLight")?.perWhite;
+    preview.textContent = perWhite ? `추가 ${energyAmountText(amount)}E · 예상 피해 ${combatInt(amount * perWhite)}` : `추가 ${energyAmountText(amount)}E · 예상 회복 ${combatInt(amount * 30)}HP`;
     confirm.disabled = !match;
     return match;
   };
