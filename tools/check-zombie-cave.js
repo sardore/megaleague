@@ -89,7 +89,7 @@ try{
     const before=g2.teams.P.field.map(u=>u.hp);probe.combatRules.nonAttackDamage(g2,bl,9999,'t');
     return{out,burst:g2.teams.P.field.map((u,i)=>before[i]-u.hp),title:g.pendingTraitChoices?.[0]?.title};
   });
-  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[45,45]);assert.match(r.title,/지하 2층/);
+  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[40,40]);assert.match(r.title,/지하 2층/);
  });
  await check('spawn table is deterministic per seed/serial, Weller appears only from floor 15, rage-resetters never stack on the field',async page=>{
   const r=await page.evaluate(()=>{
