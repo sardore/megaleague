@@ -87,9 +87,21 @@ try{
       probe.combatRules.nonAttackDamage(g,g.teams.A.field[i%2],9999,'t');out.push([g.bossRaid.cave.kills,g.bossRaid.cave.depth,g.pendingTraitChoices?.length||0]);}
     const g2=zombieFixture('b',['mole','boar','mantis','mushroom']);g2.teams.A.field[0].dead=true;const bl=probe.zc.spawnZombie(g2,0,'zc_bloater');
     const before=g2.teams.P.field.map(u=>u.hp);probe.combatRules.nonAttackDamage(g2,bl,9999,'t');
-    return{out,burst:g2.teams.P.field.map((u,i)=>before[i]-u.hp),title:g.pendingTraitChoices?.[0]?.title};
+    return{out,burst:g2.teams.P.field.map((u,i)=>before[i]-u.hp),title:g.pendingTraitChoices?.[0]?.title,nodes:g.pendingTraitChoices?.[0]?.options.map(x=>[x.lane,x.region,x.tag]),rows:g.pendingTraitChoices?.[0]?.map?.rows.length,isNode:g.pendingTraitChoices?.[0]?.node,floor:g.pendingTraitChoices?.[0]?.floor};
   });
-  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[40,40]);assert.match(r.title,/지하 2층/);
+  assert.deepEqual(r.out,[[1,1,0],[2,1,0],[3,2,1]]);assert.deepEqual(r.burst,[40,40]);assert.match(r.title,/지하 2층/);assert.equal(r.isNode,true);assert.equal(r.floor,2);assert.ok(r.nodes.length>=1&&r.nodes.length<=3&&r.nodes.some(n=>n[0]===1));assert.equal(r.rows,4);assert.ok(r.nodes.every(n=>n[1]&&n[2]));
+ });
+ await check('regions bias the spawn table, elite floors force an affix, and the map is deterministic per seed',async page=>{
+  const r=await page.evaluate(()=>{
+    const g=zombieFixture('m1');const cave=g.bossRaid.cave;cave.depth=10;
+    const count=region=>{cave.region=region;cave.serial=0;const hits={};for(let i=0;i<300;i++){cave.serial=i;const id=probe.zc.pickZombieId(g);hits[id]=(hits[id]||0)+1;}return hits;};
+    const sew=count('sewer'),sla=count('slaughter');
+    const share=(h,ids)=>ids.reduce((n,id)=>n+(h[id]||0),0)/300;
+    cave.elite=true;cave.region=null;let affixed=0;for(let i=0;i<8;i++){g.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(g,0,'zc_walker');if(z.zcAffix)affixed++;}
+    const a=probe.zc.zombieCaveMapView(g),b=probe.zc.zombieCaveMapView(zombieFixture('m1'));
+    return{sew:share(sew,probe.zc.ZOMBIE_REGIONS.sewer.ids),sewInSla:share(sla,probe.zc.ZOMBIE_REGIONS.sewer.ids),affixed,same:JSON.stringify(a.rows)===JSON.stringify(b.rows)||'depth-differs',rows:a.rows.every(row=>new Set(row.map(n=>n.region)).size===3)};
+  });
+  assert.ok(r.sew>r.sewInSla+0.2,JSON.stringify(r));assert.equal(r.affixed,8);assert.equal(r.rows,true);
  });
  await check('spawn table is deterministic per seed/serial, Weller appears only from floor 15, rage-resetters never stack on the field',async page=>{
   const r=await page.evaluate(()=>{

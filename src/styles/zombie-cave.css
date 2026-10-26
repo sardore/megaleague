@@ -110,3 +110,99 @@
 .zombie-cave-result .victory-title { color: #9bf0a9; text-shadow: 0 0 22px rgba(79, 210, 106, .6); }
 
 .unit-effect-badge.zombie-affix { border-color: #e0b84a; color: #fff0c0; background: rgba(60, 44, 8, .92); }
+
+/* ---------------------------------------------------------------- 좀비굴 배경 */
+@property --zc-depth { syntax: '<number>'; inherits: true; initial-value: 0; }
+body.zombie-cave-active {
+  background: #040806;
+  transition: --zc-depth 1.6s ease;
+}
+body.zombie-cave-active::before,
+body.zombie-cave-active::after { content: ""; position: fixed; inset: 0; pointer-events: none; }
+/* 바닥층: 달무리 같은 빛, 깊이에 따라 붉게 물드는 하늘, 위아래 종유석·석순 실루엣 */
+body.zombie-cave-active::before {
+  z-index: -2;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H400V12L384 52 372 14 352 70 338 20 318 44 300 10 276 82 258 22 236 54 214 12 192 64 170 16 150 40 128 8 104 76 86 20 64 50 44 10 22 58 8 16 0 30Z' fill='%23010302'/%3E%3C/svg%3E") top / 100% 120px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 100V80L18 40 30 76 52 22 70 70 96 34 112 82 140 30 158 74 182 18 204 68 226 36 252 80 276 26 298 72 322 38 346 84 372 30 388 70 400 52V100Z' fill='%23020604'/%3E%3C/svg%3E") bottom / 100% 90px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H400V30L370 78 350 34 322 92 300 40 270 70 246 28 214 86 190 36 160 74 132 30 100 90 76 38 48 72 24 30 0 60Z' fill='%23081510' fill-opacity='.85'/%3E%3C/svg%3E") top / 100% 190px no-repeat,
+    radial-gradient(70% 38% at 50% -6%, rgba(96, 214, 124, .22), transparent 72%),
+    radial-gradient(90% 40% at 50% 108%, rgba(24, 80, 44, .5), transparent 70%),
+    radial-gradient(80% 60% at 50% 48%, rgba(170, 24, 40, calc(var(--zc-depth) * .26)), transparent 75%),
+    linear-gradient(180deg, #06110b 0%, #0a1a12 46%, #040806 100%);
+}
+/* 위층: 흘러가는 안개와 떠오르는 포자 */
+body.zombie-cave-active::after {
+  z-index: -1;
+  background:
+    radial-gradient(60% 24% at 20% 72%, rgba(120, 230, 140, .11), transparent 70%),
+    radial-gradient(55% 22% at 82% 38%, rgba(130, 210, 160, .09), transparent 70%),
+    radial-gradient(circle, rgba(196, 255, 176, .6) 0 1px, transparent 1.6px) 0 0 / 90px 140px,
+    radial-gradient(circle, rgba(196, 255, 176, .38) 0 1px, transparent 1.6px) 40px 60px / 130px 200px;
+  animation: zcDrift 28s linear infinite;
+}
+@keyframes zcDrift {
+  from { background-position: 0 0, 0 0, 0 0, 40px 60px; }
+  to { background-position: 80px 0, -90px 0, 0 -140px, 40px -140px; }
+}
+@media (prefers-reduced-motion: reduce) { body.zombie-cave-active::after { animation: none; } }
+
+/* ---------------------------------------------------------------- 지도 */
+.zc-map { position: relative; display: grid; gap: 0; padding: 4px 0; border-radius: 14px; background: radial-gradient(90% 60% at 50% 100%, rgba(143, 227, 106, .1), transparent 70%), rgba(2, 8, 5, .55); border: 1px solid rgba(143, 227, 106, .18); }
+.zc-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.zc-edge { stroke: rgba(180, 220, 190, .22); stroke-width: 2; stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
+.zc-edge.near { stroke: rgba(210, 255, 220, .5); stroke-dasharray: none; }
+.zc-edge.go { stroke: #bfffcf; stroke-width: 3; stroke-dasharray: none; filter: drop-shadow(0 0 4px rgba(143, 227, 106, .9)); }
+.zc-maprow { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); height: 78px; align-items: center; justify-items: center; }
+.zc-mapnode { position: relative; display: grid; justify-items: center; gap: 2px; padding: 0; border: 0; background: none; color: inherit; }
+.zc-nodegem { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: rgb(var(--c)); background: radial-gradient(circle at 35% 30%, rgba(var(--c), .5), rgba(var(--c), .12) 70%); border: 2px solid rgba(var(--c), .75); box-shadow: 0 0 14px rgba(var(--c), .35), inset 0 1px 0 rgba(255, 255, 255, .25); transition: transform .16s, box-shadow .16s; }
+.zc-nodegem .boss-reward-icon { width: 24px; height: 24px; }
+.zc-nodelabel { font-size: 10px; font-weight: 900; color: #cfe8d4; text-shadow: 0 1px 3px #000; }
+.zc-mapnode.elite .zc-nodegem { box-shadow: 0 0 0 3px rgba(255, 90, 100, .35), 0 0 18px rgba(255, 90, 100, .6); }
+.zc-mapnode.camp .zc-nodegem, .zc-mapnode.supply .zc-nodegem, .zc-mapnode.forge .zc-nodegem { border-style: double; border-width: 4px; }
+.zc-mapnode.dim { opacity: .42; transform: scale(.84); }
+.zc-mapnode.blocked { opacity: .25; filter: grayscale(1); transform: scale(.9); }
+.zc-mapnode.reach { cursor: pointer; animation: bossRewardRise .45s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i) * 80ms); }
+.zc-mapnode.reach .zc-nodegem { animation: zcReachPulse 1.8s ease-in-out infinite; }
+.zc-mapnode.reach:hover .zc-nodegem, .zc-mapnode.reach.sel .zc-nodegem { transform: scale(1.14); }
+.zc-mapnode.reach.sel .zc-nodegem { background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, .7), rgba(var(--c), .6) 70%); box-shadow: 0 0 0 4px rgba(255, 255, 255, .8), 0 0 26px rgba(var(--c), .9); animation: none; }
+@keyframes zcReachPulse { 50% { box-shadow: 0 0 22px 4px rgba(var(--c), .6), inset 0 1px 0 rgba(255, 255, 255, .25); } }
+.zc-you { height: 56px; }
+.zc-youdot { grid-column: calc(var(--x) + 1); width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 0 14px 4px rgba(143, 227, 106, .8); animation: zcNodePulse 1.6s ease-in-out infinite; }
+@keyframes zcNodePulse { 50% { transform: scale(1.3); box-shadow: 0 0 20px 6px rgba(143, 227, 106, .55); } }
+.zc-trail { display: flex; justify-content: center; gap: 6px; }
+.zc-trail-dot { width: 10px; height: 10px; border-radius: 50%; background: rgb(var(--c)); box-shadow: 0 0 8px rgba(var(--c), .6); opacity: .8; }
+.zc-infobox { display: grid; min-height: 92px; align-content: center; gap: 4px; padding: 10px 12px; border-radius: 12px; background: rgba(8, 18, 12, .8); border: 1px solid rgba(143, 227, 106, .2); font-size: 11px; line-height: 1.5; color: #bcd9c2; }
+.zc-infobox[hidden], .zc-info[hidden], .zc-info-empty[hidden] { display: none; }
+.zc-info { display: grid; gap: 3px; }
+.zc-info b { font-size: 14px; color: rgb(var(--c)); }
+.zc-foes { color: #e4f5e8; }
+.zc-info-empty { text-align: center; color: #8aa893; }
+.zc-go { padding: 12px; border-radius: 12px; font-weight: 1000; font-size: 14px; color: #eaffee; background: linear-gradient(180deg, #3fa656, #1b5a2a); border-color: #7fe08e; }
+.zc-go:disabled { opacity: .4; filter: grayscale(.6); }
+
+/* 배경 보강: 양옆 암벽, 바닥의 발광 수정, 더 짙은 안개 */
+body.zombie-cave-active::before {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23b8ffc8'/%3E%3Cstop offset='1' stop-color='%231f8a4a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M40 100 54 46 66 100ZM70 100 92 20 112 100ZM118 100 128 58 140 100ZM262 100 276 40 292 100ZM296 100 318 14 340 100ZM344 100 356 52 370 100Z' fill='url(%23g)' fill-opacity='.85'/%3E%3C/svg%3E") bottom / 100% 170px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 100V80L18 40 30 76 52 22 70 70 96 34 112 82 140 30 158 74 182 18 204 68 226 36 252 80 276 26 298 72 322 38 346 84 372 30 388 70 400 52V100Z' fill='%23010403'/%3E%3C/svg%3E") bottom / 100% 70px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 400' preserveAspectRatio='none'%3E%3Cpath d='M0 0H46L30 40 52 90 22 140 48 200 18 260 42 320 24 360 40 400H0Z' fill='%23010403'/%3E%3C/svg%3E") left / 70px 100% no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 400' preserveAspectRatio='none'%3E%3Cpath d='M100 0H54L70 40 48 90 78 140 52 200 82 260 58 320 76 360 60 400H100Z' fill='%23010403'/%3E%3C/svg%3E") right / 70px 100% no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H400V12L384 52 372 14 352 70 338 20 318 44 300 10 276 82 258 22 236 54 214 12 192 64 170 16 150 40 128 8 104 76 86 20 64 50 44 10 22 58 8 16 0 30Z' fill='%23010302'/%3E%3C/svg%3E") top / 100% 130px no-repeat,
+    radial-gradient(60% 34% at 50% 100%, rgba(96, 255, 150, .34), transparent 72%),
+    radial-gradient(70% 38% at 50% -6%, rgba(96, 214, 124, .3), transparent 72%),
+    radial-gradient(80% 60% at 50% 48%, rgba(170, 24, 40, calc(var(--zc-depth) * .3)), transparent 75%),
+    linear-gradient(180deg, #0c2318 0%, #123324 46%, #07160e 100%);
+}
+body.zombie-cave-active::after {
+  background:
+    radial-gradient(70% 22% at 20% 70%, rgba(150, 255, 170, .2), transparent 70%),
+    radial-gradient(60% 20% at 82% 40%, rgba(150, 230, 190, .16), transparent 70%),
+    radial-gradient(circle, rgba(210, 255, 190, .85) 0 1.2px, transparent 2px) 0 0 / 90px 140px,
+    radial-gradient(circle, rgba(210, 255, 190, .5) 0 1px, transparent 1.8px) 40px 60px / 130px 200px;
+}
+
+/* 지역마다 배경 색조가 바뀐다. */
+@property --zc-hue { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+body.zombie-cave-active { transition: --zc-depth 1.6s ease, --zc-hue 1.6s ease; }
+body.zombie-cave-active::before { filter: hue-rotate(var(--zc-hue)); }
