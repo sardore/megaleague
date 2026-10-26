@@ -1,7 +1,7 @@
 import { state_catalog_cards } from '../catalog/cards.js';
 import { applyStatus, damageRange, dealDamage, nonAttackDamage, queueVisual, teamOf } from '../engine/combat.js';
 import { addHpProtectionBarrier, setAttack, setDefense } from '../engine/effects.js';
-import { aliveUnits, initializeDeployment } from '../engine/energy.js';
+import { aliveUnits, costGap, initializeDeployment } from '../engine/energy.js';
 import { RNG, card, freshOnceUseState, makeUnit, registerRuntimeSkillContainer } from '../engine/entities.js';
 import { revealUnit } from '../engine/execution.js';
 import { log, queueCombatNotice } from '../presentation/audio.js';
@@ -85,117 +85,117 @@ function defineZombies() {
 
   zombie('zc_runner', '러너', 50, '속공 다단', '없음. 체력은 낮지만 연속 타격으로 몰아친다.', [
     hit('zc_claws', '연속할퀴기', '*', '20D씩 2회.', [{ type: 'damage', amount: 20, hits: 2 }], ['damage', 'multi']),
-    hit('zc_frenzy', '광란', '**', '10D씩 5회.', [{ type: 'damage', amount: 10, hits: 5 }], ['damage', 'multi'])
+    hit('zc_frenzy', '광란', '***', '20D씩 5회.', [{ type: 'damage', amount: 20, hits: 5 }], ['damage', 'multi'])
   ], { speed: 1 }, { from: 1, weight: 8 });
 
   zombie('zc_hound', '좀비견', 60, '다단 사냥', '없음. 물고 놓지 않는다.', [
-    hit('zc_maul', '물어찢기', '*', '10D씩 3회.', [{ type: 'damage', amount: 10, hits: 3 }], ['damage', 'multi']),
+    hit('zc_maul', '물어찢기', '**', '20D씩 3회.', [{ type: 'damage', amount: 20, hits: 3 }], ['damage', 'multi']),
     self('zc_growl', '으르렁', '*', '자신 공격 +10.', [{ type: 'attackMod', target: 'self', amount: 10 }], ['buff'])
   ], { speed: 1 }, { from: 2, weight: 6 });
 
   zombie('zc_rotter', '부패자', 110, '독 살포', '없음. 닿은 곳이 썩어 든다.', [
-    hit('zc_rotspit', '썩은침', '*', '20D. 독 3턴.', [{ type: 'damage', amount: 20 }, { type: 'status', status: 'poison', duration: 3 }], ['damage', 'status']),
-    hit('zc_meltdown', '녹아내림', 'B**', '대상 현재 HP의 20% 피해. 방어와 피해 난수를 적용하지 않는다.', [{ type: 'proportionalDamage', basis: 'current', ratio: 0.2 }], ['damage', 'proportional']),
+    hit('zc_rotspit', '썩은침', '**', '40D. 독 3턴.', [{ type: 'damage', amount: 40 }, { type: 'status', status: 'poison', duration: 3 }], ['damage', 'status']),
+    hit('zc_meltdown', '녹아내림', 'B***', '대상 현재 HP의 30% 피해. 방어와 피해 난수를 적용하지 않는다.', [{ type: 'proportionalDamage', basis: 'current', ratio: 0.3 }], ['damage', 'proportional']),
     hit('zc_rotbreath', '썩은숨', '*', '10D. 대상 언데드 2턴.', [{ type: 'damage', amount: 10 }, { type: 'status', status: 'undead', duration: 2 }], ['damage', 'status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadFoe' } }),
     hit('zc_rotburst', '부패 폭발', 'B***', '80D. 독 4턴.', [{ type: 'damage', amount: 80 }, { type: 'status', status: 'poison', duration: 4 }], ['damage', 'status'])
   ], {}, { from: 3, weight: 7 });
 
   zombie('zc_shield', '방패 좀비', 100, '방벽 근접', '실드 60으로 시작한다.', [
-    hit('zc_bash', '방패치기', '*', '30D.', [{ type: 'damage', amount: 30 }]),
+    hit('zc_bash', '방패치기', '**', '60D.', [{ type: 'damage', amount: 60 }]),
     self('zc_wall', '방벽', 'W**', '자신에게 HP 보호막 90(턴마다 30 감소).', [{ type: 'hpBarrier', amount: 90, decayPerTurn: 30 }], ['shield']),
     self('zc_brace', '버티기', '*', '다음 두 공격 타격의 피해를 각각 30 감소(최대 2회).', [{ type: 'nextHitReduction', amount: 30, hits: 2 }], ['shield']),
     self('zc_fortress', '철옹성', 'W***', '자신에게 HP 보호막 180(턴마다 30 감소).', [{ type: 'hpBarrier', amount: 180, decayPerTurn: 30 }], ['shield'])
   ], { shield: 60, baseDefense: 10, grade: '3☆' }, { from: 4, weight: 6 });
 
   zombie('zc_spitter', '스피터', 80, '산성 약화', '없음. 맞은 자의 방어를 녹인다.', [
-    hit('zc_acid', '산성침', '*', '20D. 방어 -10.', [{ type: 'damage', amount: 20 }, { type: 'defenseMod', amount: -10 }], ['damage', 'debuff']),
-    area('zc_acidrain', '산성비', 'B***', '적 전체 30D. 방어 -10.', [{ type: 'zFieldHit', amount: 30, defense: -10 }], ['damage', 'debuff', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
+    hit('zc_acid', '산성침', '**', '40D. 방어 -20.', [{ type: 'damage', amount: 40 }, { type: 'defenseMod', amount: -20 }], ['damage', 'debuff']),
+    area('zc_acidrain', '산성비', 'B***', '적 전체 50D. 방어 -20.', [{ type: 'zFieldHit', amount: 50, defense: -20 }], ['damage', 'debuff', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
   ], {}, { from: 5, weight: 6 });
 
   zombie('zc_brute', '브루트', 210, '중장갑 탱커', '방어 15로 시작한다.', [
-    hit('zc_slam', '내려찍기', 'R**', '80D.', [{ type: 'damage', amount: 80 }]),
+    hit('zc_slam', '내려찍기', 'R**', '100D.', [{ type: 'damage', amount: 100 }]),
     self('zc_roar', '포효', '*', '자신 방어 +10(최대 50).', [{ type: 'selfDefense', amount: 10, max: 50 }], ['buff']),
     hit('zc_earthsplit', '대지가르기', 'RR**', '130D.', [{ type: 'damage', amount: 130 }])
   ], { baseDefense: 20, grade: '3☆', speed: -1 }, { from: 6, weight: 6 });
 
   zombie('zc_ghoul', '구울', 120, '포식·성장', '없음. 먹을수록 강해진다.', [
-    self('zc_feast', '시체포식', '*', '자신 HP 30 회복, 공격 +10.', [{ type: 'selfHeal', amount: 30 }, { type: 'attackMod', target: 'self', amount: 10 }], ['heal', 'buff']),
-    hit('zc_rend', '찢기', 'R**', '50D.', [{ type: 'damage', amount: 50 }]),
+    self('zc_feast', '시체포식', '**', '자신 HP 50 회복, 공격 +10.', [{ type: 'selfHeal', amount: 50 }, { type: 'attackMod', target: 'self', amount: 10 }], ['heal', 'buff']),
+    hit('zc_rend', '찢기', 'R**', '70D.', [{ type: 'damage', amount: 70 }]),
     self('zc_rise', '일어나라', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
     self('zc_gorge2', '대식', 'B***', '자신 HP 80 회복, 공격 +20.', [{ type: 'selfHeal', amount: 80 }, { type: 'attackMod', target: 'self', amount: 20 }], ['heal', 'buff'])
   ], { grade: '3☆' }, { from: 7, weight: 5 });
 
   zombie('zc_bloater', '자폭 좀비', 80, '죽음의 폭발', '죽으면 폭발해 적 필드 전체에 40 피해를 준다.', [
-    hit('zc_burstblow', '터지는 일격', '*', '30D.', [{ type: 'damage', amount: 30 }]),
+    hit('zc_burstblow', '터지는 일격', '**', '50D.', [{ type: 'damage', amount: 50 }]),
     hit('zc_suicide', '몸통박치기', 'R***', '70D. 가한 피해만큼 자신도 받는다.', [{ type: 'damage', amount: 70, recoilFraction: 1 }], ['damage']),
     hit('zc_pyre', '연쇄폭발', 'R***', '100D. 가한 피해의 절반을 자신도 받는다.', [{ type: 'damage', amount: 100, recoilFraction: 0.5 }], ['damage'])
   ], { deathBurst: 40 }, { from: 8, weight: 6 });
 
   zombie('zc_wight', '망각의 사제', 110, '능력치 초기화', '없음. 쌓아 올린 힘을 지운다.', [
-    hit('zc_oblivion', '망각', '**', '20D. 대상의 공격·방어 상승분을 전부 초기화.', [{ type: 'damage', amount: 20 }, { type: 'zStatReset', scope: 'target' }], ['damage', 'debuff'], { aiProfile: { kind: 'zombieCave', mode: 'reset' } }),
+    hit('zc_oblivion', '망각', '**', '40D. 대상의 공격·방어 상승분을 전부 초기화.', [{ type: 'damage', amount: 40 }, { type: 'zStatReset', scope: 'target' }], ['damage', 'debuff'], { aiProfile: { kind: 'zombieCave', mode: 'reset' } }),
     hit('zc_mark', '사자의 낙인', '*', '대상 언데드 3턴(회복이 피해로 바뀐다).', [{ type: 'status', status: 'undead', duration: 3 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadFoe' } }),
     hit('zc_doomcall', '죽음의 선고', 'B***', '40D. 특성봉인 3턴, 대상 언데드 3턴.', [{ type: 'damage', amount: 40 }, { type: 'status', status: 'traitSeal', duration: 3 }, { type: 'status', status: 'undead', duration: 3 }], ['damage', 'status'])
   ], { grade: '3☆' }, { from: 9, weight: 5 });
 
   zombie('zc_carrier', '보균자', 90, '에너지 오염', '없음. 에너지를 갉아먹는다.', [
-    hit('zc_contagion', '오염', '*', '20D. 대상 에너지 1개 제거.', [{ type: 'damage', amount: 20 }, { type: 'removeEnergy', amount: 1 }], ['damage', 'energy']),
+    hit('zc_contagion', '오염', '**', '40D. 대상 에너지 1개 제거.', [{ type: 'damage', amount: 40 }, { type: 'removeEnergy', amount: 1 }], ['damage', 'energy']),
     hit('zc_drought', '고갈', 'B**', '대상의 에너지를 전부 제거.', [{ type: 'removeAllEnergy' }], ['energy']),
     hit('zc_outbreak', '감염 폭발', 'B***', '60D. 대상 에너지 2개 제거.', [{ type: 'damage', amount: 60 }, { type: 'removeEnergy', amount: 2 }], ['damage', 'energy'])
   ], {}, { from: 10, weight: 5 });
 
   zombie('zc_howler', '하울러', 85, '공격 고취', '없음. 울부짖음이 무리를 광폭하게 만든다.', [
     self('zc_howl', '괴성', '*', '필드의 좀비 전원 공격 +10.', [{ type: 'zRally', attack: 10 }], ['buff', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'rally' } }),
-    area('zc_shriek', '초음파', 'W**', '적 전체 20D. 감속 1턴.', [{ type: 'zFieldHit', amount: 20, status: 'slow', duration: 1 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
+    area('zc_shriek', '초음파', 'W**', '적 전체 40D. 감속 1턴.', [{ type: 'zFieldHit', amount: 40, status: 'slow', duration: 1 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
     self('zc_warcry', '전쟁 함성', 'W***', '필드의 좀비 전원 공격 +30.', [{ type: 'zRally', attack: 30 }], ['buff', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'rally' } })
   ], { grade: '3☆' }, { from: 11, weight: 5 });
 
   zombie('zc_stalker', '스토커', 90, '암습 치명', '없음. 약한 곳만 노린다.', [
-    hit('zc_ambush', '암습', '*', '50D. 33% 크리티컬.', [{ type: 'damage', amount: 50, crit: 0.33 }]),
-    hit('zc_lurk', '잠복', 'B**', '1턴간 무적 후 90D.', [{ type: 'delayedAttack', amount: 90, invulnerable: true }], ['damage', 'scheduled']),
+    hit('zc_ambush', '암습', '**', '80D. 33% 크리티컬.', [{ type: 'damage', amount: 80, crit: 0.33 }]),
+    hit('zc_lurk', '잠복', 'B**', '1턴간 무적 후 120D.', [{ type: 'delayedAttack', amount: 120, invulnerable: true }], ['damage', 'scheduled']),
     hit('zc_deathblow', '급소 찌르기', 'RB**', '120D. 50% 크리티컬.', [{ type: 'damage', amount: 120, crit: 0.5 }])
   ], { crit: 0.33, grade: '3☆' , speed: 1 }, { from: 12, weight: 5 });
 
   zombie('zc_necro', '네크로맨서', 130, '방벽·회복 봉인', '없음. 죽음을 다루는 자.', [
     self('zc_wardead', '사자의 방벽', '**', '필드의 좀비 전원에게 HP 보호막 60(턴마다 20 감소).', [{ type: 'zBarrier', amount: 60, decay: 20 }], ['shield', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'barrier' } }),
     self('zc_march', '죽은 자의 행진', 'B***', '필드의 좀비 전원 언데드 2턴.', [{ type: 'zStatus', scope: 'field', status: 'undead', duration: 2 }], ['status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
-    hit('zc_touch', '죽음의 손길', '**', '40D. 회복봉인 3턴.', [{ type: 'damage', amount: 40 }, { type: 'status', status: 'healSeal', duration: 3 }], ['damage', 'status']),
+    hit('zc_touch', '죽음의 손길', '**', '70D. 회복봉인 3턴.', [{ type: 'damage', amount: 70 }, { type: 'status', status: 'healSeal', duration: 3 }], ['damage', 'status']),
     self('zc_raise', '대규모 부활의식', 'BB**', '필드의 좀비 전원 HP 보호막 100(턴마다 20 감소).', [{ type: 'zBarrier', amount: 100, decay: 20 }], ['shield', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'barrier' } })
   ], { grade: '3☆' }, { from: 13, weight: 4 });
 
   zombie('zc_juggernaut', '거인', 320, '초중량 광역', '방어 25로 시작한다.', [
     hit('zc_crush', '분쇄', 'R***', '140D.', [{ type: 'damage', amount: 140 }]),
-    area('zc_tremor', '땅울림', 'R**', '적 전체 40D.', [{ type: 'zFieldHit', amount: 40 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
+    area('zc_tremor', '땅울림', 'R**', '적 전체 60D.', [{ type: 'zFieldHit', amount: 60 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
     self('zc_unyield', '불굴', '**', '자신 언데드 2턴(HP가 0이 되어도 죽지 않는다).', [{ type: 'zStatus', scope: 'self', status: 'undead', duration: 2 }], ['status'], { aiProfile: { kind: 'zombieCave', mode: 'undeadSelf' } }),
     area('zc_quake', '대지진', 'RR**', '적 전체 80D.', [{ type: 'zFieldHit', amount: 80 }], ['damage', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
   ], { baseDefense: 30, grade: '4☆', speed: -1 }, { from: 14, weight: 4 });
 
   zombie('zc_hexer', '침묵의 현자', 120, '광역 능력치 초기화', '없음. 전장 전체의 힘을 지운다.', [
     area('zc_silence', '전장의 침묵', 'B***', '적 필드 전체의 공격·방어 상승분을 전부 초기화.', [{ type: 'zStatReset', scope: 'field' }], ['debuff', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'reset' } }),
-    hit('zc_hex', '흑마법', '**', '30D. 특성봉인 2턴.', [{ type: 'damage', amount: 30 }, { type: 'status', status: 'traitSeal', duration: 2 }], ['damage', 'status']),
+    hit('zc_hex', '흑마법', '**', '50D. 특성봉인 2턴.', [{ type: 'damage', amount: 50 }, { type: 'status', status: 'traitSeal', duration: 2 }], ['damage', 'status']),
     hit('zc_doom', '파멸의 주문', 'BB**', '70D. 특성봉인 3턴, 방어 -20.', [{ type: 'damage', amount: 70 }, { type: 'status', status: 'traitSeal', duration: 3 }, { type: 'defenseMod', amount: -20 }], ['damage', 'status', 'debuff'])
   ], { grade: '4☆' }, { from: 16, weight: 4 });
 
   zombie('zc_leech', '흡혈 좀비', 90, '흡혈 지속', '없음. 물어뜯으며 회복한다.', [
-    hit('zc_drain', '흡혈', '*', '25D. 자신 HP 20 회복.', [{ type: 'damage', amount: 25 }, { type: 'selfHeal', amount: 20 }], ['damage', 'heal']),
-    hit('zc_gorge', '포식 난타', 'R**', '20D씩 3회. 자신 HP 10 회복.', [{ type: 'damage', amount: 20, hits: 3 }, { type: 'selfHeal', amount: 10 }], ['damage', 'multi', 'heal']),
+    hit('zc_drain', '흡혈', '**', '50D. 자신 HP 40 회복.', [{ type: 'damage', amount: 50 }, { type: 'selfHeal', amount: 40 }], ['damage', 'heal']),
+    hit('zc_gorge', '포식 난타', 'R**', '30D씩 3회. 자신 HP 20 회복.', [{ type: 'damage', amount: 30, hits: 3 }, { type: 'selfHeal', amount: 20 }], ['damage', 'multi', 'heal']),
     hit('zc_bloodfeast', '피의 연회', 'R***', '30D씩 3회. 자신 HP 50 회복.', [{ type: 'damage', amount: 30, hits: 3 }, { type: 'selfHeal', amount: 50 }], ['damage', 'multi', 'heal'])
   ], {}, { from: 4, weight: 5 });
 
   zombie('zc_shocker', '감전 좀비', 85, '마비 제어', '없음. 닿으면 몸이 굳는다.', [
-    hit('zc_jolt', '감전', '*', '20D. 마비 1턴.', [{ type: 'damage', amount: 20 }, { type: 'status', status: 'paralyze', duration: 1 }], ['damage', 'status']),
-    area('zc_arc', '방전', 'W***', '적 전체 30D. 마비 1턴.', [{ type: 'zFieldHit', amount: 30, status: 'paralyze', duration: 1 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
+    hit('zc_jolt', '감전', '**', '40D. 마비 1턴.', [{ type: 'damage', amount: 40 }, { type: 'status', status: 'paralyze', duration: 1 }], ['damage', 'status']),
+    area('zc_arc', '방전', 'W***', '적 전체 50D. 마비 1턴.', [{ type: 'zFieldHit', amount: 50, status: 'paralyze', duration: 1 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
     area('zc_storm', '뇌우', 'WW**', '적 전체 50D. 마비 1턴.', [{ type: 'zFieldHit', amount: 50, status: 'paralyze', duration: 1 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
   ], { grade: '3☆' , speed: 1 }, { from: 6, weight: 5 });
 
   zombie('zc_butcher', '도살자', 170, '광폭 처형', '없음. 피를 볼수록 날뛴다.', [
-    hit('zc_cleave', '난도질', '*', '20D. 자신 공격 +10.', [{ type: 'damage', amount: 20 }, { type: 'attackMod', target: 'self', amount: 10 }], ['damage', 'buff']),
+    hit('zc_cleave', '난도질', '**', '40D. 자신 공격 +10.', [{ type: 'damage', amount: 40 }, { type: 'attackMod', target: 'self', amount: 10 }], ['damage', 'buff']),
     hit('zc_execute', '도축', 'R***', '120D.', [{ type: 'damage', amount: 120 }]),
     hit('zc_massacre', '대학살', 'RR**', '40D씩 4회.', [{ type: 'damage', amount: 40, hits: 4 }], ['damage', 'multi'])
   ], { grade: '3☆' }, { from: 9, weight: 5 });
 
   zombie('zc_plaguelord', '역병의 왕', 150, '광역 중독', '없음. 숨결이 곧 역병이다.', [
-    area('zc_blight', '대역병', 'B**', '적 전체 20D. 독 3턴.', [{ type: 'zFieldHit', amount: 20, status: 'poison', duration: 3 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
-    hit('zc_festerbite', '부패의 이빨', '**', '50D. 독 2턴, 언데드 2턴.', [{ type: 'damage', amount: 50 }, { type: 'status', status: 'poison', duration: 2 }, { type: 'status', status: 'undead', duration: 2 }], ['damage', 'status']),
+    area('zc_blight', '대역병', 'B**', '적 전체 40D. 독 3턴.', [{ type: 'zFieldHit', amount: 40, status: 'poison', duration: 3 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } }),
+    hit('zc_festerbite', '부패의 이빨', '**', '70D. 독 2턴, 언데드 2턴.', [{ type: 'damage', amount: 70 }, { type: 'status', status: 'poison', duration: 2 }, { type: 'status', status: 'undead', duration: 2 }], ['damage', 'status']),
     area('zc_pestilence', '종말의 역병', 'BB**', '적 전체 40D. 독 4턴.', [{ type: 'zFieldHit', amount: 40, status: 'poison', duration: 4 }], ['damage', 'status', 'field'], { aiProfile: { kind: 'zombieCave', mode: 'field' } })
   ], { grade: '4☆' }, { from: 12, weight: 4 });
 
@@ -593,6 +593,26 @@ export function applyZombieEffect(g, actor, target, e, skill, ctx = {}) {
 }
 
 /* aiProfile {kind:'zombieCave', mode}를 쓰는 기술의 AI 점수. 새 효과는 기본 휴리스틱이 모르기 때문에 여기서 가치를 매긴다. */
+/* 좀비의 행동 고르기: 죽을 것 같지 않으면 싼 기술만 쓰지 않고, 더 센 기술을 쓰거나 에너지를 모아 센 기술을 노린다.
+   기본 점수는 일반 AI가 매기고(score), 여기서는 그 결과를 코스트 관점에서 다듬는다. */
+const costSize = cost => String(cost || '').replace(/[^RWB*]/g, '').length;
+export function zombieCaveRefineChoice(g, t, s, chosen, acts, score) {
+  const u = g.teams[t]?.field[s];
+  if (!chosen || !u || t !== 'A' || chosen.type !== 'skill' || u.hp <= u.maxHp * 0.4) return chosen;
+  const skillOf = a => card(u).skills.find(k => k.id === a.skill),
+    sizeOf = a => costSize(a.costOverride ?? skillOf(a)?.cost),
+    mine = sizeOf(chosen),
+    base = score(chosen),
+    floor = base - Math.abs(base) * 0.4,
+    better = acts.filter(a => a.type === 'skill' && sizeOf(a) > mine).map(a => ({ a, sc: score(a) })).filter(x => x.sc >= floor).sort((x, y) => y.sc - x.sc)[0];
+  if (better) return better.a;
+  if (mine > 1) return chosen;
+  const castable = new Set(acts.filter(a => a.type === 'skill').map(a => a.skill)),
+    gather = acts.find(a => a.type === 'gather'),
+    saving = card(u).skills.some(k => costSize(k.cost) >= 2 && costSize(k.cost) <= 4 && !castable.has(k.id) && costGap(u, k.cost) <= 2);
+  return saving && gather ? gather : chosen;
+}
+
 export function zombieSkillAiScore({ g, u, tar, skill, profile }) {
   const t = teamOf(g, u) || 'A',
     foes = foeField(g, t),

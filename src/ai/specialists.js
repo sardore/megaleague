@@ -1,5 +1,5 @@
 import { raidActionBonus } from "../features/boss-raid.js";
-import { isZombieCave } from "../features/zombie-cave.js";
+import { isZombieCave, zombieCaveRefineChoice } from "../features/zombie-cave.js";
 import { totalAttackDecrease } from '../engine/effects.js';
 import { undeadPreventsDeath } from '../engine/status-rules.js';
 import { actionHeuristicCore, chooseAICore } from "./search.js";
@@ -227,7 +227,7 @@ export function chooseAISpecialist(g, t, s, quick = false) {
 export function chooseAI(g, t, s, quick = false) {
   const boss = systems.__redTimeoraBossRaid;
   const fallback = () => chooseAISpecialist(g, t, s, quick);
-  if (isZombieCave(g)) return fallback();
+  if (isZombieCave(g)) return zombieCaveRefineChoice(g, t, s, fallback(), legalActions(g, t, s), a => actionHeuristic(g, t, s, a));
   if (g?.bossRaid && typeof boss?.chooseAIController === "function") return boss.chooseAIController(g, t, s, quick, fallback);
   if (g?.bossRaid) return boss?.searchChooseR32?.(g, t, s, quick) || boss?.basicChoose?.(g, t, s, quick) || fallback();
   return fallback();
