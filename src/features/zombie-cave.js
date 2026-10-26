@@ -188,6 +188,79 @@ export function zombieCaveCards() {
   return ZOMBIE_CARDS;
 }
 
+/* ---------------------------------------------------------------- 지역과 지도 */
+
+/* 지역: 입장하는 좀비의 구성과 배경 색이 달라진다. hue는 기본 초록 배경에서 돌릴 각도, rgb는 지도 색. */
+export const ZOMBIE_REGIONS = Object.freeze({
+  graveyard: { name: '공동묘지', hue: 0, rgb: '143,227,106', blurb: '묻힌 자들이 깨어난다. 식시귀와 사제가 많다.', ids: ['zc_walker', 'zc_ghoul', 'zc_wight', 'zc_necro', 'zc_hound'] },
+  sewer: { name: '하수도', hue: 300, rgb: '196,206,70', blurb: '독과 역병이 고여 있다. 중독과 폭발을 조심.', ids: ['zc_rotter', 'zc_spitter', 'zc_plaguelord', 'zc_carrier', 'zc_bloater'] },
+  hospital: { name: '폐병원', hue: 100, rgb: '96,176,255', blurb: '회복과 마비가 뒤섞인 병동.', ids: ['zc_leech', 'zc_ghoul', 'zc_shocker', 'zc_necro', 'zc_hexer'] },
+  slaughter: { name: '도살장', hue: 240, rgb: '255,96,104', blurb: '피 냄새를 쫓는 사냥꾼과 거구들.', ids: ['zc_butcher', 'zc_brute', 'zc_stalker', 'zc_runner', 'zc_hound'] },
+  lab: { name: '연구소', hue: 160, rgb: '190,124,255', blurb: '실험체의 전기와 광역 기술.', ids: ['zc_shocker', 'zc_hexer', 'zc_howler', 'zc_juggernaut', 'zc_bloater'] }
+});
+/* 노드 종류. 효과는 boss-raid.js의 보상 처리가 맡는다. */
+export const ZOMBIE_NODE_TAGS = Object.freeze({
+  fight: { name: '소탕', weight: 5, desc: '지역의 좀비와 싸운다.' },
+  supply: { name: '보급', weight: 2, desc: '보급품 보상 3개 중 하나를 고른다.' },
+  camp: { name: '야영', weight: 2, desc: '생존 아군 전체 HP 50 회복, 필드 아군에게 에너지 1개씩.' },
+  elite: { name: '정예', weight: 2, desc: '이 층의 좀비가 전부 특수 강화를 단다. 희귀 이상이 포함된 보상 3택 1.' },
+  forge: { name: '대장간', weight: 1, desc: '생존 아군 전체 공격 +10. 능력치 초기화에 지워질 수 있다.' }
+});
+export function zombieRegionInfo(key) {
+  const r = ZOMBIE_REGIONS[key];
+  if (!r) return null;
+  const names = r.ids.map(id => ZOMBIE_CARDS.find(c => c.id === id)?.name).filter(Boolean);
+  return { ...r, zombies: names };
+}
+const mapRng = (g, key) => new RNG(`${g.seed}:zc-map:${key}`);
+/* 한 층의 세 갈래. 시드와 층 번호만으로 정해져서 미리 보여 줄 수 있고 온라인에서도 같다. */
+export function zombieCaveMapRow(g, floor) {
+  const rng = mapRng(g, `row:${floor}`),
+    regions = Object.keys(ZOMBIE_REGIONS),
+    tags = Object.keys(ZOMBIE_NODE_TAGS),
+    total = tags.reduce((n, k) => n + ZOMBIE_NODE_TAGS[k].weight, 0);
+  return [0, 1, 2].map(lane => {
+    const region = regions.splice(Math.floor(rng.next() * regions.length), 1)[0];
+    let roll = rng.next() * total,
+      tag = tags.at(-1);
+    for (const k of tags) {
+      roll -= ZOMBIE_NODE_TAGS[k].weight;
+      if (roll <= 0) {
+        tag = k;
+        break;
+      }
+    }
+    return { lane, region, tag };
+  });
+}
+/* from 갈래에서 floor층의 어느 갈래로 갈 수 있나. 곧장 앞은 항상, 옆길은 일부만. */
+export function zombieCaveReach(g, floor, from) {
+  return [0, 1, 2].filter(to => to === from || Math.abs(to - from) === 1 && mapRng(g, `edge:${floor}:${from}:${to}`).next() < 0.6);
+}
+/* 지도 화면용 요약: 지금 고를 층부터 앞으로 4층. edges[k][i]는 k번째 줄 i갈래에서 다음 줄로 이어지는 갈래들. */
+export function zombieCaveMapView(g) {
+  const cave = g.bossRaid.cave,
+    floor = cave.depth,
+    rows = [0, 1, 2, 3].map(k => zombieCaveMapRow(g, floor + k));
+  return {
+    floor,
+    from: cave.lane,
+    reach: zombieCaveReach(g, floor, cave.lane),
+    rows,
+    edges: [0, 1, 2].map(k => [0, 1, 2].map(i => zombieCaveReach(g, floor + k + 1, i))),
+    trail: [...(cave.trail || [])]
+  };
+}
+/* 고른 노드로 들어선다. 지역과 갈래를 기억하고, 정예면 이 층 좀비를 모두 강화한다. */
+export function zombieCaveEnterNode(g, node) {
+  const cave = g.bossRaid.cave;
+  cave.region = node.region;
+  cave.lane = node.lane;
+  cave.trail = [...(cave.trail || []), { region: node.region, tag: node.tag, lane: node.lane }].slice(-10);
+  cave.elite = node.tag === 'elite';
+  log(g, `${ZOMBIE_REGIONS[node.region].name} 진입 · ${ZOMBIE_NODE_TAGS[node.tag].name}.`, 'turn');
+}
+
 /* ---------------------------------------------------------------- 던전 상태 */
 
 const foeField = (g, t) => (g.teams[t === 'A' ? 'P' : 'A'].field || []).filter(u => u && !u.dead);
@@ -206,7 +279,7 @@ export function zombieCaveSetup(g) {
   g.revealed.A = [];
   g.bossRaid.kind = Z_KIND;
   g.bossRaid.bossId = 'zombie-cave';
-  g.bossRaid.cave = { depth: 1, kills: 0, serial: 0, timers: A.field.map(() => null), bestDepth: 1 };
+  g.bossRaid.cave = { depth: 1, kills: 0, serial: 0, timers: A.field.map(() => null), bestDepth: 1, elite: false, trail: [], region: null, lane: 1 };
   g.matchType = '좀비굴';
   spawnZombie(g, 0, 'zc_walker');
   spawnZombie(g, 1, 'zc_walker');
@@ -219,6 +292,9 @@ function tableWeight(row, depth) {
   return row.id === 'zc_walker' ? Math.max(3, w - depth / 3) : w;
 }
 
+/* 지역의 대표 좀비는 조금 일찍 나온다. */
+const unlockDepth = (row, regionKey) => ZOMBIE_REGIONS[regionKey]?.ids.includes(row.id) ? Math.max(1, row.from - 3) : row.from;
+
 /* 다음 좀비. g.rng를 건드리지 않고 (시드, 입장 번호)로 정해서 시뮬레이션·온라인 복원에도 결과가 같다. */
 export function pickZombieId(g) {
   const cave = g.bossRaid.cave,
@@ -226,8 +302,10 @@ export function pickZombieId(g) {
     rng = new RNG(`${g.seed}:zc:${cave.serial}`),
     onField = g.teams.A.field.filter(u => u && !u.dead).map(u => u.card),
     resetOnField = onField.some(id => id === 'zc_wight' || id === 'zc_hexer');
-  const rows = ZOMBIE_TABLE.filter(row => depth >= row.from).map(row => {
+  const rows = ZOMBIE_TABLE.filter(row => depth >= unlockDepth(row, cave.region)).map(row => {
     let w = tableWeight(row, depth);
+    const region = ZOMBIE_REGIONS[cave.region];
+    if (region && row.id.startsWith('zc_')) w *= region.ids.includes(row.id) ? 3 : 0.35;
     if (onField.includes(row.id)) w *= 0.35;
     if (resetOnField && (row.id === 'zc_wight' || row.id === 'zc_hexer')) w = 0;
     return { id: row.id, w: Math.max(0, w) };
@@ -263,8 +341,10 @@ const AFFIXES = Object.freeze({
   regen: { name: '재생', title: '자기 차례가 끝날 때마다 HP를 회복한다.' }
 });
 function applyAffix(g, z, depth) {
-  const rng = new RNG(`${g.seed}:zc-affix:${z.uid}`);
-  if (rng.next() >= ZOMBIE_CAVE.affixChance(depth)) return;
+  const rng = new RNG(`${g.seed}:zc-affix:${z.uid}`),
+    roll = rng.next();
+  /* 정예 구역: 이 층에서 입장하는 좀비는 전부 특수 강화를 단다. */
+  if (!g.bossRaid.cave.elite && roll >= ZOMBIE_CAVE.affixChance(depth)) return;
   const key = rng.pick(Object.keys(AFFIXES));
   z.zcAffix = key;
   if (key === 'plated') z.shield = Number(z.shield || 0) + 10 * Math.round((30 + 4 * depth) / 10);
@@ -332,6 +412,7 @@ export function zombieCaveUnitDefeated(g, u) {
   const floor = zombieCaveFloorForKills(cave.kills);
   if (floor > cave.depth && aliveUnits(g.teams.P).length) {
     cave.depth = floor;
+    cave.elite = false;
     cave.bestDepth = Math.max(cave.bestDepth || 1, floor);
     log(g, `지하 ${floor}층 도달 · 처치 ${cave.kills}.`, 'turn');
     return true;
