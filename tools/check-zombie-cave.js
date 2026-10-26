@@ -208,5 +208,20 @@ try{
   });
   assert.deepEqual(r,{n1:'2',n2:'1',ticked:true,inSlot:true,count:1,badge:true});
  });
+ await check('every playable has exactly one region theme, themed picks favour their region, and 4.5-star cards only appear as the doubled-HP last enemy',async page=>{
+  const r=await page.evaluate(()=>{
+   const regions=probe.zc.ZOMBIE_REGIONS,keys=Object.keys(regions);
+   const base=probe.catalog.CARDS.filter(c=>!c.tags?.includes('zombie')&&!c.tags?.includes('transdimensional-invader')&&c.id!=='timeora'&&c.id!=='red_timeora');
+   const unassigned=base.filter(c=>keys.filter(k=>regions[k].playables.includes(c.id)).length!==1).map(c=>c.id);
+   const bad=keys.flatMap(k=>regions[k].playables).filter(id=>!base.some(c=>c.id===id));
+   const g=zombieFixture('theme');const cave=g.bossRaid.cave;cave.depth=9;
+   let own=0,other=0,boss45=0;
+   for(let i=0;i<600;i++){cave.serial=i;cave.region='sewer';const id=probe.zc.pickZombieId(g);if(!id.startsWith('zp:'))continue;const cid=id.slice(3);if(regions.sewer.playables.includes(cid))own++;else other++;if(['huve','awakenedIruma'].includes(cid))boss45++;}
+   const run=(depth)=>{const h=zombieFixture('boss'+depth);const c=h.bossRaid.cave;c.depth=depth;c.region='slaughter';c.zoneSize=4;c.spawned=3;h.teams.A.field[0].dead=true;const z=probe.zc.spawnZombie(h,0);return{card:z.card,boss:!!z.zcBoss,hp:z.maxHp,base:probe.catalog.CARDS.find(x=>x.id===z.card)?.maxHp};};
+   const early=run(9),late=run(12);
+   return{unassigned,bad,themed:own>other,boss45,earlyBoss:early.boss,lateBoss:late.boss,lateCard:late.card,lateDouble:late.hp>=Math.round(late.base*2*(1+0.2*11)/10)*10-10};
+  });
+  assert.deepEqual(r,{unassigned:[],bad:[],themed:true,boss45:0,earlyBoss:false,lateBoss:true,lateCard:'huve',lateDouble:true});
+ });
 }finally{await browser.close();server.close();}
 console.log(`${passed} zombie cave checks passed`);
