@@ -29,8 +29,7 @@ import { invaderCards, isInvaderCardId } from "../ui/invaders.js";
 import { render } from "../ui/payment.js";
 import { state_ui_results } from "../ui/results.js";
 import { validFormDeck } from "../ui/setup.js";
-import { ZOMBIE_CAVE, ZOMBIE_REGIONS, isZombieCave, zombieCaveCalmField, zombieCaveDelayEntrances, zombieCaveEnterNode, zombieCaveMapView, zombieCaveSetup, zombieCaveUnitDefeated, zombieRegionInfo } from "./zombie-cave.js";
-import { zombieMapHTML, zombieMapPick } from "../ui/zombie-map.js";
+import { ZOMBIE_CAVE, ZOMBIE_REGIONS, isZombieCave, zombieCaveCalmField, zombieCaveDelayEntrances, zombieCaveDoorRegions, zombieCaveEnterZone, zombieCaveSetup, zombieCaveUnitDefeated, zombieRegionInfo } from "./zombie-cave.js";
 export function initializeFeaturesBossRaid() {
   BOSS_RAID_VERSION = "red-timeora-raid-r8";
   BOSS_LOBBY_PROTOCOL = "mega-red-timeora-raid-lobby-r8";
@@ -343,7 +342,6 @@ export function initializeFeaturesBossRaid() {
   }];
   if (!systems.__megaBossRewardDelegationR44) {
     document.addEventListener("click", bossHandleRewardClick, true);
-    document.addEventListener("click", zombieMapPick);
     systems.__megaBossRewardDelegationR44 = true;
   }
   state_ui_action_panel.ActionRenderEngine.registerRoute("boss-raid", 300, () => !!state_ui_battle_state.game?.bossRaid, ctx => renderBossActions(ctx));
@@ -1009,25 +1007,19 @@ function bossWeightedReward(g, excluded) {
   }
   return pick;
 }
-/* 좀비굴 지도: 새 층에 닿을 때마다 이어진 갈래 중 하나로 들어선다. 같은 보상 선택 흐름(직렬·온라인 동기화)을 그대로 쓴다. */
-function bossRollNodes(g) {
-  const view = zombieCaveMapView(g),
-    row = view.rows[0];
-  return {
-    map: view,
-    options: view.reach.map(lane => {
-      const info = zombieRegionInfo(row[lane].region);
-      return {
-        id: "node",
-        node: true,
-        lane,
-        region: row[lane].region,
-        rarity: "common",
-        name: info.name,
-        desc: info.blurb
-      };
-    })
-  };
+/* 좀비굴 문: 지역을 정리하면 적 두 칸이 문이 되고, 문 하나가 다음 지형 하나다. 같은 선택 흐름(직렬·온라인 동기화)을 쓰지만 모달 없이 칸 위에서 고른다. */
+function bossRollDoors(g) {
+  return zombieCaveDoorRegions(g).map(region => {
+    const info = zombieRegionInfo(region);
+    return {
+      id: "door",
+      door: true,
+      region,
+      rarity: "common",
+      name: info.name,
+      desc: info.blurb
+    };
+  });
 }
 function bossPushRewardChoice(g, floor, options, extra = {}) {
   g.pendingTraitChoices ||= [];
@@ -1036,7 +1028,7 @@ function bossPushRewardChoice(g, floor, options, extra = {}) {
     serial: ++g.bossRaid.rewardSerial,
     chooserRole: g.bossRaid.online ? "any" : "solo",
     final: false,
-    title: `지하 ${floor}층 도달 보상`,
+    title: `지하 ${floor}층 정리 보상`,
     floor,
     options,
     ...extra
@@ -1125,9 +1117,8 @@ function bossApplyReward(g, reward, chooserRole) {
       effectId: "overdrive"
     });
     for (const u of field) bossGainOne(g, u);
-  } else if (reward.node) {
-    zombieCaveEnterNode(g, reward);
-    bossPushRewardChoice(g, g.bossRaid.cave.depth, bossRollRewards(g));
+  } else if (reward.door) {
+    zombieCaveEnterZone(g, reward.region);
   } else if (reward.id === "caveTorch") zombieCaveCalmField(g);else if (reward.id === "caveBarricade") zombieCaveDelayEntrances(g, 2);else if (reward.id === "summonTimeora") {
     const u = makeUnit("timeora", bossRandomId("reward-timeora"));
     u.name = "지원 타임오러";
@@ -1179,7 +1170,6 @@ function bossRewardHTML(q) {
     legendary: "전설"
   };
   const kind = raidKindOf(state_ui_battle_state.game);
-  if (q.node) return zombieMapHTML(q, kind);
   const head = q.floor ? `<div class="boss-reward-floor"><span>지하</span><b>${q.floor}</b><span>층 도달</span></div><h2 class="boss-reward-title">보상 선택</h2>` : `<h2 class="boss-reward-title">${q.title || "붉은 타임오러 처치 보상"}</h2>`;
   return `<div class="boss-reward-shell ${kind}">${head}<p class="boss-reward-hint" data-boss-reward-status>세 보상 중 하나를 선택하세요. 강한 보상일수록 등장 확률이 낮습니다.</p><div class="boss-reward-grid">${q.options.map((r, i) => `<button type="button" class="boss-reward-card ${r.rarity}" style="--i:${i}" data-boss-reward="${i}"><span class="boss-reward-gem">${bossRewardIcon(r.id)}</span><span class="boss-reward-rarity">${labels[r.rarity] || r.rarity}</span><span class="boss-reward-name">${r.name}</span><span class="boss-reward-desc">${r.desc}</span></button>`).join("")}</div></div>`;
 }
@@ -1465,7 +1455,7 @@ export function renderRaidBattleStatus() {
   if (aiHead) aiHead.textContent = cave ? `${info.enemySide} · 지하 ${cave.depth}층${cave.region ? ` · ${ZOMBIE_REGIONS[cave.region].name}` : ""}` : info.enemySide;
   if (pHead) pHead.textContent = game.bossRaid.online ? `${info.mySide} · P1/P2` : info.mySide;
   const aliveLabel = document.getElementById("AAlive");
-  if (aliveLabel) aliveLabel.textContent = cave ? `처치 ${cave.kills} · 다음 층까지 ${ZOMBIE_CAVE.killsPerFloor - cave.kills % ZOMBIE_CAVE.killsPerFloor}` : `생존 ${[...(game.teams.A.field || []), ...(game.teams.A.bench || [])].filter(u => u && !u.dead).length}/4 · 교체 불가`;
+  if (aliveLabel) aliveLabel.textContent = cave ? (cave.cleared ? `지하 ${cave.depth}층 정리 · 문을 고르세요` : `남은 좀비 ${cave.zoneSize - cave.spawned + [...(game.teams.A.field || [])].filter(z => z && !z.dead).length} · 처치 ${cave.kills}`) : `생존 ${[...(game.teams.A.field || []), ...(game.teams.A.bench || [])].filter(u => u && !u.dead).length}/4 · 교체 불가`;
   timeSyncSuppressionVisuals(state_ui_battle_state.game);
 }
 function bossVisibleNormalPool() {
@@ -2127,13 +2117,9 @@ export function raidActionReason(g, t, s, a) {
 export function onRaidUnitDefeated(g, u, killer) {
   if (isZombieCave(g) && u?.dead) {
     if (zombieCaveUnitDefeated(g, u)) {
-      const {
-        map,
-        options
-      } = bossRollNodes(g);
-      bossPushRewardChoice(g, g.bossRaid.cave.depth, options, {
-        node: true,
-        map
+      bossPushRewardChoice(g, g.bossRaid.cave.depth, bossRollRewards(g));
+      bossPushRewardChoice(g, g.bossRaid.cave.depth, bossRollDoors(g), {
+        door: true
       });
     }
     return;
@@ -2189,6 +2175,12 @@ export function presentRaidReward(q) {
       reward: q
     });
     bossSendState(true);
+  }
+  if (q.door) {
+    /* 문 선택은 칸 위에서 한다. 모달은 열지 않고 다시 그려 문을 연다. */
+    document.getElementById("modal")?.classList.remove("open");
+    render();
+    return true;
   }
   return bossOpenReward(q);
 }

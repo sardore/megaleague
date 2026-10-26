@@ -5714,9 +5714,7 @@
 
   #modal.open .boss-reward-shell,
   #modal.open .boss-reward-grid,
-  #modal.open .boss-reward-card,
-  #modal.open .zc-pin.reach,
-  #modal.open .zc-go { pointer-events: auto !important; }
+  #modal.open .boss-reward-card { pointer-events: auto !important; }
   #modal.open .boss-reward-card:not(:disabled) { cursor: pointer !important; }
 
 
