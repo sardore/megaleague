@@ -1116,6 +1116,23 @@ function bossRewardWaitForVisuals(q) {
   }, remain + 24);
   return true;
 }
+/* 보상 아이콘: 도형만으로 그린다. 보상 id 하나당 모양 하나. */
+const BOSS_REWARD_ICONS = Object.freeze({
+  energyPair: "M13 2 5 14h6l-1 8 8-12h-6z",
+  overdrive: "M13 2 5 14h6l-1 8 8-12h-6zM19 3v4M17 5h4",
+  teamHeal: "M9 3h6v6h6v6h-6v6H9v-6H3V9h6z",
+  shieldPatch: "M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z",
+  hyperGuard: "M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5zM12 7l4 1.5V12c0 2.5-1.7 4.5-4 5.5-2.3-1-4-3-4-5.5V8.5z",
+  clockReverse: "M12 5a7 7 0 1 1-6.9 8.2M5 4v5h5M12 8.5V12l2.5 1.5",
+  bossDrain: "M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z",
+  revive: "M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z",
+  summonTimeora: "M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.3 5.8 21l1.6-7L2 9.3l7.1-.7z",
+  caveTorch: "M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z",
+  caveBarricade: "M3 6h18M3 12h18M3 18h18M7 4v16M17 4v16"
+});
+function bossRewardIcon(id) {
+  return `<svg class="boss-reward-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${BOSS_REWARD_ICONS[id] || BOSS_REWARD_ICONS.summonTimeora}"/></svg>`;
+}
 function bossRewardHTML(q) {
   const labels = {
     common: "일반",
@@ -1123,7 +1140,9 @@ function bossRewardHTML(q) {
     rare: "희귀",
     legendary: "전설"
   };
-  return `<div class="boss-reward-shell"><h2 class="boss-reward-title">${q.title || "붉은 타임오러 처치 보상"}</h2><p data-boss-reward-status>세 보상 중 하나를 선택하세요. 강한 보상일수록 등장 확률이 낮습니다.</p><div class="boss-reward-grid">${q.options.map((r, i) => `<button type="button" class="boss-reward-card ${r.rarity}" data-boss-reward="${i}"><span class="boss-reward-rarity">${labels[r.rarity] || r.rarity}</span><span class="boss-reward-name">${r.name}</span><span class="boss-reward-desc">${r.desc}</span></button>`).join("")}</div></div>`;
+  const kind = raidKindOf(state_ui_battle_state.game);
+  const head = q.floor ? `<div class="boss-reward-floor"><span>지하</span><b>${q.floor}</b><span>층 도달</span></div><h2 class="boss-reward-title">보상 선택</h2>` : `<h2 class="boss-reward-title">${q.title || "붉은 타임오러 처치 보상"}</h2>`;
+  return `<div class="boss-reward-shell ${kind}">${head}<p class="boss-reward-hint" data-boss-reward-status>세 보상 중 하나를 선택하세요. 강한 보상일수록 등장 확률이 낮습니다.</p><div class="boss-reward-grid">${q.options.map((r, i) => `<button type="button" class="boss-reward-card ${r.rarity}" style="--i:${i}" data-boss-reward="${i}"><span class="boss-reward-gem">${bossRewardIcon(r.id)}</span><span class="boss-reward-rarity">${labels[r.rarity] || r.rarity}</span><span class="boss-reward-name">${r.name}</span><span class="boss-reward-desc">${r.desc}</span></button>`).join("")}</div></div>`;
 }
 function bossRewardSetStatus(text) {
   const el = document.querySelector("[data-boss-reward-status]");
@@ -2071,6 +2090,7 @@ export function onRaidUnitDefeated(g, u, killer) {
         chooserRole: g.bossRaid.online ? "any" : "solo",
         final: false,
         title: `지하 ${g.bossRaid.cave.depth}층 도달 보상`,
+        floor: g.bossRaid.cave.depth,
         options: bossRollRewards(g)
       });
     }
