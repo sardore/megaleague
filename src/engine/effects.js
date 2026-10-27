@@ -593,6 +593,11 @@ export function iceRoar(g, actor) {
   actor.roarUses = (actor.roarUses || 0) + 1;
   for (const t of ["P", "A"]) for (const u of g.teams[t].field) if (u && !u.dead) applyStatus(g, u, "freeze", 2, actor);
 }
+/* 자신의 HP 비율이 낮을수록 커지는 피해: amount ÷ (HP/최대 HP). */
+export function hpRatioBlastAmount(actor, e) {
+  const ratio = Math.max(1, Number(actor.hp || 0)) / Math.max(1, Number(actor.maxHp || 1));
+  return Math.round(Number(e.amount || 0) / ratio);
+}
 export function removeEnergyAmount(u, amount, actorOrder = ["beast", "rider"]) {
   let removed = 0;
   for (const who of actorOrder) {
@@ -1226,6 +1231,14 @@ export function effectApply(g, actor, target, e, skill, ctx) {
           multiplier = ctx.sim ? (lo + hi) / 2 : g.rng.int(lo, hi),
           amount = Number(e.amount || 0) * multiplier;
         log(g, `${actor.name}: ${skill?.name || "기술"} 배수 ×${multiplier} → ${amount}D.`);
+        return dealDamage(g, actor, target, {
+          amount
+        }, skill, ctx.sim);
+      }
+    case "hpRatioBlast":
+      {
+        const amount = hpRatioBlastAmount(actor, e);
+        log(g, `${actor.name}: ${skill?.name || "기술"} · 자신의 HP ${actor.hp}/${actor.maxHp} → ${amount}D.`);
         return dealDamage(g, actor, target, {
           amount
         }, skill, ctx.sim);

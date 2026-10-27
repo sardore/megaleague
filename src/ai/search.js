@@ -7,7 +7,7 @@ export const state_ai_search = {
 import { actionHeuristic } from "./specialists.js";
 import { legalActions, other, unitAt } from "../engine/actions.js";
 import { activeIruma, damageRange, eclipseBlocks, findUnit, isStatusImmune, teamOf } from "../engine/combat.js";
-import { hasNullifyTrait } from "../engine/effects.js";
+import { hasNullifyTrait, hpRatioBlastAmount } from "../engine/effects.js";
 import { aliveUnits, allEnergy, canPay, canPayFrom, costGap, costTokens, spendFrom, status, switchCost, totalEnergy } from "../engine/energy.js";
 import { RNG, actionSkillHasEffect, actionSkillHasRuntimeKind, actionSkillHasTag, card, cardHasCapability, clone, firstSkillByEffect, makeUnit, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillOf } from "../engine/entities.js";
 import { endTurn, execute, gatherPotential } from "../engine/execution.js";
@@ -114,6 +114,9 @@ export function actionHeuristicBase(g, t, s, a) {
       amount: Number(e.amount || 0)
     }, sk).mean * Number(e.hits || 1) + 10 * Number(e.hits || 1);
   }
+  if (skillDefHasEffect(sk, "hpRatioBlast") && tar) sc += damageRange(g, u, tar, {
+    amount: hpRatioBlastAmount(u, sk.effects.find(x => x.type === "hpRatioBlast"))
+  }, sk).mean;
   if (skillDefHasEffect(sk, "hpLossBlast") && tar) sc += Math.max(0, Number(u.turnEndHp ?? u.hp) - Number(u.hp));
   if (skillDefHasEffect(sk, "prawnCharge") && tar) sc += hasNullifyTrait(tar) ? 170 : 125;
   for (const e of sk.effects) {
@@ -378,6 +381,7 @@ export function expectedActionDamage(g, t, u, a, target) {
   if (volley) return damageRange(g, u, target, {
     amount: Number(volley.amount || 0)
   }, sk).mean * Number(volley.hits || 1);
+  if (actionSkillHasEffect(a, "hpRatioBlast")) return hpRatioBlastAmount(u, skillOf(u, a.skill).effects.find(x => x.type === "hpRatioBlast"));
   if (actionSkillHasEffect(a, "hpLossBlast")) return Math.max(0, Number(u.turnEndHp ?? u.hp) - Number(u.hp));
   if (actionSkillHasEffect(a, "prawnCharge")) return hasNullifyTrait(target) ? 160 : 120;
   if (actionSkillHasEffect(a, "firestorm")) return 80;

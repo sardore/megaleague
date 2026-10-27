@@ -1001,6 +1001,25 @@ export function initializeCatalogCards() {
       count: 2,
       requires: "shield"
     }
+  }), state_catalog_cards.C("birdKnight", "새기사", 120, "저HP 역전 딜러", "메가리그", "없음.", [state_catalog_cards.S("knightWingCutter", "윙커터", "**", "50D.", "enemy", [{
+    type: "damage",
+    amount: 50
+  }], ["damage"]), state_catalog_cards.S("reversalSword", "역전의검", "R*", "20÷(자신의 HP 비율)D.", "enemy", [{
+    type: "hpRatioBlast",
+    amount: 20
+  }], ["damage"]), state_catalog_cards.S("birdStrike", "버드 스트라이크", "WR", "120D. 자신도 절반의 반동 피해를 받는다. 전투 1회.", "enemy", [{
+    type: "damage",
+    amount: 120,
+    recoilFraction: 0.5
+  }], ["damage"], {
+    requirements: {
+      oncePerBattle: true
+    }
+  })], {
+    grade: "3☆",
+    shield: 40,
+    league: "mega",
+    tags: ["wind"]
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{
