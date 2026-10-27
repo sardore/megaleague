@@ -1,6 +1,6 @@
 import { onRaidUnitDefeated } from "../features/boss-raid.js";
 import { triggerGraveUp } from "../features/weller.js";
-import { healingBecomesDamage, isZombie, undeadPreventsDeath } from './status-rules.js';
+import { fillFreezeActive, healingBecomesDamage, isZombie, statusLabel, undeadPreventsDeath } from './status-rules.js';
 
 // Owned mutable state. Imported by the subsystem and its explicit consumers.
 export const state_engine_combat = {
@@ -10,7 +10,7 @@ export const state_engine_combat = {
 };
 import { state_runtime_entities } from "../runtime/entities.js";
 import { other, state_engine_actions } from "./actions.js";
-import { allEnergy, energyStores, normalizeEnergy, notifyReactiveEnergyMutation, requestTraitEnergy, setEnergyBatch, status, totalEnergy } from "./energy.js";
+import { allEnergy, energyStores, gainTraitEnergyNow, normalizeEnergy, notifyReactiveEnergyMutation, requestTraitEnergy, setEnergyBatch, status, totalEnergy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, firstSkillByTag, skillDefHasEffect, skillDefHasRuntimeKind, state_engine_entities } from "./entities.js";
 import { checkWinner } from "./execution.js";
 import { elixianHealAmount, syncAromaCombatFlags } from "../features/elixian.js";
@@ -33,22 +33,31 @@ export function isStatusImmune(u, s) {
 export function activeIruma(g, t) {
   return g.teams[t]?.field.find(u => u && !u.dead && cardHasCapability(u, "irumaCleanse") && traitsActive(u)) || null;
 }
-export function applyStatus(g, u, s, d, source = null, presentationMeta = null) {
+export function applyStatus(g, u, s, d, source = null, presentationMeta = null, options = {}) {
   actionFaultHit("status-before");
   let c = card(u);
-  if (s === "freeze" && cardHasCapability(u, "dualActor") && traitsActive(u)) {
-    const freezeAbsorbOldHp = Number(u.hp || 0);
-    u.hp += Number(cardCapability(u, "freezeAbsorbHeal", 20));
-    state_engine_entities.GenericBattleStatisticsOwner.recordHealing(g, {
-      source: u,
-      target: u,
-      requestedAmount: Number(cardCapability(u, "freezeAbsorbHeal", 20)),
-      actualAppliedAmount: Math.max(0, Math.min(u.maxHp, u.hp) - Math.min(u.maxHp, freezeAbsorbOldHp)),
-      reason: "freeze-absorb",
-      effectId: "freeze-absorb"
-    });
-    log(g, `${u.name} 특성 · 냉동 흡수: 냉동 무효, HP +20 (${u.hp}/${u.maxHp}).`, "heal");
-    queueVisual(g, u, "heal", Number(cardCapability(u, "freezeAbsorbHeal", 20)));
+  if (s === "freeze" && cardHasCapability(u, "freezeAbsorb") && traitsActive(u)) {
+    const healAmount = Number(cardCapability(u, "freezeAbsorbHeal", 0)),
+      energyGain = cardCapability(u, "freezeAbsorbEnergy", null),
+      gained = [];
+    if (healAmount > 0) {
+      const freezeAbsorbOldHp = Number(u.hp || 0);
+      u.hp += healAmount;
+      state_engine_entities.GenericBattleStatisticsOwner.recordHealing(g, {
+        source: u,
+        target: u,
+        requestedAmount: healAmount,
+        actualAppliedAmount: Math.max(0, Math.min(u.maxHp, u.hp) - Math.min(u.maxHp, freezeAbsorbOldHp)),
+        reason: "freeze-absorb",
+        effectId: "freeze-absorb"
+      });
+      log(g, `${u.name} 특성 · 냉동 흡수: 냉동 무효, HP +${healAmount} (${u.hp}/${u.maxHp}).`, "heal");
+      queueVisual(g, u, "heal", healAmount);
+    }
+    if (energyGain) {
+      for (let i = 0; i < Number(energyGain.amount || 0); i++) if (gainTraitEnergyNow(g, u, energyGain.color, 1, "냉동 흡수")) gained.push(energyGain.color);
+      log(g, `${u.name} 특성 · 냉동 흡수: 냉동 무효, ${gained.join("") || "에너지"} 획득.`);
+    }
     queueCombatNotice(g, u, "냉동 무효", "immune");
     return false;
   }
@@ -63,10 +72,11 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null) 
     return false;
   }
   u.statuses[s] = Math.max(status(u, s), d);
+  if (s === "freeze") u.fillFreeze = !!options.untilEnergyFull;
   u.statusAppliedTurnSerial ||= {};
   u.statusAppliedTurnSerial[s] = g.turnSerial;
-  log(g, `${u.name}에게 ${state_engine_entities.STATUS[s]} ${d}턴.`);
-  queueCombatNotice(g, u, `${state_engine_entities.STATUS[s]} ${d}턴`, "status", presentationMeta);
+  log(g, `${u.name}에게 ${statusLabel(u, s, d)}.`);
+  queueCombatNotice(g, u, statusLabel(u, s, d), "status", presentationMeta);
   if (source) source.statusScore += d;
   let t = teamOf(g, u),
     ir = t && activeIruma(g, t);
@@ -85,6 +95,21 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null) 
   if (s === "traitSeal" && typeof reactiveEnergyRule === "function" && reactiveEnergyRule(u)) syncReactiveEnergyMaxHp(g, u, "특성봉인", true);
   if (s === 'undead' && status(u, s) && isZombie(u)) queueVisual(g, { type: 'wellerFx', phase: 'undeadApply', uid: u.uid, targetUid: u.uid });
   return true;
+}
+/* 에너지 기반 냉동은 턴 수로 줄지 않고, 걸린 개체의 차례가 끝날 때 에너지가 가득 차 있으면 풀린다. 남은 값은 채워야 할 에너지 수로 맞춘다. */
+export function settleFillFreeze(g, u) {
+  if (!fillFreezeActive(u)) return false;
+  const missing = (card(u).maxEnergy || 4) - totalEnergy(u);
+  if (missing <= 0.001) {
+    delete u.statuses.freeze;
+    u.fillFreeze = false;
+    if (u.statusAppliedTurnSerial) delete u.statusAppliedTurnSerial.freeze;
+    log(g, `${u.name}: 에너지가 가득 차 냉동 종료.`);
+    queueCombatNotice(g, u, `${state_engine_entities.STATUS.freeze} 종료`, "cure");
+    return true;
+  }
+  u.statuses.freeze = Math.max(1, Math.ceil(missing - 0.001));
+  return false;
 }
 export function triggerForcedCleansePenalty(g, target, targetTeam, source = null) {
   let enemy = other(targetTeam),
@@ -1135,7 +1160,7 @@ export function changeEnergyColor(g, u, color, all = false, source = null) {
   if (typeof state_runtime_entities.EnergyEngine !== "undefined") state_runtime_entities.EnergyEngine.ensureStore(u);
   return __result;
 }
-export function removeEnergy(g, u, amount, source = null) {
+export function removeEnergy(g, u, amount, source = null, { recent = false } = {}) {
   let __result;
   __removeEnergyCore: {
     if (typeof circuitBlocksExternal === "function" && circuitBlocksExternal(u, source)) {
@@ -1150,7 +1175,7 @@ export function removeEnergy(g, u, amount, source = null) {
       __result = 0;
       break __removeEnergyCore;
     }
-    let i = store.findIndex(e => e.a === 0.5);
+    let i = recent ? store.length - 1 : store.findIndex(e => e.a === 0.5);
     if (i < 0) i = 0;
     let e = store[i],
       x = Math.min(e.a, amount);

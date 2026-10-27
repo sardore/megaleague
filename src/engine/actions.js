@@ -12,10 +12,10 @@ export const state_engine_actions = {
   timeFeatureReady: undefined
 };
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
-import { heal, queueVisual, traitsActive } from "./combat.js";
+import { heal, nonAttackDamage, queueVisual, traitsActive } from "./combat.js";
 import { collectTargetEnergyEntries, ensureScheduledActionIdentity, decayHpProtectionBarriers, processQueuedHeal, scheduledExecutionId } from "./effects.js";
 import { allEnergy, allPaymentPlans, canPay, canPayAction, canPayFrom, canSwitch, energyStore, status, switchCost, switchCostText, totalEnergy, transformedSkillReq, state_engine_energy } from "./energy.js";
-import { battleActionConstraintsMet, card, cardHasCapability, firstSkillByEffect, resolveSkillTargets, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "./entities.js";
+import { battleActionConstraintsMet, card, cardCapability, cardHasCapability, firstSkillByEffect, resolveSkillTargets, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "./entities.js";
 import { log } from "../presentation/audio.js";
 import { timeSyncContinuousTraitStates } from "../presentation/introductions.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
@@ -56,6 +56,8 @@ export function prepareCurrentTurn(g) {
           log(g, `${u.name}: 화염날개 방어 종료.`);
         }
         if (cardHasCapability(u, "dualActor")) state_engine_energy.dualActorController.begin(g, u);else state_engine_energy.dualActorController.clear(g);
+        const frost = status(u, "freeze") ? g.teams[other(t)].field.find(x => x && !x.dead && cardHasCapability(x, "frozenTurnStartDamage") && traitsActive(x)) : null;
+        if (frost) nonAttackDamage(g, u, Number(cardCapability(frost, "frozenTurnStartDamage", 0)), `${frost.name} 특성 · 냉동 피해`);
       }
     }
 

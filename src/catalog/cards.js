@@ -953,6 +953,27 @@ export function initializeCatalogCards() {
     grade: "2☆",
     league: "mega",
     tags: ["earth"]
+  }), state_catalog_cards.C("frost", "프로스트", 110, "냉동 견제", "메가리그", "냉동 흡수: 냉동 적용을 무효화하고 W 2개를 얻는다. 냉동에 걸린 적이 차례를 시작할 때 20 피해.", [state_catalog_cards.S("snowBreath", "눈꽃숨", "W", "30D. 대상의 에너지 하나를 오른쪽부터 제거.", "enemy", [{
+    type: "damage",
+    amount: 30
+  }, {
+    type: "removeEnergy",
+    amount: 1,
+    recent: true
+  }], ["damage", "energy"]), state_catalog_cards.S("frostbind", "프로스트", "W", "대상에게 에너지가 가득 찰 때까지 지속되는 냉동.", "enemy", [{
+    type: "freezeUntilFull"
+  }], ["status"], {
+    vfxTheme: "freezeBeam"
+  })], {
+    grade: "2☆",
+    league: "mega",
+    tags: ["ice"],
+    freezeAbsorb: true,
+    freezeAbsorbEnergy: {
+      color: "W",
+      amount: 2
+    },
+    frozenTurnStartDamage: 20
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{

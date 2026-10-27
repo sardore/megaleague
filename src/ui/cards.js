@@ -13,6 +13,7 @@ export const state_ui_cards = {
 import { state_catalog_cards } from "../catalog/cards.js";
 import { eclipseBlocks, findUnit, teamOf } from "../engine/combat.js";
 import { energyStore } from "../engine/energy.js";
+import { fillFreezeActive, statusLabel } from "../engine/status-rules.js";
 import { card, cardDefinition, cardHasCapability, isTargetMagnet, skillDefHasEffect, state_engine_entities } from "../engine/entities.js";
 import { zombieCaveAffixBadge, zombieCaveBadge, zombieCaveSlotInfo, zombieCaveDoorInfo } from "../features/zombie-cave.js";
 import { elixianHpProtection, totalHpProtection } from "../features/elixian.js";
@@ -45,6 +46,7 @@ export function initializeUiCards() {
     tube: ["🛟"],
     bush: ["🌿"],
     sandcastle: ["🏰"],
+    frost: ["🧊"],
     helmetShark: ["🦈"],
     snakeArmor: ["🐍", "🛡️"],
     phantomMuner: ["🎩", "🃏"],
@@ -151,7 +153,7 @@ export function cardTooltipHTML(c, u = null) {
   if (!c) return "";
   const liveUnit = u?.presentationOnly ? null : u;
   let location = liveUnit ? unitLocation(state_ui_battle_state.game, liveUnit.uid) : null,
-    statusRows = liveUnit ? [...Object.entries(liveUnit.statuses || {}).map(([s, d]) => `<span class="tag">${state_engine_entities.STATUS[s] || s} ${d}</span>`), ...Object.entries(liveUnit.skillSeals || {}).map(([skillId, d]) => {
+    statusRows = liveUnit ? [...Object.entries(liveUnit.statuses || {}).map(([s, d]) => `<span class="tag">${fillFreezeActive(liveUnit, s) ? statusLabel(liveUnit, s) : `${state_engine_entities.STATUS[s] || s} ${d}`}</span>`), ...Object.entries(liveUnit.skillSeals || {}).map(([skillId, d]) => {
       let skillName = c.skills.find(x => x.id === skillId)?.name || skillId;
       return `<span class="tag">${skillName} 기술봉인 ${d}</span>`;
     })].join("") || '<span class="muted">없음</span>' : "",
@@ -373,7 +375,7 @@ export function unitEffectBadgesHTML(u) {
   if (invulnerable) add(invulnerable.label, "invulnerable", invulnerable.title);
   if (u.scheduledAction?.kind === "bloom") add("CC 무효", "ccimmune", "피어나는생명 대기 중: 상태이상 적용 무효");
   for (const [sid, duration] of Object.entries(u.statuses || {})) {
-    if (Number(duration) > 0) add(`${state_engine_entities.STATUS[sid] || sid} ${duration}`, "status", `${state_engine_entities.STATUS[sid] || sid} ${duration}턴`);
+    if (Number(duration) > 0) add(fillFreezeActive(u, sid) ? statusLabel(u, sid) : `${state_engine_entities.STATUS[sid] || sid} ${duration}`, "status", statusLabel(u, sid, duration));
   }
   for (const [skillId, duration] of Object.entries(u.skillSeals || {})) {
     if (Number(duration) <= 0) continue;
