@@ -87,7 +87,7 @@ function prepareEnergyAction(g, t, s, action, opt = {}) {
       return null;
     }
   })();
-  const onlineTimeKeep = !!(g === currentGame() && cardHasCapability(actor, "timeControl") && action?.type === "gather" && action?.timeAccelerationChoice === "keep" && !Array.isArray(action?.timeKeepGainIndices) && (g?.mode === "online" || g?.mode === "bossOnline" || g?.bossRaid?.online));
+  const onlineTimeKeep = !!(g === currentGame() && cardHasCapability(actor, "timeControl") && action?.type === "gather" && action?.timeAccelerationChoice === "keep" && !Array.isArray(action?.gatherKeepIndices) && (g?.mode === "online" || g?.mode === "bossOnline" || g?.bossRaid?.online));
   const beforeTotal = onlineTimeKeep ? Number(totalEnergy(actor) || 0) : 0;
   const max = onlineTimeKeep ? Number(card(actor)?.maxEnergy || 4) : 0;
   const slowed = onlineTimeKeep && !!status(actor, "slow");

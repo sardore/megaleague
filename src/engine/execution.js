@@ -316,7 +316,7 @@ export function executeCoreBase(g, t, s, a, {
       effectId: baseSk.id,
       sim
     });
-    if (skillDefHasRuntimeKind(baseSk, "openingGuard")) u.usedOnce[baseSk.id] = true;
+    if (skillDefHasRuntimeKind(baseSk, "openingGuard") || baseSk.requirements?.oncePerBattle) u.usedOnce[baseSk.id] = true;
     let effects = a.copySkill ? sk.effects : baseSk.effects,
       healTarget = a.healTargetUid ? findUnit(g, a.healTargetUid) : null,
       damageBatch = state_engine_combat.DamageBatchOwner.begin(g, `${u.uid}:${baseSk.id}:${g.turnSerial}`);

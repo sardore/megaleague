@@ -3,6 +3,7 @@ import { activeEterna, eternaLocksTeam } from "../app/controls.js";
 import { state_catalog_cards } from "../catalog/cards.js";
 import { other, unitAt } from "../engine/actions.js";
 import { findPaymentPlan } from "../engine/energy.js";
+import { executeMultiGather, multiGatherCount } from "../engine/multi-gather.js";
 import { actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, firstSkillByEffect, firstSkillByTag, skillHasTag } from "../engine/entities.js";
 import { dmBattleInstanceId, dmDebug, dmIsDragonCard, dmNewActionId, state_features_dragon_memory } from "./dragon-memory.js";
 import { copiedSkillAllowed, syncAromaCombatFlags } from "./elixian.js";
@@ -101,6 +102,7 @@ export function executeCharacterAction(g, t, s, a, opt = {}) {
             if (a.costOverride !== "**") return false;
           } else return false;
         }
+        if (a?.type === "gather" && actor && multiGatherCount(g, actor)) return executeMultiGather(g, t, s, actor, a, opt);
         if (a?.type === "gather" && actor && (cardHasCapability(actor, "jungleMud") || cardHasCapability(actor, "alternatingCharge"))) return executeCustomGather(g, t, s, actor, a);
         if (a?.type === "skill" && actor) {
           if (skillHasTag(actor, a.skill, "summon") && summonLimitReached(g, t, actor)) return false;

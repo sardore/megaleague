@@ -123,5 +123,58 @@ try{
    return out;})()`);
   assert.deepEqual(r,{enemy:20,ally:20,self:20,sealed:0,knight:false,knightHp:120,knightFrozen:0});
  });
+ const gx=(deck,enemy,mode='ai')=>`(()=>{const g=Megaleague.newGame(${JSON.stringify(deck)},${JSON.stringify(enemy)},{mode:'${mode}',variance:false,seed:'mg'});g.order=[['P',0],['A',0],['P',1],['A',1]];g.turn=0;g.turnSerial=0;g.preparedKey=null;return g;})()`;
+ const foe=['mole','turtle','hermit','mushroom'],pad=['mole','turtle','hermit'];
+ await check('cherryberry: stats, skills and the shared multi-gather rule (two energies only while it has a shield)',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};let g=${gx(['cherryberry',...pad],foe)};let u=g.teams.P.field[0];const c=probe.card(u);
+   out.stats={hp:c.maxHp,shield:u.shield,grade:c.grade,costs:c.skills.map(s=>s.cost)};
+   u.energy=[];Megaleague.execute(g,'P',0,{type:'gather'});out.withShield=u.energy.length;
+   g=${gx(['cherryberry',...pad],foe)};u=g.teams.P.field[0];u.shield=0;u.energy=[];Megaleague.execute(g,'P',0,{type:'gather'});out.noShield=u.energy.length;
+   g=${gx(['cherryberry',...pad],foe)};u=g.teams.P.field[0];u.energy=[];u.statuses={slow:2};Megaleague.execute(g,'P',0,{type:'gather'});out.slowTotal=u.energy.reduce((n,e)=>n+e.a,0);
+   g=${gx(['cherryberry',...pad],foe)};u=g.teams.P.field[0];u.energy=[];u.statuses={traitSeal:2};Megaleague.execute(g,'P',0,{type:'gather'});out.sealed=u.energy.length;
+   return out;})()`);
+  assert.deepEqual(r,{stats:{hp:70,shield:90,grade:'3☆',costs:['**','WR*','W*']},withShield:2,noShield:1,slowTotal:1,sealed:1});
+ });
+ await check('multi-gather overflow: AI replaces automatically; a human must choose, may keep part of the new energy, or decline',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};const full=[{c:'R',a:1},{c:'R',a:1},{c:'B',a:1}];
+   let g=${gx(['cherryberry',...pad],foe)};let u=g.teams.P.field[0];u.energy=full.map(e=>({...e}));Megaleague.execute(g,'P',0,{type:'gather'});out.ai=u.energy.reduce((n,e)=>n+e.a,0);
+   g=${gx(['cherryberry',...pad],foe,'human')};u=g.teams.P.field[0];u.energy=full.map(e=>({...e}));
+   out.noChoice=Megaleague.execute(g,'P',0,{type:'gather'});out.keepOne=Megaleague.execute(g,'P',0,{type:'gather',gatherKeepIndices:[0]});out.keepOneTotal=u.energy.reduce((n,e)=>n+e.a,0);
+   g=${gx(['cherryberry',...pad],foe,'human')};u=g.teams.P.field[0];u.energy=full.map(e=>({...e}));
+   out.decline=Megaleague.execute(g,'P',0,{type:'gather',gatherDeclineOverflow:true});out.declineTotal=u.energy.reduce((n,e)=>n+e.a,0);
+   return out;})()`);
+  assert.deepEqual(r,{ai:4,noChoice:false,keepOne:true,keepOneTotal:4,decline:true,declineTotal:3});
+ });
+ await check('timeora acceleration still runs through the shared gather rules: keep 1.5E, reroll 1E, human overflow choices',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};const tot=u=>u.energy.reduce((n,e)=>n+e.a,0);
+   let g=${gx(['timeora',...pad],foe)};let u=g.teams.P.field[0];u.energy=[];out.keep=Megaleague.execute(g,'P',0,{type:'gather',timeAccelerationChoice:'keep'})&&tot(u);
+   g=${gx(['timeora',...pad],foe)};u=g.teams.P.field[0];u.energy=[];out.reroll=Megaleague.execute(g,'P',0,{type:'gather',timeAccelerationChoice:'reroll'})&&tot(u);
+   g=${gx(['timeora',...pad],foe,'human')};u=g.teams.P.field[0];u.energy=[{c:'R',a:1},{c:'R',a:1},{c:'B',a:1}];
+   out.noChoice=Megaleague.execute(g,'P',0,{type:'gather',timeAccelerationChoice:'keep'});
+   out.replace=Megaleague.execute(g,'P',0,{type:'gather',timeAccelerationChoice:'keep',gatherKeepIndices:[0,1],gatherReplaceIndices:[0]})&&tot(u);
+   return out;})()`);
+  assert.deepEqual(r,{keep:1.5,reroll:1,noChoice:false,replace:3.5});
+ });
+ await check('cherryberry: shield melt cannot break through its shield (only while the trait works); 기생초 absorbs the damage dealt',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};let g=${gx(['bkeno',...pad],['cherryberry','turtle','hermit','mushroom'])};const u=g.teams.P.field[0],t=g.teams.A.field[0];
+   const sk=probe.card(u).skills.find(s=>s.id==='eruption'),melt={...sk.effects[0],boostChance:0,amount:210},ctx={team:'P',slot:0,sim:false,action:{}};
+   const reset=(x,hp)=>{x.shield=90;x.hp=x.maxHp=hp;x.defense=0;x.baseDefense=0;x.defenseMod=0;};
+   reset(t,70);probe.effectApply(g,u,t,melt,sk,ctx);out.cherry=[t.hp,t.shield];
+   reset(t,70);t.statuses={traitSeal:2};probe.effectApply(g,u,t,melt,sk,ctx);out.sealed=[t.hp,t.shield];
+   const o=g.teams.A.field[1];reset(o,500);probe.effectApply(g,u,o,melt,sk,ctx);out.normal=[o.hp,o.shield];
+   g=${gx(['cherryberry',...pad],foe)};const c=g.teams.P.field[0],f=g.teams.A.field[0],pb=probe.card(c).skills.find(s=>s.id==='parasiteBerry');
+   f.shield=0;f.hp=f.maxHp=999;f.defense=0;f.baseDefense=0;f.defenseMod=0;c.hp=30;
+   out.absorb=[probe.effectApply(g,c,f,pb.effects[0],pb,{team:'P',slot:0,sim:false,action:{}}),c.hp];
+   return out;})()`);
+  assert.deepEqual(r,{cherry:[70,0],sealed:[0,0],normal:[380,0],absorb:[30,60]});
+ });
+ await check('cherryberry: berry shield needs a broken shield and works once per battle',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};const g=${gx(['cherryberry',...pad],foe)};const u=g.teams.P.field[0];
+   const usable=()=>{u.energy=[{c:'W',a:1},{c:'R',a:1},{c:'B',a:1}];return Megaleague.legalActions(g,'P',0).some(a=>a.type==='skill'&&a.skill==='berryShield');};
+   out.withShield=usable();u.shield=0;out.broken=usable();
+   out.cast=Megaleague.execute(g,'P',0,{type:'skill',skill:'berryShield',target:{team:'P',slot:0,uid:u.uid}});out.shield=u.shield;
+   g.turn=0;g.turnSerial++;g.preparedKey=null;u.shield=0;out.again=usable();return out;})()`);
+  assert.deepEqual(r,{withShield:false,broken:true,cast:true,shield:90,again:false});
+ });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

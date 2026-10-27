@@ -21,6 +21,10 @@ import { log, queueCombatNotice } from "../presentation/audio.js";
 import { state_presentation_coordinates } from "../presentation/coordinates.js";
 import { systems } from "../runtime/systems.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
+/* 실드멜트(실드를 부수고 남은 피해를 HP에 넣는 효과)는 shieldMeltImmune 특성을 가진 대상에게는 통하지 않아 초과 피해가 소멸한다. */
+export function shieldMeltApplies(effect, unit) {
+  return !!effect?.shieldMelt && !(cardHasCapability(unit, "shieldMeltImmune") && traitsActive(unit));
+}
 export function traitsActive(u, g = state_engine_actions.timeTraitGame || state_ui_battle_state.game) {
   if (status(u, "traitSeal")) return false;
   if (!state_engine_actions.timeFeatureReady) return true;
@@ -735,7 +739,7 @@ export function applyResolvedDamagePacket(g, actor, target, final, effect = {}) 
     protector.shield = Math.max(0, old - toProtector);
     protector.shieldAbsorbed += absorbed;
     total += absorbed;
-    if (effect.shieldMelt && toProtector > old) {
+    if (shieldMeltApplies(effect, protector) && toProtector > old) {
       let hp = applyHpPortion(g, actor, protector, toProtector - old);
       total += hp;
       log(g, `${protector.name} 특성 · 실드 대신피해: 실드 ${old} 파괴, 실드멜트 HP 피해 ${hp}.`);
@@ -753,7 +757,7 @@ export function applyResolvedDamagePacket(g, actor, target, final, effect = {}) 
       after: protectorAfter,
       amount: protectorAmount
     });
-    publishDamageVisual(g, protector, effect.shieldMelt ? toProtector : absorbed, {
+    publishDamageVisual(g, protector, shieldMeltApplies(effect, protector) ? toProtector : absorbed, {
       damageEventId: protectorEvent?.eventId || null,
       sourceEntityId: actor?.entityId || actor?.uid || null,
       hitIndex: effect?.hitIndex || 1,
@@ -771,7 +775,7 @@ export function applyResolvedDamagePacket(g, actor, target, final, effect = {}) 
     target.shieldAbsorbed += absorbed;
     total += absorbed;
     targetActual += absorbed;
-    if (effect.shieldMelt && final > old) {
+    if (shieldMeltApplies(effect, target) && final > old) {
       let hp = applyHpPortion(g, actor, target, final - old);
       total += hp;
       targetActual += hp;
@@ -832,7 +836,7 @@ export function attackPacketWouldDefeatTarget(g, target, finalDamage, effect = {
   if (activeShieldProtector(g, target) && toTarget > 0) toTarget -= Math.floor(toTarget / 2);
   const shield = Math.max(0, Number(target?.shield || 0));
   if (shield > 0) {
-    if (!effect.shieldMelt) return false;
+    if (!shieldMeltApplies(effect, target)) return false;
     toTarget = Math.max(0, toTarget - shield);
   }
   const barriers = (target?.hpProtectionBarriers || []).reduce((sum, layer) => sum + Math.max(0, Number(layer?.amount || 0)), 0);
