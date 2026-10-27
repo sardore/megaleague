@@ -99,8 +99,6 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null, 
     });
     triggerForcedCleansePenalty(g, u, t, source);
   }
-  /* 냉동은 행동 자체를 막으므로 진행 중이던 예약 효과(연속·지연 공격)도 끊는다. 즉시 치료로 바로 풀린 경우는 걸리지 않은 것이다. */
-  if (s === "freeze" && status(u, "freeze")) cancelScheduledAction(g, u, "냉동으로");
   actionFaultHit("status-after");
   if (s === "traitSeal" && typeof reactiveEnergyRule === "function" && reactiveEnergyRule(u)) syncReactiveEnergyMaxHp(g, u, "특성봉인", true);
   if (s === 'undead' && status(u, s) && isZombie(u)) queueVisual(g, { type: 'wellerFx', phase: 'undeadApply', uid: u.uid, targetUid: u.uid });
