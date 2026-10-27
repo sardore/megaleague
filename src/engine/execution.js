@@ -6,7 +6,7 @@ import { state_runtime_state } from "../runtime/state.js";
 import { isNonAttackSkill } from "../app/controls.js";
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { effectApply, legalActions, other, prepareCurrentTurn, unitAt, state_engine_actions } from "./actions.js";
-import { applyStatus, checkDeath, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, traitsActive, state_engine_combat } from "./combat.js";
+import { applyStatus, checkDeath, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, settleFillFreeze, traitsActive, state_engine_combat } from "./combat.js";
 import { beginScheduledActionExecution, completeScheduledActionExecution, consumeNaturalGatherProposal, executeScheduled, naturalColors } from "./effects.js";
 import { aliveUnits, bestEnergyReplacementPlan, canPayAction, canPayReq, canSwitch, energyStore, energyValue, findPaymentPlan, gainEnergy, initializeDeployment, parseCost, reqAcceptsCounts, requestTraitEnergy, spendAction, spendFrom, spendPaymentPlan, spendReq, status, switchCost, totalEnergy, state_engine_energy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillsOf, state_engine_entities } from "./entities.js";
@@ -423,6 +423,7 @@ export function endTurn(g, t, s, usedSkill) {
           }
         }
       }
+      settleFillFreeze(g, u);
       if (u.hp <= 0) checkDeath(g, u);
       for (const sid of Object.keys(u.skillSeals || {})) {
         u.skillSeals[sid]--;

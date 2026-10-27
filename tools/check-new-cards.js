@@ -78,5 +78,49 @@ try{
    return {colors,left:t.beastEnergy.length+t.riderEnergy.length};})()`);
   assert.deepEqual(r,{colors:'WWWW',left:0});
  });
+ await check('frost: stats and skills; snow breath hits 30D and removes the rightmost target energy',async page=>{
+  const r=await page.evaluate(`(()=>{${setup('frost')}
+   const c=probe.card(u);const out={hp:c.maxHp,grade:c.grade,cost:c.skills.map(s=>s.cost)};
+   t.hp=t.maxHp=999;t.shield=0;t.defense=0;t.baseDefense=0;t.defenseMod=0;t.energy=[{c:'R',a:1},{c:'B',a:1},{c:'W',a:1}];
+   for(const e of skill('snowBreath').effects)probe.effectApply(g,u,t,e,skill('snowBreath'),{team:'P',slot:0,sim:false,action:{}});
+   out.dmg=999-t.hp;out.left=t.energy.map(e=>e.c).join('');return out;})()`);
+  assert.deepEqual(r,{hp:110,grade:'2☆',cost:['W','W'],dmg:30,left:'RB'});
+ });
+ await check('frost: frostbind freezes until the target energy is full; it never counts down and ends at the owner turn end once full',async page=>{
+  const r=await page.evaluate(`(()=>{${setup('frost')}
+   const out={};const ctx={team:'P',slot:0,sim:false,action:{}};t.energy=[{c:'R',a:1}];
+   probe.effectApply(g,u,t,skill('frostbind').effects[0],skill('frostbind'),ctx);
+   out.applied=probe.energy.status(t,'freeze');out.label=probe.statusRules.statusLabel(t,'freeze');
+   const endOwn=()=>{g.turn=1;g.turnSerial++;g.preparedKey=null;probe.actions.prepareCurrentTurn(g);probe.execution.endTurn(g,'A',0,false);};
+   endOwn();out.afterTurn1=probe.energy.status(t,'freeze');
+   t.energy=[{c:'R',a:1},{c:'B',a:1},{c:'W',a:1}];endOwn();out.afterTurn2=probe.energy.status(t,'freeze');
+   t.energy=[{c:'R',a:2},{c:'B',a:1},{c:'W',a:1}];endOwn();out.full=probe.energy.status(t,'freeze');
+   t.energy=[{c:'R',a:2},{c:'B',a:1},{c:'W',a:1}];
+   probe.effectApply(g,u,t,skill('frostbind').effects[0],skill('frostbind'),ctx);out.fullApplied=probe.energy.status(t,'freeze');
+   endOwn();out.fullEnded=probe.energy.status(t,'freeze');
+   return out;})()`);
+  assert.deepEqual(r,{applied:3,label:'냉동 : 에너지를 다 채우기까지',afterTurn1:3,afterTurn2:1,full:0,fullApplied:1,fullEnded:0});
+ });
+ await check('frost: freeze absorb nullifies any freeze and gives W W; a regular freeze keeps counting down',async page=>{
+  const r=await page.evaluate(`(()=>{${setup('frost')}
+   const out={};u.energy=[{c:'R',a:1}];
+   out.applied=probe.combat.applyStatus(g,u,'freeze',2,t);out.frozen=probe.energy.status(u,'freeze');out.energy=u.energy.map(e=>e.c+e.a).join('');
+   u.energy=[{c:'R',a:1},{c:'R',a:1},{c:'B',a:1},{c:'B',a:1}];probe.combat.applyStatus(g,u,'freeze',2,t);out.fullTotal=u.energy.reduce((n,e)=>n+e.a,0);out.fullHasW=u.energy.some(e=>e.c==='W');
+   t.statuses={};probe.combat.applyStatus(g,t,'freeze',2,u);t.fillFreeze=false;
+   g.turn=1;g.turnSerial++;g.preparedKey=null;probe.actions.prepareCurrentTurn(g);probe.execution.endTurn(g,'A',0,false);
+   out.timed=probe.energy.status(t,'freeze');return out;})()`);
+  assert.deepEqual(r,{applied:false,frozen:0,energy:'R1W1W1',fullTotal:4,fullHasW:true,timed:1});
+ });
+ await check('frost: a frozen enemy takes 20 at its turn start; not while trait sealed, not for frost allies; ice knight still absorbs for 20 HP',async page=>{
+  const r=await page.evaluate(`(()=>{${setup('frost')}
+   const out={};const ally=g.teams.P.field[1];t.hp=t.maxHp=999;ally.hp=ally.maxHp=999;t.statuses={freeze:2};ally.statuses={freeze:2};
+   const startOf=(team,slot)=>{g.turn=g.order.findIndex(([x,y])=>x===team&&y===slot);g.turnSerial++;g.preparedKey=null;probe.actions.prepareCurrentTurn(g);};
+   startOf('A',0);out.enemy=999-t.hp;startOf('P',1);out.ally=999-ally.hp;
+   t.hp=999;u.statuses={traitSeal:2};startOf('A',0);out.sealed=999-t.hp;
+   const g2=Megaleague.newGame(['iceknight','mole','turtle','hermit'],['mole','turtle','hermit','mushroom'],{mode:'ai',variance:false,seed:'ik'});
+   const k=g2.teams.P.field[0];k.hp=100;out.knight=probe.combat.applyStatus(g2,k,'freeze',2,null);out.knightHp=k.hp;out.knightFrozen=probe.energy.status(k,'freeze');
+   return out;})()`);
+  assert.deepEqual(r,{enemy:20,ally:0,sealed:0,knight:false,knightHp:120,knightFrozen:0});
+ });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

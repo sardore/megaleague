@@ -140,6 +140,10 @@ export function actionHeuristicBase(g, t, s, a) {
       sc += (e.status === "poison" ? 35 + allEnergy(tar) * 7 : e.status === "slow" ? 24 : 18) * (1 - irumaChance);
     }
     if (e.type === "statusChance" && tar) sc += e.chance * 24;
+    if (e.type === "freezeUntilFull" && tar) {
+      const missing = Math.max(1, (card(tar).maxEnergy || 4) - totalEnergy(tar));
+      sc += isStatusImmune(tar, "freeze") || cardHasCapability(tar, "freezeAbsorb") ? -40 : status(tar, "freeze") ? -30 : 40 + missing * 38;
+    }
     if (e.type === "startSequence" && tar) sc += 100;
     if (e.type === "clearFieldEnergy") {
       let enemy = g.teams[other(t)].field.reduce((n, x) => n + (x && !x.dead ? allEnergy(x) : 0), 0),
@@ -230,7 +234,7 @@ export function evaluate(g, me) {
     for (const u of aliveUnits(tm)) {
       let extra = (u.hpProtectionBarriers || []).reduce((n, x) => n + x.amount, 0);
       score += sign * (u.hp * 2 + u.shield * 1.25 + extra * 1.1 + u.defense * 3 + allEnergy(u) * 14);
-      score -= sign * (status(u, "burn") * 18 + status(u, "paralyze") * 9 + status(u, "poison") * 16 + status(u, "slow") * 8);
+      score -= sign * (status(u, "burn") * 18 + status(u, "paralyze") * 9 + status(u, "poison") * 16 + status(u, "slow") * 8 + status(u, "freeze") * 35);
       if (u.scheduledAction) score += sign * (u.scheduledAction.kind === "bloom" ? 190 : u.scheduledAction.kind === "rubyFollow" ? 105 : u.scheduledAction.kind === "zigzag" ? 180 : u.scheduledAction.kind === "hurricane" ? Math.max(45, u.scheduledAction.damage - u.scheduledAction.remaining * 25) : 75);
       let needs = Math.min(...card(u).skills.map(sk => costGap(u, sk.cost)));
       score -= sign * needs * 8;

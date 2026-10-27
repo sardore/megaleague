@@ -1452,6 +1452,10 @@ export function effectApply(g, actor, target, e, skill, ctx) {
       }
     case "status":
       return applyStatus(g, e.target === "self" ? actor : target, e.status, e.duration, actor);
+    case "freezeUntilFull":
+      return applyStatus(g, target, "freeze", Math.max(1, Math.ceil((card(target).maxEnergy || 4) - totalEnergy(target) - 0.001)), actor, null, {
+        untilEnergyFull: true
+      });
     case "statusChance":
       {
         let ok = ctx.sim ? e.chance >= 0.5 : g.rng.next() < e.chance;
@@ -1464,7 +1468,9 @@ export function effectApply(g, actor, target, e, skill, ctx) {
     case "colorOne":
       return changeEnergyColor(g, target, e.color, false, actor);
     case "removeEnergy":
-      return removeEnergy(g, target, e.amount, actor);
+      return removeEnergy(g, target, e.amount, actor, {
+        recent: !!e.recent
+      });
     case "removeAllEnergy":
       {
         /* 에너지를 전부 제거한다. 자신은 외부 제거가 아니므로 막힘 없이 비우고, 상대는 일반 제거 경로(프레그먼트 차단 등)를 따른다. */
