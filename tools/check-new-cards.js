@@ -182,5 +182,21 @@ try{
    g.turn=0;g.turnSerial++;g.preparedKey=null;u.hp=120;out.after=usable();return out;})()`);
   assert.deepEqual(r,{stats:{hp:120,shield:40,grade:'3☆',costs:['**','R*','WR']},cutter:50,ratio:[20,40,200],strike:120,recoil:60,before:true,cast:true,after:false});
  });
+ await check('freeze interrupts a pending scheduled action; the frozen unit only gathers; death and retreat still cancel through the same path',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};
+   const mk=id=>{const g=Megaleague.newGame([id,'mole','turtle','hermit'],['mole','turtle','hermit','mushroom'],{mode:'ai',variance:false,seed:'fz'});
+    g.order=[['P',0],['A',0],['P',1],['A',1]];g.turn=0;g.turnSerial=0;g.preparedKey=null;const u=g.teams.P.field[0],t=g.teams.A.field[0];t.hp=t.maxHp=9999;u.energy=[{c:'R',a:3},{c:'W',a:3},{c:'B',a:3}];return {g,u,t};};
+   const reserve=(env,skill)=>{Megaleague.prepareCurrentTurn(env.g);return Megaleague.execute(env.g,'P',0,{type:'skill',skill,target:{team:'A',slot:0,uid:env.t.uid}});};
+   const toOwnTurn=env=>{env.g.turn=1;let n=0;while(!(env.g.order[env.g.turn][0]==='P'&&env.g.order[env.g.turn][1]===0)&&n++<8){const [tt,ss]=env.g.order[env.g.turn];Megaleague.prepareCurrentTurn(env.g);probe.execution.endTurn(env.g,tt,ss,false);}Megaleague.prepareCurrentTurn(env.g);};
+   for(const [id,skill] of [['jetski','jetskiDive'],['sweetna','sugarswamp'],['grange','zigzagExcavate']]){
+    const e=mk(id);out[id+'Cast']=reserve(e,skill);out[id+'Pending']=!!e.u.scheduledAction;
+    probe.combat.applyStatus(e.g,e.u,'freeze',2,e.t);out[id+'Cancelled']=!e.u.scheduledAction&&!e.u.sequence;
+    toOwnTurn(e);out[id+'Legal']=[...new Set(Megaleague.legalActions(e.g,'P',0).map(a=>a.type))];}
+   const f=mk('jetski');reserve(f,'jetskiDive');probe.combat.applyStatus(f.g,f.u,'poison',2,f.t);out.otherStatusKeeps=!!f.u.scheduledAction;
+   const d=mk('jetski');reserve(d,'jetskiDive');d.u.hp=0;probe.combat.checkDeath(d.g,d.u,d.t);out.deathCancels=!d.u.scheduledAction;
+   const w=mk('jetski');reserve(w,'jetskiDive');probe.execution.switchCharacter(w.g,'P',0,0);out.retreatCancels=!w.g.teams.P.bench.some(x=>x?.scheduledAction);
+   return out;})()`);
+  assert.deepEqual(r,{jetskiCast:true,jetskiPending:true,jetskiCancelled:true,jetskiLegal:['gather'],sweetnaCast:true,sweetnaPending:true,sweetnaCancelled:true,sweetnaLegal:['gather'],grangeCast:true,grangePending:true,grangeCancelled:true,grangeLegal:['gather'],otherStatusKeeps:true,deathCancels:true,retreatCancels:true});
+ });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

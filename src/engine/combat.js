@@ -33,6 +33,14 @@ export function isStatusImmune(u, s) {
 export function activeIruma(g, t) {
   return g.teams[t]?.field.find(u => u && !u.dead && cardHasCapability(u, "irumaCleanse") && traitsActive(u)) || null;
 }
+/* 예약 효과를 끊는 유일한 경로: 후퇴·사망·냉동이 모두 이 함수를 쓴다. */
+export function cancelScheduledAction(g, u, reason) {
+  if (!u || !(u.sequence || u.scheduledAction)) return false;
+  u.sequence = null;
+  u.scheduledAction = null;
+  log(g, `${u.name}: ${reason} 예약 효과 취소.`);
+  return true;
+}
 export function applyStatus(g, u, s, d, source = null, presentationMeta = null, options = {}) {
   actionFaultHit("status-before");
   let c = card(u);
@@ -91,6 +99,8 @@ export function applyStatus(g, u, s, d, source = null, presentationMeta = null, 
     });
     triggerForcedCleansePenalty(g, u, t, source);
   }
+  /* 냉동은 행동 자체를 막으므로 진행 중이던 예약 효과(연속·지연 공격)도 끊는다. 즉시 치료로 바로 풀린 경우는 걸리지 않은 것이다. */
+  if (s === "freeze" && status(u, "freeze")) cancelScheduledAction(g, u, "냉동으로");
   actionFaultHit("status-after");
   if (s === "traitSeal" && typeof reactiveEnergyRule === "function" && reactiveEnergyRule(u)) syncReactiveEnergyMaxHp(g, u, "특성봉인", true);
   if (s === 'undead' && status(u, s) && isZombie(u)) queueVisual(g, { type: 'wellerFx', phase: 'undeadApply', uid: u.uid, targetUid: u.uid });
@@ -353,11 +363,7 @@ export function checkDeath(g, u, killer) {
     u.hp = 0;
     u.dead = true;
     clearOwnedField(g, u, "사망");
-    if (u.sequence || u.scheduledAction) {
-      u.sequence = null;
-      u.scheduledAction = null;
-      log(g, `${u.name} 사망으로 예약 효과 취소.`);
-    }
+    cancelScheduledAction(g, u, "사망으로");
     log(g, `${u.name} 사망.`, "damage");
     if (killer) killer.lastTarget = u.uid;
     actionFaultHit("death-after");
