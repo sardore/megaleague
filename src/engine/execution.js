@@ -6,7 +6,7 @@ import { state_runtime_state } from "../runtime/state.js";
 import { isNonAttackSkill } from "../app/controls.js";
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
 import { effectApply, legalActions, other, prepareCurrentTurn, unitAt, state_engine_actions } from "./actions.js";
-import { applyStatus, checkDeath, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, settleFillFreeze, traitsActive, state_engine_combat } from "./combat.js";
+import { applyStatus, cancelScheduledAction, checkDeath, clearOwnedField, findUnit, heal, nonAttackDamage, queueSkillVisual, queueVisual, settleFillFreeze, traitsActive, state_engine_combat } from "./combat.js";
 import { beginScheduledActionExecution, completeScheduledActionExecution, consumeNaturalGatherProposal, executeScheduled, naturalColors } from "./effects.js";
 import { aliveUnits, bestEnergyReplacementPlan, canPayAction, canPayReq, canSwitch, energyStore, energyValue, findPaymentPlan, gainEnergy, initializeDeployment, parseCost, reqAcceptsCounts, requestTraitEnergy, spendAction, spendFrom, spendPaymentPlan, spendReq, status, switchCost, totalEnergy, state_engine_energy } from "./energy.js";
 import { actionFaultHit, card, cardCapability, cardHasCapability, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillsOf, state_engine_entities } from "./entities.js";
@@ -89,11 +89,7 @@ export function switchCharacter(g, t, s, bi) {
   if (!incoming) return;
   clearOwnedField(g, out, "후퇴");
   if (cardHasCapability(out, "eclipse")) out.eclipseEligible = false;
-  if (out.sequence || out.scheduledAction) {
-    out.sequence = null;
-    out.scheduledAction = null;
-    log(g, `${out.name}: 필드를 떠나 예약 효과 취소.`);
-  }
+  cancelScheduledAction(g, out, "필드를 떠나");
   tm.bench[bi] = out;
   tm.field[s] = incoming;
   initializeDeployment(g, incoming);
