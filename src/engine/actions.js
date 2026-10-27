@@ -56,7 +56,7 @@ export function prepareCurrentTurn(g) {
           log(g, `${u.name}: 화염날개 방어 종료.`);
         }
         if (cardHasCapability(u, "dualActor")) state_engine_energy.dualActorController.begin(g, u);else state_engine_energy.dualActorController.clear(g);
-        const frost = status(u, "freeze") ? g.teams[other(t)].field.find(x => x && !x.dead && cardHasCapability(x, "frozenTurnStartDamage") && traitsActive(x)) : null;
+        const frost = status(u, "freeze") ? ["P", "A"].flatMap(team => g.teams[team].field).find(x => x && !x.dead && cardHasCapability(x, "frozenTurnStartDamage") && traitsActive(x)) : null;
         if (frost) nonAttackDamage(g, u, Number(cardCapability(frost, "frozenTurnStartDamage", 0)), `${frost.name} 특성 · 냉동 피해`);
       }
     }

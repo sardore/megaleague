@@ -111,16 +111,17 @@ try{
    out.timed=probe.energy.status(t,'freeze');return out;})()`);
   assert.deepEqual(r,{applied:false,frozen:0,energy:'R1W1W1',fullTotal:4,fullHasW:true,timed:1});
  });
- await check('frost: a frozen enemy takes 20 at its turn start; not while trait sealed, not for frost allies; ice knight still absorbs for 20 HP',async page=>{
+ await check('frost: a frozen unit on either side takes 20 at its turn start, including frost itself; not while the trait is sealed; ice knight still absorbs for 20 HP',async page=>{
   const r=await page.evaluate(`(()=>{${setup('frost')}
    const out={};const ally=g.teams.P.field[1];t.hp=t.maxHp=999;ally.hp=ally.maxHp=999;t.statuses={freeze:2};ally.statuses={freeze:2};
    const startOf=(team,slot)=>{g.turn=g.order.findIndex(([x,y])=>x===team&&y===slot);g.turnSerial++;g.preparedKey=null;probe.actions.prepareCurrentTurn(g);};
    startOf('A',0);out.enemy=999-t.hp;startOf('P',1);out.ally=999-ally.hp;
+   u.hp=u.maxHp=999;u.statuses={freeze:2};startOf('P',0);out.self=999-u.hp;
    t.hp=999;u.statuses={traitSeal:2};startOf('A',0);out.sealed=999-t.hp;
    const g2=Megaleague.newGame(['iceknight','mole','turtle','hermit'],['mole','turtle','hermit','mushroom'],{mode:'ai',variance:false,seed:'ik'});
    const k=g2.teams.P.field[0];k.hp=100;out.knight=probe.combat.applyStatus(g2,k,'freeze',2,null);out.knightHp=k.hp;out.knightFrozen=probe.energy.status(k,'freeze');
    return out;})()`);
-  assert.deepEqual(r,{enemy:20,ally:0,sealed:0,knight:false,knightHp:120,knightFrozen:0});
+  assert.deepEqual(r,{enemy:20,ally:20,self:20,sealed:0,knight:false,knightHp:120,knightFrozen:0});
  });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

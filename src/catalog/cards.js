@@ -953,7 +953,7 @@ export function initializeCatalogCards() {
     grade: "2☆",
     league: "mega",
     tags: ["earth"]
-  }), state_catalog_cards.C("frost", "프로스트", 110, "냉동 견제", "메가리그", "냉동 흡수: 냉동 적용을 무효화하고 W 2개를 얻는다. 냉동에 걸린 적이 차례를 시작할 때 20 피해.", [state_catalog_cards.S("snowBreath", "눈꽃숨", "W", "30D. 대상의 에너지 하나를 오른쪽부터 제거.", "enemy", [{
+  }), state_catalog_cards.C("frost", "프로스트", 110, "냉동 견제", "메가리그", "냉동 흡수: 냉동 적용을 무효화하고 W 2개를 얻는다. 필드에서 냉동에 걸린 모든 대상이 차례를 시작할 때 20 피해.", [state_catalog_cards.S("snowBreath", "눈꽃숨", "W", "30D. 대상의 에너지 하나를 오른쪽부터 제거.", "enemy", [{
     type: "damage",
     amount: 30
   }, {
