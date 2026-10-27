@@ -48,6 +48,7 @@ export function initializeUiCards() {
     sandcastle: ["🏰"],
     frost: ["🧊"],
     cherryberry: ["🍒"],
+    birdKnight: ["🐦", "⚔️"],
     helmetShark: ["🦈"],
     snakeArmor: ["🐍", "🛡️"],
     phantomMuner: ["🎩", "🃏"],

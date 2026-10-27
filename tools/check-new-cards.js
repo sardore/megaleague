@@ -169,5 +169,18 @@ try{
    g.turn=0;g.turnSerial++;g.preparedKey=null;u.shield=0;out.again=usable();return out;})()`);
   assert.deepEqual(r,{withShield:false,broken:true,cast:true,shield:90,again:false});
  });
+ await check('bird knight: stats; reversal sword is 20 ÷ own HP ratio; bird strike hits 120D with half recoil and only once per battle',async page=>{
+  const r=await page.evaluate(`(()=>{const out={};const g=${gx(['birdKnight',...pad],foe)};const u=g.teams.P.field[0],t=g.teams.A.field[0];const c=probe.card(u);
+   out.stats={hp:c.maxHp,shield:u.shield,grade:c.grade,costs:c.skills.map(s=>s.cost)};
+   t.hp=t.maxHp=9999;t.shield=0;t.defense=0;t.baseDefense=0;t.defenseMod=0;const ctx={team:'P',slot:0,sim:false,action:{}};
+   const sk=id=>c.skills.find(s=>s.id===id);const hit=id=>{t.hp=9999;probe.effectApply(g,u,t,sk(id).effects[0],sk(id),ctx);return 9999-t.hp;};
+   out.cutter=hit('knightWingCutter');
+   out.ratio=[120,60,12].map(hp=>{u.hp=hp;return hit('reversalSword');});
+   u.hp=120;u.shield=0;out.strike=hit('birdStrike');out.recoil=120-u.hp;
+   const usable=()=>{u.energy=[{c:'W',a:1},{c:'R',a:1}];return Megaleague.legalActions(g,'P',0).some(a=>a.type==='skill'&&a.skill==='birdStrike');};
+   u.hp=120;out.before=usable();out.cast=Megaleague.execute(g,'P',0,{type:'skill',skill:'birdStrike',target:{team:'A',slot:0,uid:t.uid}});
+   g.turn=0;g.turnSerial++;g.preparedKey=null;u.hp=120;out.after=usable();return out;})()`);
+  assert.deepEqual(r,{stats:{hp:120,shield:40,grade:'3☆',costs:['**','R*','WR']},cutter:50,ratio:[20,40,200],strike:120,recoil:60,before:true,cast:true,after:false});
+ });
  console.log(`${passed} new-card checks passed`);
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
