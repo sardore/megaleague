@@ -974,6 +974,34 @@ export function initializeCatalogCards() {
       amount: 2
     },
     frozenTurnStartDamage: 20
+  }), state_catalog_cards.C("cherryberry", "체리베리", 70, "다중 수급 흡수 딜러", "메가리그", "실드가 있을 때 에너지 모으기로 에너지를 두 개씩 모은다. 실드멜트 무효.", [state_catalog_cards.S("pressDown", "찍어누르기", "**", "30D.", "enemy", [{
+    type: "damage",
+    amount: 30
+  }], ["damage"]), state_catalog_cards.S("parasiteBerry", "기생초", "WR*", "30D. 준 피해량만큼 흡수.", "enemy", [{
+    type: "damage",
+    amount: 30,
+    absorbFraction: 1
+  }], ["damage", "heal"], {
+    vfxTheme: "bloodSuck"
+  }), state_catalog_cards.S("berryShield", "베리실드", "W*", "전투 1회. 부서진 실드를 90으로 복구.", "self", [{
+    type: "selfShield",
+    amount: 90,
+    max: 90
+  }], ["shield"], {
+    requirements: {
+      shield: "absent",
+      oncePerBattle: true
+    }
+  })], {
+    grade: "3☆",
+    shield: 90,
+    league: "mega",
+    tags: ["grass"],
+    multiGather: {
+      count: 2,
+      requires: "shield"
+    },
+    shieldMeltImmune: true
   }), state_catalog_cards.C("circuit", "서킷", 170, "연속 행동·전류 방어", "메가리그", "프레그먼트: R+B 총량×10 방어, 외부 에너지 조작 차단. 전류가속: 기본 차례 시작 시 완성 W 수만큼 추가 차례. 교류충전·마비 무효.", [state_catalog_cards.S("roundKick", "돌려차기", "**", "적 필드 전체 각각 30D.", "self", [{
     type: "circuitRoundKick"
   }], ["damage", "multi"]), state_catalog_cards.S("armsBlade", "암즈블레이드", "WW", "대상 최대 HP 25% 피해 후 생존 시 마비1. 이후 B와 R을 1개씩 획득.", "enemy", [{
@@ -1273,6 +1301,7 @@ export function skillRequirementsMet(unit, skillRef) {
   const skill = skillOf(unit, skillRef),
     requirements = skill?.requirements;
   if (!skill || !requirements) return !!skill;
+  if (requirements.oncePerBattle && unit?.usedOnce?.[skill.id]) return false;
   if (requirements.minShield != null && Number(unit?.shield || 0) + 1e-6 < Number(requirements.minShield)) return false;
   /* 특성에 묶인 사용 조건: 자기 기술일 때만, 특성이 켜져 있을 때만 적용한다. 특성봉인 중에는 모든 기술을 쓸 수 있고, 다른 유닛이 복사한 기술에는 걸리지 않는다. */
   const ownSkill = !!unit && (unit.presentationOnly ? false : card(unit)?.skills.some(x => x.id === skill.id));

@@ -19,6 +19,7 @@ import { memoryOptions, naturalColors } from "../engine/effects.js";
 import { canPayAction, energyStore, energyValue, findPaymentPlan, normalizeStore, status, totalEnergy, transformedSkillReq, triggerEnergyGainResult } from "../engine/energy.js";
 import { RNG, actionSkillHasEffect, actionSkillHasTag, card, cardHasCapability, firstSkillByTag, skillDefHasEffect, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillIdByTag, skillOf, state_engine_entities } from "../engine/entities.js";
 import { advanceDualOrEnd, endTurn, execute } from "../engine/execution.js";
+import { cloneRng, drawNaturalColorFrom, executeGatherGains, storeAfterGain } from "../engine/multi-gather.js";
 import { dmBattleInstanceId, dmMemoryAction, dmTargetRefs } from "./dragon-memory.js";
 import { copiedSkillAllowed } from "./elixian.js";
 import { executeCharacterAction } from "./support.js";
@@ -26,7 +27,7 @@ import { log, queueCombatNotice } from "../presentation/audio.js";
 import { state_presentation_coordinates } from "../presentation/coordinates.js";
 import { timeSyncContinuousTraitStates } from "../presentation/introductions.js";
 import { systems } from "../runtime/systems.js";
-import { afterAction } from "../ui/action-choices.js";
+import { openGatherGainsOverflow } from "../ui/action-choices.js";
 import { state_ui_action_panel } from "../ui/action-panel.js";
 import { combatInt, energyAmountText, state_ui_battle_state } from "../ui/battle-state.js";
 import { state_ui_cards } from "../ui/cards.js";
@@ -630,29 +631,6 @@ export function executeTimeAction(g, t, s, a, opt = {}) {
     state_engine_actions.timeTraitGame = oldGame;
   }
 }
-export function timeCloneRng(rng) {
-  const x = Object.create(RNG.prototype);
-  x.s = rng.s;
-  return x;
-}
-export function timeDrawNaturalColorFrom(rng, colors, store, amount) {
-  const half = amount === .5 ? (store || []).find(e => e?.a === .5) : null;
-  return {
-    color: half?.c || rng.pick(colors),
-    locked: !!half
-  };
-}
-export function timeStoreAfterGain(store, col, amount) {
-  const next = (store || []).map(e => ({
-    ...e
-  }));
-  next.push({
-    c: col,
-    a: amount
-  });
-  normalizeStore(next);
-  return next;
-}
 export function timePeekGather(u, g, t) {
   const amt = status(u, "slow") ? .5 : 1,
     colors = naturalColors(g, t, u, amt, null, "time-acceleration-preview"),
@@ -660,17 +638,17 @@ export function timePeekGather(u, g, t) {
       ...e
     }));
   const previewState = Number(g?.rng?.s ?? 0),
-    base = timeCloneRng(g.rng);
-  const firstDraw = timeDrawNaturalColorFrom(base, colors, store, amt),
+    base = cloneRng(g.rng);
+  const firstDraw = drawNaturalColorFrom(base, colors, store, amt),
     first = firstDraw.color,
     afterFirstState = base.s;
-  const rerollRng = timeCloneRng(g.rng);
+  const rerollRng = cloneRng(g.rng);
   rerollRng.s = afterFirstState;
-  const second = timeDrawNaturalColorFrom(rerollRng, colors, store, amt).color;
-  const bonusRng = timeCloneRng(g.rng);
+  const second = drawNaturalColorFrom(rerollRng, colors, store, amt).color;
+  const bonusRng = cloneRng(g.rng);
   bonusRng.s = afterFirstState;
-  const afterFirst = timeStoreAfterGain(store, first, amt),
-    bonusDraw = timeDrawNaturalColorFrom(bonusRng, colors, afterFirst, .5);
+  const afterFirst = storeAfterGain(store, first, amt),
+    bonusDraw = drawNaturalColorFrom(bonusRng, colors, afterFirst, .5);
   return {
     first,
     second,
@@ -691,12 +669,6 @@ export function timeAIShouldReroll(u, first) {
   if (pool.W + pool.B < 2 && first === "R") return true;
   return false;
 }
-export function timeHumanControlsTeam(g, t) {
-  if (g?.mode === "human") return t === "P";
-  if (g?.mode === "online") return t === state_ui_deck.onlineSide;
-  if (g?.mode === "bossSolo" || g?.mode === "bossOnline") return t === "P";
-  return false;
-}
 export function timeAccelerationIsActive(g, u) {
   if (!g || !u || u.dead || !cardHasCapability(u, "timeControl")) return false;
   const oldGame = state_engine_actions.timeTraitGame;
@@ -707,65 +679,6 @@ export function timeAccelerationIsActive(g, u) {
     state_engine_actions.timeTraitGame = oldGame;
   }
 }
-export function timeAccelerationDiscardCandidates(u) {
-  const store = energyStore(u);
-  return store.map((e, index) => ({
-    e,
-    index
-  })).filter(({
-    e
-  }) => {
-    const amount = Number(e?.a || 0);
-    return amount === 1 || amount === .5;
-  });
-}
-export function timeFitAccelerationGains(store, gains, max) {
-  const accepted = [],
-    dropped = [];
-  let total = (store || []).reduce((n, e) => n + Number(e?.a || 0), 0);
-  for (const gain of gains || []) {
-    const amount = Number(gain?.a || 0);
-    if (total + amount <= max + .001) {
-      accepted.push({
-        ...gain
-      });
-      total += amount;
-    } else dropped.push({
-      ...gain
-    });
-  }
-  return {
-    accepted,
-    dropped,
-    total
-  };
-}
-export function timeBestAccelerationDiscardIndex(u, gains) {
-  const store = energyStore(u),
-    max = card(u).maxEnergy || 4;
-  let best = null;
-  for (const {
-    index,
-    e
-  } of timeAccelerationDiscardCandidates(u)) {
-    const pool = store.filter((_, i) => i !== index).map(x => ({
-      ...x
-    }));
-    const fit = timeFitAccelerationGains(pool, gains, max);
-    const gained = fit.accepted.reduce((n, x) => n + Number(x.a || 0), 0);
-    if (gained <= 0) continue;
-    const value = energyValue(u, pool.concat(fit.accepted.map(x => ({
-      c: x.c,
-      a: x.a
-    }))));
-    const score = gained * 1000 + value - Number(e.a || 0) * .01;
-    if (!best || score > best.score) best = {
-      index,
-      score
-    };
-  }
-  return best?.index ?? null;
-}
 export function timeExecuteTimeoraGather(g, t, s, u, a, opt = {}) {
   if (!timeAccelerationIsActive(g, u)) return false;
   const store = energyStore(u),
@@ -775,14 +688,14 @@ export function timeExecuteTimeoraGather(g, t, s, u, a, opt = {}) {
     amt = status(u, "slow") ? .5 : 1,
     colors = naturalColors(g, t, u, amt, null, "time-acceleration-execute");
   const stateBefore = Number(g?.rng?.s ?? 0);
-  const firstDraw = timeDrawNaturalColorFrom(g.rng, colors, baseStore, amt),
+  const firstDraw = drawNaturalColorFrom(g.rng, colors, baseStore, amt),
     first = firstDraw.color;
   let choice = a.timeAccelerationChoice || "auto";
   if (choice === "auto") choice = timeAIShouldReroll(u, first) ? "reroll" : "keep";
   if (choice !== "keep" && choice !== "reroll") return false;
   let gains = [];
   if (choice === "reroll") {
-    const secondDraw = timeDrawNaturalColorFrom(g.rng, colors, baseStore, amt),
+    const secondDraw = drawNaturalColorFrom(g.rng, colors, baseStore, amt),
       chosen = secondDraw.color;
     gains = [{
       c: chosen,
@@ -791,8 +704,8 @@ export function timeExecuteTimeoraGather(g, t, s, u, a, opt = {}) {
     }];
     log(g, `${u.name} 특성 · 시간 가속: 에너지를 재추첨함.`, "turn");
   } else {
-    const afterFirst = timeStoreAfterGain(baseStore, first, amt),
-      bonusColor = timeDrawNaturalColorFrom(g.rng, colors, afterFirst, .5).color;
+    const afterFirst = storeAfterGain(baseStore, first, amt),
+      bonusColor = drawNaturalColorFrom(g.rng, colors, afterFirst, .5).color;
     gains = [{
       c: first,
       a: amt,
@@ -800,81 +713,15 @@ export function timeExecuteTimeoraGather(g, t, s, u, a, opt = {}) {
     }, {
       c: bonusColor,
       a: .5,
-      role: "bonus"
+      role: "bonus",
+      optional: true
     }];
   }
-  // UI에서 미리 본 난수 상태와 실제 실행 상태가 다르면 실제 권위 상태를 사용하되 기록한다.
-  if (a.timePreviewState != null && Number(a.timePreviewState) !== stateBefore && !opt.sim && g === state_ui_battle_state.game) {
-    log(g, `${u.name}: 시간 가속 상태를 최신 전투 상태로 다시 계산함.`, "turn");
-  }
-  const explicitKeep = Array.isArray(a.timeKeepGainIndices);
-  if (explicitKeep) {
-    const keepIndices = [...new Set(a.timeKeepGainIndices.map(Number))];
-    if (!keepIndices.length || keepIndices.some(index => !Number.isInteger(index) || !gains[index])) return false;
-    gains = keepIndices.map(index => gains[index]);
-  }
-  const max = card(u).maxEnergy || 4,
-    amount = gains.reduce((n, e) => n + Number(e.a || 0), 0);
-  let replace = a.timeReplacementIndex ?? a.timeReplacementIndices ?? a.replaceIndex ?? a.replaceIndices;
-  if (totalEnergy(u) + amount > max + .001 && replace == null) {
-    if (a.timeDeclineOverflow) {
-      log(g, `${u.name}: 최대 에너지로 시간 가속 수급을 포기.`);
-      u.lastAction = "gather";
-      advanceDualOrEnd(g, t, s, u, false, false);
-      return true;
-    }
-    if (!timeHumanControlsTeam(g, t)) replace = timeBestAccelerationDiscardIndex(u, gains);else return false;
-  }
-  let fit;
-  if (replace != null) {
-    const indices = [...new Set(Array.isArray(replace) ? replace : [replace])].filter(i => Number.isInteger(i) && store[i]);
-    if (!indices.length) return false;
-    const allowed = new Set(timeAccelerationDiscardCandidates(u).map(x => x.index));
-    if (indices.some(index => !allowed.has(index))) return false;
-    if (!explicitKeep && Array.isArray(a.timeSwapPairs)) {
-      const gainIndices = new Set(),
-        storeIndices = new Set();
-      for (const pair of a.timeSwapPairs) {
-        const gainIndex = Number(pair?.gainIndex),
-          storeIndex = Number(pair?.storeIndex);
-        if (!Number.isInteger(gainIndex) || !Number.isInteger(storeIndex) || !gains[gainIndex] || !store[storeIndex]) return false;
-        if (gainIndices.has(gainIndex) || storeIndices.has(storeIndex)) return false;
-        if (Math.abs(Number(gains[gainIndex].a || 0) - Number(store[storeIndex].a || 0)) > .001) return false;
-        gainIndices.add(gainIndex);
-        storeIndices.add(storeIndex);
-      }
-      if (storeIndices.size !== indices.length || indices.some(index => !storeIndices.has(index))) return false;
-    } else if (!explicitKeep && indices.length !== 1) return false;
-    const removedSet = new Set(indices);
-    const pool = store.filter((_, index) => !removedSet.has(index)).map(e => ({
-      ...e
-    }));
-    fit = timeFitAccelerationGains(pool, gains, max);
-    if (explicitKeep && (fit.dropped.length || fit.accepted.length !== gains.length)) return false;
-    if (!explicitKeep && !fit.accepted.some(e => e.role !== "bonus")) return false;
-    const removed = indices.slice().sort((a, b) => b - a).map(index => store.splice(index, 1)[0]).filter(Boolean);
-    log(g, `${u.name}: 기존 ${removed.map(e => `${e.c}${e.a === .5 ? "½" : ""}`).join(" + ")} 에너지를 새 에너지와 교환.`);
-  }
-  fit = timeFitAccelerationGains(store, gains, max);
-  // 직접 선택한 경우에는 선택한 새 에너지가 전부 들어가야 하며, 반에너지만 보관하는 선택도 허용한다.
-  if (explicitKeep) {
-    if (!fit.accepted.length || fit.dropped.length || fit.accepted.length !== gains.length) return false;
-  } else if (!fit.accepted.some(e => e.role !== "bonus")) {
-    // 자동/구형 행동은 첫 수급조차 들어가지 않는 상태에서 행동을 소비하지 않는다.
-    return false;
-  }
-  for (const e of fit.accepted) store.push({
-    c: e.c,
-    a: e.a
-  });
-  normalizeStore(store);
-  triggerEnergyGainResult(g, u, null);
-  if (choice === "keep") log(g, `${u.name} 특성 · 시간 가속: 총 ${energyAmountText(fit.accepted.reduce((n, e) => n + Number(e.a || 0), 0))}E 수급.`, "turn");
-  if (fit.dropped.some(e => e.role === "bonus")) log(g, `${u.name}: 보관 공간 부족으로 시간 가속의 추가 0.5E는 획득하지 못함.`, "turn");
-  log(g, `${u.name}: ${fit.accepted.map(e => `${e.c}${e.a === .5 ? "½" : ""}`).join(" + ")} 에너지 획득.`);
-  u.lastAction = "gather";
-  advanceDualOrEnd(g, t, s, u, false, false);
-  return true;
+  return executeGatherGains(g, t, s, u, a, gains, {
+    label: "시간 가속",
+    stateBefore,
+    logTotal: choice === "keep"
+  }, opt);
 }
 export function timeOpenGatherOverflow(a, choice, peek) {
   const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
@@ -886,67 +733,23 @@ export function timeOpenGatherOverflow(a, choice, peek) {
     }, {
       c: peek.bonusColor,
       a: .5,
-      role: "bonus"
+      role: "bonus",
+      optional: true
     }] : [{
       c: peek.second,
       a: peek.amt,
       role: "reroll"
-    }],
-    amount = gains.reduce((n, e) => n + e.a, 0),
-    max = card(u).maxEnergy || 4,
-    overflow = Math.max(0, totalEnergy(u) + amount - max);
-  let submitted = false;
-  const submit = extra => {
-    if (submitted) return;
-    submitted = true;
-    const action = {
-      ...a,
+    }];
+  openGatherGainsOverflow(a, t, s, u, gains, {
+    title: "시간 가속 · 에너지 교환",
+    identity: `timeAcceleration:${state_ui_battle_state.game?.turnSerial || 0}:${u.uid}`,
+    extra: {
       timeAccelerationChoice: choice,
       timeFirstColor: peek.first,
       timeSecondColor: peek.second,
       timeBonusColor: peek.bonusColor,
-      timePreviewState: peek.previewState,
-      ...extra
-    };
-    const ok = execute(state_ui_battle_state.game, t, s, action);
-    if (ok) {
-      state_ui_battle_state.$("#modal").classList.remove("open");
-      afterAction();
-      return;
+      gatherPreviewState: peek.previewState
     }
-    submitted = false;
-    const state = state_ui_battle_state.$("#modalContent")?.querySelector("p");
-    if (state) state.textContent = "전투 상태가 바뀌어 이 교환을 적용할 수 없습니다. 창을 닫고 다시 시도하세요.";
-  };
-  if (overflow <= .001) {
-    submit({
-      timeKeepGainIndices: gains.map((_, index) => index)
-    });
-    return;
-  }
-  const store = energyStore(u).map(e => ({
-    ...e
-  }));
-  state_features_timeora.EnergyOverflowPresentationOwner.open({
-    title: "시간 가속 · 에너지 교환",
-    sourceActionIdentity: a?.actionId || a?.commandId || `timeAcceleration:${state_ui_battle_state.game?.turnSerial || 0}:${u.uid}`,
-    pendingTransactionIdentity: a?.transactionId || a?.commandId || null,
-    current: store,
-    incoming: gains,
-    max,
-    onConfirm: ({
-      keepIncomingIndices,
-      discardCurrentIndices
-    }) => {
-      const extra = {
-        timeKeepGainIndices: keepIncomingIndices
-      };
-      if (discardCurrentIndices.length) extra.timeReplacementIndices = discardCurrentIndices;
-      submit(extra);
-    },
-    onDropNew: () => submit({
-      timeDeclineOverflow: true
-    })
   });
 }
 export function timeClockMiniHTML(u, g) {

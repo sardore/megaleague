@@ -8,6 +8,7 @@ import { applyBloomAllocation, collectTargetEnergyEntries, previewNaturalGatherP
 import { allEnergy, energyStore, gainEnergy, gainTraitEnergyNow, status, totalEnergy } from "../engine/energy.js";
 import { card, cardHasCapability, newGame, skillOf } from "../engine/entities.js";
 import { endTurn, execute } from "../engine/execution.js";
+import { multiGatherCount, peekMultiGather } from "../engine/multi-gather.js";
 import { removeDeepMindHalf } from "../features/character-rules.js";
 import { timeAccelerationIsActive, timeMarkTimeline, timeOpenGatherOverflow, timePeekGather, state_features_timeora } from "../features/timeora.js";
 import { state_online_commands } from "../online/commands.js";
@@ -34,11 +35,79 @@ export function openTimeAccelerationGather(a, t, s, u) {
   state_ui_battle_state.$("#timeGatherCancel").onclick = () => state_ui_battle_state.$("#modal").classList.remove("open");
   state_ui_battle_state.$("#modal").classList.add("open");
 }
+/* 한 번에 여러 에너지를 얻는 수급(시간 가속·다중 수급)의 공용 교환 창. 초과가 없으면 곧바로 실행한다. */
+export function openGatherGainsOverflow(a, t, s, u, gains, {
+  title,
+  identity,
+  extra = {}
+}) {
+  const game = state_ui_battle_state.game,
+    amount = gains.reduce((n, e) => n + e.a, 0),
+    max = card(u).maxEnergy || 4,
+    overflow = Math.max(0, totalEnergy(u) + amount - max);
+  let submitted = false;
+  const submit = more => {
+    if (submitted) return;
+    submitted = true;
+    const ok = execute(game, t, s, {
+      ...a,
+      ...extra,
+      ...more
+    });
+    if (ok) {
+      state_ui_battle_state.$("#modal").classList.remove("open");
+      afterAction();
+      return;
+    }
+    submitted = false;
+    const state = state_ui_battle_state.$("#modalContent")?.querySelector("p");
+    if (state) state.textContent = "전투 상태가 바뀌어 이 교환을 적용할 수 없습니다. 창을 닫고 다시 시도하세요.";
+  };
+  if (overflow <= .001) {
+    submit({
+      gatherKeepIndices: gains.map((_, index) => index)
+    });
+    return;
+  }
+  state_features_timeora.EnergyOverflowPresentationOwner.open({
+    title,
+    sourceActionIdentity: a?.actionId || a?.commandId || identity,
+    pendingTransactionIdentity: a?.transactionId || a?.commandId || null,
+    current: energyStore(u).map(e => ({
+      ...e
+    })),
+    incoming: gains,
+    max,
+    onConfirm: ({
+      keepIncomingIndices,
+      discardCurrentIndices
+    }) => {
+      const more = {
+        gatherKeepIndices: keepIncomingIndices
+      };
+      if (discardCurrentIndices.length) more.gatherReplaceIndices = discardCurrentIndices;
+      submit(more);
+    },
+    onDropNew: () => submit({
+      gatherDeclineOverflow: true
+    })
+  });
+}
 export function playerGather(a) {
   const [t, s] = state_ui_battle_state.game.order[state_ui_battle_state.game.turn],
     u = unitAt(state_ui_battle_state.game, t, s),
     actor = a.actor || null;
   if (u && timeAccelerationIsActive(state_ui_battle_state.game, u)) return openTimeAccelerationGather(a, t, s, u);
+  if (u && multiGatherCount(state_ui_battle_state.game, u)) {
+    const peek = peekMultiGather(state_ui_battle_state.game, t, u);
+    return openGatherGainsOverflow(a, t, s, u, peek.gains, {
+      title: "에너지 모으기 · 에너지 교환",
+      identity: `multiGather:${state_ui_battle_state.game?.turnSerial || 0}:${u.uid}`,
+      extra: {
+        gatherPreviewState: peek.previewState
+      }
+    });
+  }
   if (u && (cardHasCapability(u, "jungleMud") || cardHasCapability(u, "alternatingCharge"))) return openCustomNaturalGather(a, t, s, u);
   const store = energyStore(u, actor),
     amt = status(u, "slow") ? 0.5 : 1,

@@ -127,7 +127,7 @@ test('switch, target/payment modal, damaging skill and Timeora overflow each com
     evidence.overflowPrompt=await overflowActor.page.locator('#modalContent').innerText();
     await overflowActor.page.locator('#timeDiscardNew').tap();
     const overflowStep=await waitCanonicalActionCommit({host:host.page,guest:guest.page,beforeHost:overflowBeforeHost,beforeGuest:overflowBeforeGuest});
-    expect(overflowStep.commit.actionType).toBe('gather');expect(overflowStep.begin.action.timeDeclineOverflow).toBe(true);
+    expect(overflowStep.commit.actionType).toBe('gather');expect(overflowStep.begin.action.gatherDeclineOverflow).toBe(true);
     evidence.actions.push({serial:10,kind:'overflow-gather',actor:overflowActor.name,actionId:overflowStep.commit.actionId,action:overflowStep.begin.action});
 
     expect(host.errors).toEqual([]);expect(guest.errors).toEqual([]);evidence.ok=true;
