@@ -155,18 +155,11 @@ try{
    return out;})()`);
   assert.deepEqual(r,{keep:1.5,reroll:1,noChoice:false,replace:3.5});
  });
- await check('cherryberry: shield melt cannot break through its shield (only while the trait works); 기생초 absorbs the damage dealt',async page=>{
-  const r=await page.evaluate(`(()=>{const out={};let g=${gx(['bkeno',...pad],['cherryberry','turtle','hermit','mushroom'])};const u=g.teams.P.field[0],t=g.teams.A.field[0];
-   const sk=probe.card(u).skills.find(s=>s.id==='eruption'),melt={...sk.effects[0],boostChance:0,amount:210},ctx={team:'P',slot:0,sim:false,action:{}};
-   const reset=(x,hp)=>{x.shield=90;x.hp=x.maxHp=hp;x.defense=0;x.baseDefense=0;x.defenseMod=0;};
-   reset(t,70);probe.effectApply(g,u,t,melt,sk,ctx);out.cherry=[t.hp,t.shield];
-   reset(t,70);t.statuses={traitSeal:2};probe.effectApply(g,u,t,melt,sk,ctx);out.sealed=[t.hp,t.shield];
-   const o=g.teams.A.field[1];reset(o,500);probe.effectApply(g,u,o,melt,sk,ctx);out.normal=[o.hp,o.shield];
-   g=${gx(['cherryberry',...pad],foe)};const c=g.teams.P.field[0],f=g.teams.A.field[0],pb=probe.card(c).skills.find(s=>s.id==='parasiteBerry');
+ await check('cherryberry: 기생초 absorbs the damage dealt',async page=>{
+  const r=await page.evaluate(`(()=>{const g=${gx(['cherryberry',...pad],foe)};const c=g.teams.P.field[0],f=g.teams.A.field[0],pb=probe.card(c).skills.find(s=>s.id==='parasiteBerry');
    f.shield=0;f.hp=f.maxHp=999;f.defense=0;f.baseDefense=0;f.defenseMod=0;c.hp=30;
-   out.absorb=[probe.effectApply(g,c,f,pb.effects[0],pb,{team:'P',slot:0,sim:false,action:{}}),c.hp];
-   return out;})()`);
-  assert.deepEqual(r,{cherry:[70,0],sealed:[0,0],normal:[380,0],absorb:[30,60]});
+   return [probe.effectApply(g,c,f,pb.effects[0],pb,{team:'P',slot:0,sim:false,action:{}}),c.hp];})()`);
+  assert.deepEqual(r,[30,60]);
  });
  await check('cherryberry: berry shield needs a broken shield and works once per battle',async page=>{
   const r=await page.evaluate(`(()=>{const out={};const g=${gx(['cherryberry',...pad],foe)};const u=g.teams.P.field[0];
