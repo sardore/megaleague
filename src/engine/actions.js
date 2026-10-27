@@ -12,7 +12,7 @@ export const state_engine_actions = {
   timeFeatureReady: undefined
 };
 import { effectiveSkillCost, effectiveSkillTarget, skillRequirementsMet, state_catalog_cards } from "../catalog/cards.js";
-import { heal, nonAttackDamage, queueVisual, traitsActive } from "./combat.js";
+import { cancelScheduledAction, heal, nonAttackDamage, queueVisual, traitsActive } from "./combat.js";
 import { collectTargetEnergyEntries, ensureScheduledActionIdentity, decayHpProtectionBarriers, processQueuedHeal, scheduledExecutionId } from "./effects.js";
 import { allEnergy, allPaymentPlans, canPay, canPayAction, canPayFrom, canSwitch, energyStore, status, switchCost, switchCostText, totalEnergy, transformedSkillReq, state_engine_energy } from "./energy.js";
 import { battleActionConstraintsMet, card, cardCapability, cardHasCapability, firstSkillByEffect, resolveSkillTargets, skillDefHasEffect, skillDefHasRuntimeKind, skillDefHasTag, skillIdByEffect, skillIdByEffectGlobal, skillOf } from "./entities.js";
@@ -45,6 +45,8 @@ export function prepareCurrentTurn(g) {
           u.fullInvulnerableUntilOwnTurn = false;
           log(g, `${u.name}: 무적 종료.`);
         }
+        /* 예약 효과는 냉동과 상관없이 진행되다가, 실행될 차례에 냉동이 걸려 있으면 행동이 막혀 사라진다. */
+        if (status(u, "freeze")) cancelScheduledAction(g, u, "냉동으로");
         u.turnSkillCostReduction = Math.max(0, Math.floor(Number(u.queuedSkillCostReduction || 0)));
         u.queuedSkillCostReduction = 0;
         if (u.turnSkillCostReduction) log(g, `${u.name}: 이번 자기 차례 기술 코스트 ${u.turnSkillCostReduction} 감소.`);
