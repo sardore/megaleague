@@ -145,5 +145,15 @@ await check('curse consumes all attack decreases and preserves positive attack b
    assert.ok(rows.some(x=>x[2]&&x[1]==='saturate(0.33)'),'the acting unit is desaturated too');
   }
  });
+ await check('운명의 시계 정렬: 특성 글이 없는 아군(톡시어스)도 시계 주인을 뺀 모두와 같이 채도가 낮아진다',async page=>{
+  const r=await page.evaluate(async()=>{document.getElementById('startupIntro')?.remove();
+   const g=Megaleague.newGame(['timeora','toxious','turtle','mole'],['timeora','abigate','hermit','mushroom'],{mode:'ai',variance:false,seed:'notrait'});
+   g.order=[['P',0],['A',0],['P',1],['A',1]];g.turn=0;g.turnSerial=0;g.preparedKey=null;probe.battle.game=g;g.matchId='notrait';
+   document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById('game').classList.add('active');
+   const o=g.teams.P.field[0];o.timeHourDeg=90;o.timeMinuteDeg=90;const e=g.teams.A.field[0];e.timeHourDeg=0;e.timeMinuteDeg=40;
+   probe.actions.prepareCurrentTurn(g);probe.render();await new Promise(r=>setTimeout(r,450));probe.render();
+   return [...document.querySelectorAll('.arena .battle-unit-card[data-zone="field"]')].map(el=>[el.dataset.team+el.dataset.slot,getComputedStyle(el).filter]);});
+  const by=Object.fromEntries(r);assert.equal(by.P0,'none');assert.equal(by.P1,'saturate(0.33)','ally without trait text');assert.equal(by.A1,'saturate(0.33)');
+ });
  console.log(`${passed} Weller checks passed`);
 }finally{await browser.close();server.close();}
