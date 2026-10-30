@@ -234,10 +234,11 @@ export class TimeClockOwnershipDomain {
     return this.owners[0] || null;
   }
 }
-/* 운명의 시계 정렬이 특성을 멈추는 대상: 시계 주인을 뺀 양 진영 필드의 생존 유닛 중 특성이 있는 유닛(아군 포함).
-   판정 영역(TimeClockTraitSuppressionPolicy)과 채도 저하 연출이 같은 규칙을 쓰도록 이 한 곳에서만 정한다. */
+/* 운명의 시계 정렬이 멈추는 대상: 시계 주인을 뺀 양 진영 필드의 생존 유닛 전부(아군 포함, 붉은 공용 시계와 같은 기준).
+   특성 글이 없는 유닛은 멈출 것이 없어도 대상에 든다 — 판정 영역(TimeClockTraitSuppressionPolicy)과 채도 저하 연출이
+   같은 규칙을 쓰도록 이 한 곳에서만 정하고, 연출 쪽에서 따로 걸러내지 않는다. */
 export function timeUnitsSuppressedByClockOwners(g, ownerUids) {
-  return [...(g?.teams?.P?.field || []), ...(g?.teams?.A?.field || [])].filter(unit => unit && !unit.dead && !ownerUids.has(String(unit.uid)) && !!String(card(unit)?.trait || "").trim());
+  return [...(g?.teams?.P?.field || []), ...(g?.teams?.A?.field || [])].filter(unit => unit && !unit.dead && !ownerUids.has(String(unit.uid)));
 }
 export class TimeClockTraitSuppressionPolicy {
   resolve(g) {
