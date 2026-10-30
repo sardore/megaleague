@@ -359,7 +359,7 @@ export function renderBaseActions(viewModel = null) {
   if (state_ui_battle_state.game.winner) {
     box.innerHTML = '<button id="sameRestart" data-action-panel-meta="terminal">같은 조건으로 재시작</button><button data-nav="setup" data-action-panel-meta="terminal">메인 메뉴</button>';
     state_ui_battle_state.$("#sameRestart").onclick = () => startBattle(state_ui_battle_state.game.seed);
-    box.querySelector("[data-nav]").onclick = () => state_ui_results.NavigationApplication.request("setup");
+    box.querySelector("[data-nav]").onclick = () => state_ui_results.NavigationApplication.leaveToSetup("action-panel-menu");
     return;
   }
   let controllable = inputProjection.ownsCurrentActor,
