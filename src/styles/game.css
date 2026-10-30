@@ -4402,14 +4402,15 @@
       position:absolute;
       left:50%;
       bottom:50%;
-      width:clamp(15px,3vw,25px);
+      /* 폭은 길이에 비례한다: 같은 방향으로 겹칠 때 긴 바늘이 짧은 바늘을 통째로 감싸 하나의 매끈한 윤곽이 된다(폭이 따로면 겹침 가장자리에 계단 틈이 생긴다). */
+      aspect-ratio:var(--clock-hand-ratio,.3);
       transform-origin:50% 100%;
       clip-path:polygon(50% 0%,100% 100%,0% 100%);
       background:linear-gradient(to top, color-mix(in srgb,var(--clock-main) 72%,#090909), #fff5c5 78%, var(--clock-main));
       filter:drop-shadow(0 0 6px var(--clock-main)) drop-shadow(0 0 15px var(--clock-soft));
     }
-    .time-clock-hand.hour { height:28%; width:clamp(17px,3.4vw,28px); }
-    .time-clock-hand.minute { height:41%; width:clamp(11px,2.2vw,19px); }
+    .time-clock-hand.hour { height:28%; }
+    .time-clock-hand.minute { height:41%; }
     .time-clock-pin { position:absolute; left:50%; top:50%; width:8%; aspect-ratio:1; border-radius:50%; background:#fff8d4; box-shadow:0 0 14px var(--clock-main),0 0 34px var(--clock-main); transform:translate(-50%,-50%); }
     .time-clock-word { position:absolute; left:50%; top:66%; transform:translateX(-50%); color:var(--clock-main); font-size:clamp(13px,3.4vw,24px); font-weight:1000; letter-spacing:.14em; text-shadow:0 0 12px var(--clock-main); opacity:.9; }
     .time-mini-clock .time-clock-word { top:66%; font-size:9px; letter-spacing:.08em; }
@@ -4450,9 +4451,9 @@
     .time-mini-clock { position:relative; flex:0 0 82px; width:82px; aspect-ratio:1; border-radius:50%; border:3px solid var(--clock-main,#ffd558); background:radial-gradient(circle,rgba(255,255,255,.08),rgba(0,0,0,.82)); box-shadow:0 0 14px color-mix(in srgb,var(--clock-main) 48%,transparent),inset 0 0 18px #000; }
     .time-mini-clock.blue { --clock-main:#58bfff; }
     .time-mini-clock.gold { --clock-main:#ffd558; }
-    .time-mini-clock .time-clock-hand { width:10px; filter:drop-shadow(0 0 4px var(--clock-main)); }
-    .time-mini-clock .time-clock-hand.hour { height:27%; width:12px; }
-    .time-mini-clock .time-clock-hand.minute { height:39%; width:8px; }
+    .time-mini-clock .time-clock-hand { filter:drop-shadow(0 0 4px var(--clock-main)); }
+    .time-mini-clock .time-clock-hand.hour { height:27%; }
+    .time-mini-clock .time-clock-hand.minute { height:39%; }
     .time-mini-clock .time-clock-pin { width:10%; }
     .time-mini-state.aligned { color:#ffe377; font-weight:1000; text-shadow:0 0 9px rgba(255,211,68,.55); }
     .time-mini-clock.clock-stopped { filter:grayscale(1) saturate(0) brightness(.66) !important; opacity:.58; box-shadow:0 0 0 1px rgba(180,188,205,.22),inset 0 0 18px #000 !important; }
