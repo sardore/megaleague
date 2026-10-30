@@ -1340,7 +1340,7 @@ function renderBossActions(ctx = null) {
     const kindInfo = raidKindInfo(raidKindOf(state_ui_battle_state.game));
     box.innerHTML = `<button id="bossRaidAgain" data-action-panel-meta="terminal">${kindInfo.menuLabel} 메뉴</button><button data-nav="setup" data-action-panel-meta="terminal">메인 메뉴</button>`;
     document.getElementById("bossRaidAgain").onclick = kindInfo.id === "zombie" ? showZombieCaveMenu : showBossRaidMenu;
-    box.querySelector('[data-nav]').onclick = () => state_ui_results.NavigationApplication.request("setup");
+    box.querySelector('[data-nav]').onclick = () => state_ui_results.NavigationApplication.leaveToSetup("boss-raid-menu");
   }
   return r;
 }
@@ -2044,7 +2044,7 @@ export function showZombieCaveResult(g = state_ui_battle_state.game) {
   document.getElementById("zombieResultAgain").onclick = showZombieCaveMenu;
   document.getElementById("zombieResultMenu").onclick = () => {
     document.getElementById("modal").classList.remove("open");
-    state_ui_results.NavigationApplication.request("setup");
+    state_ui_results.NavigationApplication.leaveToSetup("zombie-cave-result-menu");
   };
 }
 export function listRaidSkillActions(g, t, s) {

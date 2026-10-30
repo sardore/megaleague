@@ -183,6 +183,12 @@ export function initializeUiResults() {
         paused: !!state_ui_battle_state.game?.paused
       });
     };
+    /* 결과 화면의 '메인 메뉴': 온라인 세션이 살아 있으면 세션을 닫고 설정 잠금까지 풀어 돌아가고(returnToSetup), 아니면 화면만 옮긴다. */
+    const leaveToSetup = (reason = "result-to-setup") => {
+      const runtimeState = String(systems.OnlineRuntime?.debug?.().state || "IDLE");
+      if (!["IDLE", "CLOSED", "FAILED"].includes(runtimeState)) return systems.OnlineRuntime.returnToSetup(reason);
+      return request("setup", reason);
+    };
     const resumeBattle = (reason = "battle-resume", options = {}) => {
       if (state_ui_battle_state.game && !state_ui_battle_state.game.winner) state_ui_battle_state.game.paused = false;
       if (options.render === true && state_ui_battle_state.game) render();
@@ -194,6 +200,7 @@ export function initializeUiResults() {
     };
     return Object.freeze({
       request,
+      leaveToSetup,
       resumeBattle
     });
   })();
@@ -228,7 +235,7 @@ export function showVictoryResult() {
   state_ui_battle_state.$("#victoryField").onclick = () => state_ui_battle_state.$("#modal").classList.remove("open");
   state_ui_battle_state.$("#victoryMenu").onclick = () => {
     state_ui_battle_state.$("#modal").classList.remove("open");
-    state_ui_results.NavigationApplication.request("setup");
+    state_ui_results.NavigationApplication.leaveToSetup("victory-menu");
   };
   state_ui_battle_state.$("#victoryRematch").onclick = () => {
     state_ui_battle_state.$("#modal").classList.remove("open");
@@ -307,7 +314,7 @@ export function showPvpResult() {
   state_ui_battle_state.$("#modal").classList.add("open");
   state_ui_results.ResultContributionPresentationOwner.bind(state_ui_battle_state.$("#modalContent"), state_ui_battle_state.game);
   state_ui_battle_state.$("#pvpResultClose").onclick = () => state_ui_battle_state.$("#modal").classList.remove("open");
-  state_ui_battle_state.$("#pvpResultMenu").onclick = () => systems.OnlineRuntime?.returnToSetup?.("pvp-result-menu");
+  state_ui_battle_state.$("#pvpResultMenu").onclick = () => state_ui_results.NavigationApplication.leaveToSetup("pvp-result-menu");
 }
 export function openChoice(html, items) {
   state_ui_battle_state.$("#modalContent").innerHTML = html + '<div class="choice-list"></div>';
