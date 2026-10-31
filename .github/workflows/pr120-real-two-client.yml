@@ -1,0 +1,59 @@
+name: PR 120 Real Two-Client Terminal Lifecycle
+on:
+  push:
+    branches:
+      - test/regression-120-122-20261031
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  two-client:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: sardore/cp32-online-relay
+          path: relay
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies and browser
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Build application
+        run: npm run build
+      - name: Launch local real relay and application
+        run: |
+          mkdir -p artifacts/real-relay
+          nohup node relay/server.js > artifacts/real-relay/server.log 2>&1 &
+          nohup npm run dev > artifacts/real-relay/app.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4173/index.html >/dev/null && (echo >/dev/tcp/127.0.0.1/8787) >/dev/null 2>&1; then
+              echo "App and real relay are ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat artifacts/real-relay/server.log
+          cat artifacts/real-relay/app.log
+          exit 1
+      - name: Exercise real host and guest terminal-to-setup then new match
+        env:
+          CP32_CURRENT_APP_URL: http://127.0.0.1:4173/?relay=ws%3A%2F%2F127.0.0.1%3A8787%2Fonline
+          CP32_REAL_RELAY_ARTIFACTS: artifacts/real-relay
+        run: npx playwright test tests/e2e/current-real-relay-terminal-lifecycle.spec.js --grep "full online match terminal teardown"
+      - name: Upload real relay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr120-real-two-client
+          path: |
+            artifacts/real-relay/
+            artifacts/results/
+          if-no-files-found: warn
