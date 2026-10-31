@@ -111,6 +111,42 @@ try {
     return { before, after };
   });
 
+  await run('NAV-02: FAILED runtime must still release session and settings', async () => {
+    await load();
+    await page.evaluate(() => {
+      const p = window.regressionProbe;
+      const g = Megaleague.newGame(
+        ['mole', 'boar', 'fang', 'frog'],
+        ['turtle', 'hermit', 'mole', 'mushroom'],
+        { mode: 'ai', variance: false, seed: 'nav-failed' }
+      );
+      g.mode = 'online';
+      g.winner = 'P';
+      g.stats.turns = 2;
+      probe.battle.game = g;
+      probe.deck.onlineSide = 'P';
+      Object.assign(probe.deck.p2p, { connected: true, role: 'host', matchId: 'old-failed', roomCode: 'ABCDEF', battleStarted: true });
+      const s = p.freshSession({ kind: 'room.create', mode: 'PVP', roomCode: 'ABCDEF' });
+      s.machine.state = 'FAILED';
+      p.sessionRuntime.activeSession = s;
+      p.lockOnlineSettings(true);
+      document.querySelectorAll('.screen').forEach(x => x.classList.remove('active'));
+      document.getElementById('game').classList.add('active');
+      p.showPvpResult();
+    });
+    await page.locator('#pvpResultMenu').click();
+    const after = await page.evaluate(() => ({
+      state: window.OnlineRuntime?.debug?.().state,
+      activeSession: !!window.regressionProbe.sessionRuntime.activeSession,
+      modalOpen: document.getElementById('modal')?.classList.contains('open'),
+      settingsUnlocked: [...document.querySelectorAll('#variance,#difficulty,#leagueMode,.leagueTab,.composition-choice')].every(el => !el.disabled)
+    }));
+    assert.deepEqual(after, {
+      state: 'IDLE', activeSession: false, modalOpen: false, settingsUnlocked: true
+    }, 'FAILED-state result navigation must not leave an orphaned session or locked settings');
+    return after;
+  });
+
   await run('CLK-01: traitless ally shares suppression domain and computed desaturation', async () => {
     await load();
     const data = await page.evaluate(async () => {
